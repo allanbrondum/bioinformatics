@@ -1,13 +1,13 @@
 use std::collections::VecDeque;
+use itertools::Itertools;
+use rosalind::util::words;
 
 fn main() {
-    let data = include_str!("fibd_data.txt").trim();
+    let data = include_str!("fibd_data.txt");
 
-    let [n, m]: [u64; 2] = data
-        .split_whitespace()
+    let [n, m]: [u64; 2] = words(data)
         .map(|val| val.parse().unwrap())
-        .collect::<Vec<_>>()
-        .try_into()
+        .collect_array()
         .unwrap();
 
     let count = fib(n, m);

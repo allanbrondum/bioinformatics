@@ -1,9 +1,10 @@
 use rosalind::model::{Codon, DnaNt, ProteinAa, all_codons, to_codon};
 use std::collections::HashMap;
 use std::iter;
+use rosalind::util::chars;
 
 fn main() {
-    let data = include_str!("mrna_data.txt").trim();
+    let data = include_str!("mrna_data.txt");
 
     let coding_count: HashMap<Codon, u64> =
         all_codons().fold(HashMap::default(), |mut map, codon| {
@@ -11,8 +12,7 @@ fn main() {
             map
         });
 
-    let count = data
-        .chars()
+    let count = chars(data)
         .map(ProteinAa::from_char)
         .map(|aa| coding_count[&Codon::Aa(aa)])
         .chain(iter::once(coding_count[&Codon::Stop]))

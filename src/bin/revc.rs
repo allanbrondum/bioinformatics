@@ -1,11 +1,10 @@
 use rosalind::model::DnaNt;
-use std::collections::HashMap;
+use rosalind::util::chars;
 
 fn main() {
-    let data = include_str!("revc_data.txt").trim();
+    let data = include_str!("revc_data.txt");
 
-    let recv: String = data
-        .chars()
+    let recv: String = chars(data)
         .map(DnaNt::from_char)
         .rev()
         .map(DnaNt::bonding_complement)

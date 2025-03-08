@@ -1,11 +1,12 @@
-fn main() {
-    let data = include_str!("iprb_data.txt").trim();
+use itertools::Itertools;
+use rosalind::util::words;
 
-    let [hom_dom, het, hom_rec]: [f64; 3] = data
-        .split_whitespace()
+fn main() {
+    let data = include_str!("iprb_data.txt");
+
+    let [hom_dom, het, hom_rec]: [f64; 3] = words(data)
         .map(|val| val.parse().unwrap())
-        .collect::<Vec<_>>()
-        .try_into()
+        .collect_array()
         .unwrap();
 
     let tot = hom_dom + het + hom_rec;

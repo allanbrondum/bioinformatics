@@ -1,11 +1,11 @@
 use itertools::Itertools;
 use rosalind::model::{to_codon, ProteinAa, Codon, RnaNt};
+use rosalind::util::chars;
 
 fn main() {
-    let data = include_str!("prot_data.txt").trim();
+    let data = include_str!("prot_data.txt");
 
-    let codons: String = data
-        .chars()
+    let codons: String = chars(data)
         .map(RnaNt::from_char)
         .chunks(3)
         .into_iter()
