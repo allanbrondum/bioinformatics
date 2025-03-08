@@ -1,5 +1,5 @@
-use std::collections::HashMap;
 use rosalind::model::DnaNt;
+use std::collections::HashMap;
 
 fn main() {
     let data = include_str!("revc_data.txt").trim();
