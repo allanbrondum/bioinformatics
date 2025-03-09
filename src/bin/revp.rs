@@ -28,3 +28,5 @@ fn main() {
         }
     }
 }
+
+//alg reverse complement substr

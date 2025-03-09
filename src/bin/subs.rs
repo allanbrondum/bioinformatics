@@ -15,3 +15,5 @@ fn main() {
 
 
 }
+
+//alg substr

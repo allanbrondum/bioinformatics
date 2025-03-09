@@ -47,3 +47,5 @@ fn prot_aas(client: &reqwest::blocking::Client, prot_id: &str) -> String {
         _ => panic!("not exactly one polymer"),
     }
 }
+
+//alg regex substr

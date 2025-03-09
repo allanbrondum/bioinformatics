@@ -1,2 +1,2 @@
-A C G T
-2
+A B C D E F G H I
+3

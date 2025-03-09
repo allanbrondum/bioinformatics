@@ -9,8 +9,8 @@ fn main() {
     let alphabet: Vec<_> = words(alphabet_str).collect();
     let length = usize::from_str(length).unwrap();
 
-    let mut res = alphabet.iter().map(|a| a.to_string()).collect_vec();
-    for _ in 1..length {
+    let mut res = vec![String::new()];
+    for _ in 0..length {
         res = res
             .into_iter()
             .cartesian_product(alphabet.iter())
