@@ -1,5 +1,5 @@
 use itertools::Itertools;
-use rosalind::util::{lines, positions};
+use rosalind::util::{lines, positions_str};
 
 fn main() {
     let data = include_str!("subs_data.txt");
@@ -8,7 +8,7 @@ fn main() {
         lines(data)
             .collect_array().unwrap();
 
-    for position in positions(s, t) {
+    for position in positions_str(s, t) {
         print!("{} ", position);
     }
 

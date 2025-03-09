@@ -12,11 +12,17 @@ fn main() {
 
         let regex = Regex::new("N[^P][ST][^P]").unwrap();
 
-        println!("{}", prot_id);
+        let mut any_matches = false;
         for position in positions_regex(&aas, &regex) {
+            if !any_matches {
+                println!("{}", prot_id);
+                any_matches = true;
+            }
             print!("{} ", position);
         }
-        println!();
+        if any_matches {
+            println!();
+        }
     }
 }
 

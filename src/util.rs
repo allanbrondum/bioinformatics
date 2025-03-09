@@ -36,7 +36,31 @@ pub fn fasta_polymers(s: &str) -> impl Iterator<Item = String> {
     res.into_iter()
 }
 
-pub fn positions(s: &str, t: &str) -> impl Iterator<Item = usize> {
+pub fn positions<T: PartialEq>(s: &[T], t: &[T]) -> impl Iterator<Item = usize> {
+    let mut res = Vec::new();
+
+    let mut offset = 0;
+    while let Some(index) = find(&s[offset..], t) {
+        offset += index + 1;
+        res.push(offset);
+    }
+
+    res.into_iter()
+}
+
+pub fn find<T: PartialEq>(s: &[T], t: &[T]) -> Option<usize> {
+    'outer: for i in 0..s.len() {
+        for j in 0..t.len() {
+            if i + j >= s.len() || s[i + j] != t[j] {
+                continue 'outer;
+            }
+        }
+        return Some(i)
+    }
+    None
+}
+
+pub fn positions_str(s: &str, t: &str) -> impl Iterator<Item = usize> {
     let mut res = Vec::new();
 
     let mut offset = 0;
