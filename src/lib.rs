@@ -1,3 +1,3 @@
 pub mod polymers;
 pub mod util;
-mod genes;
+pub mod genes;
