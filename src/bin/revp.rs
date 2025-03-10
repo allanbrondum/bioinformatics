@@ -1,4 +1,4 @@
-use rosalind::model::DnaNt;
+use rosalind::polymers::DnaNt;
 use rosalind::util::{chars, fasta_polymers};
 use std::collections::HashMap;
 
@@ -8,6 +8,7 @@ fn main() {
     let dna: Vec<_> = fasta_polymers(data)
         .next()
         .unwrap()
+        .polymer
         .chars()
         .map(DnaNt::from_char)
         .collect();

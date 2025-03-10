@@ -1,5 +1,5 @@
 use itertools::Itertools;
-use rosalind::model::{Codon, ProteinAa, RnaNt, to_codon, translate_rna};
+use rosalind::polymers::{Codon, ProteinAa, RnaNt, to_codon, translate_rna};
 use rosalind::util::chars;
 
 fn main() {

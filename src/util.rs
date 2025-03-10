@@ -1,5 +1,6 @@
 use regex::Regex;
 
+
 pub fn chars(s: &str) -> impl DoubleEndedIterator<Item = char> {
     s.trim().chars()
 }
@@ -14,23 +15,40 @@ pub fn words(s: &str) -> impl Iterator<Item = &str> {
     s.trim().split_whitespace()
 }
 
-pub fn fasta_polymers(s: &str) -> impl Iterator<Item = String> {
+#[derive(Debug, Clone, Default)]
+pub struct FastaEntry {
+    pub description: String,
+    pub polymer: String,
+}
+
+impl FastaEntry {
+    fn new(description: String) -> Self {
+        Self {
+            description,
+            polymer: String::default(),
+        }
+    }
+}
+
+pub fn fasta_polymers(s: &str) -> impl Iterator<Item = FastaEntry> {
     let mut res = Vec::new();
 
-    let mut aas = String::new();
+    let mut entry = None;
     for line in lines(s) {
-        if line.starts_with(">") {
-            if !aas.is_empty() {
-                res.push(aas);
-                aas = String::new();
+        if let Some(descr) = line.strip_prefix(">") {
+            if let Some(entry) = entry.take() {
+                res.push(entry);
             }
+            entry = Some(FastaEntry::new(descr.to_string()));
+        } else if let Some(entry) = &mut entry {
+            entry.polymer.push_str(line);
         } else {
-            aas.push_str(line);
+            panic!("invalid format");
         }
     }
 
-    if !aas.is_empty() {
-        res.push(aas);
+    if let Some(entry) = entry.take() {
+        res.push(entry);
     }
 
     res.into_iter()
@@ -55,7 +73,7 @@ pub fn find<T: PartialEq>(s: &[T], t: &[T]) -> Option<usize> {
                 continue 'outer;
             }
         }
-        return Some(i)
+        return Some(i);
     }
     None
 }

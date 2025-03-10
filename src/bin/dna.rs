@@ -1,4 +1,4 @@
-use rosalind::model::DnaNt;
+use rosalind::polymers::DnaNt;
 use std::collections::HashMap;
 use rosalind::util::chars;
 

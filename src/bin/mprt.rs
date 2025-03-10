@@ -43,7 +43,7 @@ fn prot_aas(client: &reqwest::blocking::Client, prot_id: &str) -> String {
     let mut polymers = fasta_polymers(&fasta);
 
     match (polymers.next(), polymers.next()) {
-        (Some(polymer), None) => polymer,
+        (Some(polymer), None) => polymer.polymer,
         _ => panic!("not exactly one polymer"),
     }
 }

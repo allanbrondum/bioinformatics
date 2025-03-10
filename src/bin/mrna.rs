@@ -1,4 +1,4 @@
-use rosalind::model::{Codon, DnaNt, ProteinAa, all_codons, to_codon};
+use rosalind::polymers::{Codon, DnaNt, ProteinAa, all_codons, to_codon};
 use std::collections::HashMap;
 use std::iter;
 use rosalind::util::chars;

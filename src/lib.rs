@@ -1,2 +1,3 @@
-pub mod model;
+pub mod polymers;
 pub mod util;
+mod genes;

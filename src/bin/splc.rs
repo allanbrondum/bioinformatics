@@ -1,5 +1,5 @@
 use itertools::Itertools;
-use rosalind::model::{DnaNt, ProteinAa, RnaNt, translate_rna};
+use rosalind::polymers::{DnaNt, ProteinAa, RnaNt, translate_rna};
 use rosalind::util::{chars, fasta_polymers};
 
 fn main() {
@@ -7,10 +7,10 @@ fn main() {
 
     let mut polymers: Vec<_> = fasta_polymers(data).collect();
 
-    let mut rna = polymers.remove(0);
+    let mut rna = polymers.remove(0).polymer;
 
     for polymer in &polymers {
-        rna = rna.replace(polymer, "");
+        rna = rna.replace(&polymer.polymer, "");
     }
 
     let protein: String = translate_rna(rna.chars().map(DnaNt::from_char)
