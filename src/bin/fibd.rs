@@ -1,6 +1,6 @@
-use std::collections::VecDeque;
 use itertools::Itertools;
 use rosalind::util::words;
+use std::collections::VecDeque;
 
 fn main() {
     let data = include_str!("fibd_data.txt");

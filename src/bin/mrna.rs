@@ -1,7 +1,7 @@
-use rosalind::polymers::{Codon, DnaNt, ProteinAa, all_codons, to_codon};
+use rosalind::polymers::{Codon, ProteinAa, all_codons, to_codon};
+use rosalind::util::chars;
 use std::collections::HashMap;
 use std::iter;
-use rosalind::util::chars;
 
 fn main() {
     let data = include_str!("mrna_data.txt");

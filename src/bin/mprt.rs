@@ -6,11 +6,10 @@ fn main() {
     let data = include_str!("mprt_data.txt");
 
     let client = reqwest::blocking::Client::new();
+    let regex = Regex::new("N[^P][ST][^P]").unwrap();
     for prot_id in lines(data) {
         let db_id = prot_id.split("_").next().unwrap();
         let aas = prot_aas(&client, db_id);
-
-        let regex = Regex::new("N[^P][ST][^P]").unwrap();
 
         let mut any_matches = false;
         for position in positions_regex(&aas, &regex) {

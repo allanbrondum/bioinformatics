@@ -5,7 +5,8 @@ use std::str::FromStr;
 fn main() {
     let data = include_str!("iev_data.txt");
 
-    let [AA_AA, AA_Aa, AA_aa, Aa_Aa, Aa_aa, aa_aa] = words(data)
+    #[allow(non_snake_case)]
+    let [AA_AA, AA_Aa, AA_aa, Aa_Aa, Aa_aa, _aa_aa] = words(data)
         .map(|word| f64::from_str(word).unwrap())
         .collect_array()
         .unwrap();

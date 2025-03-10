@@ -21,10 +21,10 @@ fn main() {
         .collect();
 
     println!("{}", cons);
-    println!("A: {}", profile.iter().map(|freq|freq.a).join(" "));
-    println!("C: {}", profile.iter().map(|freq|freq.c).join(" "));
-    println!("G: {}", profile.iter().map(|freq|freq.g).join(" "));
-    println!("T: {}", profile.iter().map(|freq|freq.t).join(" "));
+    println!("A: {}", profile.iter().map(|freq| freq.a).join(" "));
+    println!("C: {}", profile.iter().map(|freq| freq.c).join(" "));
+    println!("G: {}", profile.iter().map(|freq| freq.g).join(" "));
+    println!("T: {}", profile.iter().map(|freq| freq.t).join(" "));
 }
 
 #[derive(Debug, Clone, Default)]

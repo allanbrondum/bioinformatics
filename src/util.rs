@@ -1,6 +1,5 @@
 use regex::Regex;
 
-
 pub fn chars(s: &str) -> impl DoubleEndedIterator<Item = char> {
     s.trim().chars()
 }
@@ -12,7 +11,7 @@ pub fn lines(s: &str) -> impl Iterator<Item = &str> {
 }
 
 pub fn words(s: &str) -> impl Iterator<Item = &str> {
-    s.trim().split_whitespace()
+    s.split_whitespace()
 }
 
 #[derive(Debug, Clone, Default)]
@@ -94,7 +93,7 @@ pub fn positions_regex(s: &str, regex: &Regex) -> impl Iterator<Item = usize> {
     let mut res = Vec::new();
 
     let mut offset = 0;
-    while let Some(mtch) = regex.find_at(&s, offset) {
+    while let Some(mtch) = regex.find_at(s, offset) {
         offset = mtch.start() + 1;
         res.push(offset);
     }

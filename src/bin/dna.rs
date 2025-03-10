@@ -1,6 +1,6 @@
 use rosalind::polymers::DnaNt;
-use std::collections::HashMap;
 use rosalind::util::chars;
+use std::collections::HashMap;
 
 fn main() {
     let data = include_str!("dna_data.txt");

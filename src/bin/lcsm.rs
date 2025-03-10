@@ -4,7 +4,7 @@ use rosalind::util::fasta_polymers;
 fn main() {
     let data = include_str!("lcsm_data.txt");
 
-    let mut strs:Vec<_> = fasta_polymers(data).collect_vec();
+    let mut strs: Vec<_> = fasta_polymers(data).collect_vec();
 
     let first = strs.remove(0);
     let mut substr = "";

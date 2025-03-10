@@ -174,8 +174,9 @@ pub fn protein_aa_mass(aa: ProteinAa) -> f64 {
     }
 }
 
-pub fn translate_rna<'a>(rna: impl IntoIterator<Item = RnaNt>) -> Vec<ProteinAa>  {
-    rna.into_iter().chunks(3)
+pub fn translate_rna(rna: impl IntoIterator<Item = RnaNt>) -> Vec<ProteinAa> {
+    rna.into_iter()
+        .chunks(3)
         .into_iter()
         .map(|codon| to_codon(codon.collect_array().unwrap()))
         .take_while(|&codon| codon != Codon::Stop)
@@ -183,5 +184,6 @@ pub fn translate_rna<'a>(rna: impl IntoIterator<Item = RnaNt>) -> Vec<ProteinAa>
             Codon::Start => todo!(),
             Codon::Stop => unreachable!(),
             Codon::Aa(aa) => aa,
-        }).collect()
+        })
+        .collect()
 }

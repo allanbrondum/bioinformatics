@@ -1,6 +1,5 @@
 use rosalind::polymers::DnaNt;
-use rosalind::util::{chars, fasta_polymers};
-use std::collections::HashMap;
+use rosalind::util::fasta_polymers;
 
 fn main() {
     let data = include_str!("revp_data.txt");
@@ -20,8 +19,15 @@ fn main() {
             }
 
             if dna[i..i + l]
-                .iter().copied()
-                .zip(dna[i..i + l].iter().copied().rev().map(DnaNt::bonding_complement))
+                .iter()
+                .copied()
+                .zip(
+                    dna[i..i + l]
+                        .iter()
+                        .copied()
+                        .rev()
+                        .map(DnaNt::bonding_complement),
+                )
                 .all(|(it1, it2)| it1 == it2)
             {
                 println!("{} {}", i + 1, l);

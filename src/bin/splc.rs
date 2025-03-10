@@ -1,6 +1,5 @@
-use itertools::Itertools;
-use rosalind::polymers::{DnaNt, ProteinAa, RnaNt, translate_rna};
-use rosalind::util::{chars, fasta_polymers};
+use rosalind::polymers::{DnaNt, ProteinAa, translate_rna};
+use rosalind::util::fasta_polymers;
 
 fn main() {
     let data = include_str!("splc_data.txt");
@@ -13,8 +12,7 @@ fn main() {
         rna = rna.replace(&polymer.polymer, "");
     }
 
-    let protein: String = translate_rna(rna.chars().map(DnaNt::from_char)
-        .map(DnaNt::transcribe))
+    let protein: String = translate_rna(rna.chars().map(DnaNt::from_char).map(DnaNt::transcribe))
         .into_iter()
         .map(ProteinAa::to_char)
         .collect();
