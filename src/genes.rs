@@ -7,6 +7,16 @@ pub enum Genotype {
     Heterozygous,
 }
 
+impl Genotype {
+    pub fn alleles(self) -> &'static [Allele] {
+        match self {
+            Genotype::Dominant => &[Allele::Dominant],
+            Genotype::Recessive => &[Allele::Recessive],
+            Genotype::Heterozygous => &[Allele::Dominant, Allele::Recessive],
+        }
+    }
+}
+
 #[derive(Clone, Eq, PartialEq, Hash, Default)]
 pub struct SomaticGene {
     pub genes: Vec<Genotype>,
@@ -26,6 +36,17 @@ pub enum Allele {
     Recessive,
 }
 
+impl Allele {
+    pub fn mix(self, other: Self) -> Genotype {
+        match (self, other) {
+            (Allele::Dominant, Allele::Dominant) => Genotype::Dominant,
+            (Allele::Recessive, Allele::Recessive) => Genotype::Recessive,
+            (Allele::Dominant, Allele::Recessive) => Genotype::Heterozygous,
+            (Allele::Recessive, Allele::Dominant) => Genotype::Heterozygous,
+        }
+    }
+}
+
 #[derive(Clone, Eq, PartialEq, Hash, Default)]
 pub struct GameteGene {
     pub genes: Vec<Allele>,
@@ -39,14 +60,27 @@ impl FromIterator<Allele> for GameteGene {
     }
 }
 
-impl Genotype {
-    pub fn alleles(&self) -> &'static [Allele] {
-        match self {
-            Genotype::Dominant => &[Allele::Dominant],
-            Genotype::Recessive => &[Allele::Recessive],
-            Genotype::Heterozygous => &[Allele::Dominant, Allele::Recessive],
-        }
+impl GameteGene {
+    pub fn mix(&self, other: &Self) -> SomaticGene {
+        self.genes
+            .iter()
+            .zip(other.genes.iter())
+            .map(|(gene1, gene2)| gene1.mix(*gene2))
+            .collect()
     }
+}
+
+pub fn mix_gametes<'a, M1, M2>(gametes1: M1, gametes2: M2) -> Vec<SomaticGene>
+where
+    M1: IntoIterator<Item = &'a GameteGene>,
+    M2: IntoIterator<Item = &'a GameteGene>,
+    M2::IntoIter: Clone,
+{
+    gametes1
+        .into_iter()
+        .cartesian_product(gametes2)
+        .map(|(gamete1, gamete2)| gamete1.mix(gamete2))
+        .collect()
 }
 
 impl SomaticGene {
@@ -70,10 +104,11 @@ impl SomaticGene {
 
 #[cfg(test)]
 mod test {
-    use crate::genes::{Allele, Genotype, SomaticGene};
+    use crate::genes::Allele::Dominant;
+    use crate::genes::{Allele, GameteGene, Genotype, SomaticGene, mix_gametes};
 
     #[test]
-    fn test_gametes_1_gene() {
+    fn test_somatic_gene_gametes_1() {
         let gene = SomaticGene::from_iter([Genotype::Dominant]);
         let genes = gene.gametes();
         assert_eq!(genes.len(), 1);
@@ -92,7 +127,7 @@ mod test {
     }
 
     #[test]
-    fn test_gametes_2_genes() {
+    fn test_somatic_gene_gametes_2() {
         let gene = SomaticGene::from_iter([Genotype::Dominant, Genotype::Recessive]);
         let genes = gene.gametes();
         assert_eq!(genes.len(), 1);
@@ -118,7 +153,38 @@ mod test {
         assert_eq!(genes[2].genes[1], Allele::Dominant);
         assert_eq!(genes[3].genes[0], Allele::Recessive);
         assert_eq!(genes[3].genes[1], Allele::Recessive);
+    }
 
+    #[test]
+    fn test_mix_gametes_1() {
+        let gametes1 = vec![
+            GameteGene::from_iter([Allele::Dominant]),
+            GameteGene::from_iter([Allele::Recessive]),
+        ];
+        let gametes2 = vec![
+            GameteGene::from_iter([Allele::Dominant]),
+            GameteGene::from_iter([Allele::Recessive]),
+        ];
+        let genes = mix_gametes(&gametes1, &gametes2);
+        assert_eq!(genes.len(), 4);
+        assert_eq!(genes[0].genes[0], Genotype::Dominant);
+        assert_eq!(genes[1].genes[0], Genotype::Heterozygous);
+        assert_eq!(genes[2].genes[0], Genotype::Heterozygous);
+        assert_eq!(genes[3].genes[0], Genotype::Recessive);
+    }
 
+    #[test]
+    fn test_mix_gametes_2() {
+        let gametes1 = vec![GameteGene::from_iter([Allele::Dominant, Allele::Recessive])];
+        let gametes2 = vec![
+            GameteGene::from_iter([Allele::Dominant, Dominant]),
+            GameteGene::from_iter([Allele::Recessive, Dominant]),
+        ];
+        let genes = mix_gametes(&gametes1, &gametes2);
+        assert_eq!(genes.len(), 2);
+        assert_eq!(genes[0].genes[0], Genotype::Dominant);
+        assert_eq!(genes[0].genes[1], Genotype::Heterozygous);
+        assert_eq!(genes[1].genes[0], Genotype::Heterozygous);
+        assert_eq!(genes[1].genes[0], Genotype::Heterozygous);
     }
 }
