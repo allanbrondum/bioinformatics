@@ -2,7 +2,7 @@ use itertools::Itertools;
 use rosalind::util::words;
 
 fn main() {
-    let data = include_str!("fib_data.txt");
+    let data = include_str!("c_fib_data.txt");
 
     let [n, k]: [u64; 2] = words(data)
         .map(|val| val.parse().unwrap())

@@ -3,7 +3,7 @@ use rosalind::util::chars;
 use std::collections::HashMap;
 
 fn main() {
-    let data = include_str!("dna_data.txt");
+    let data = include_str!("s_dna_data.txt");
 
     let nt_count: HashMap<DnaNt, usize> =
         chars(data)

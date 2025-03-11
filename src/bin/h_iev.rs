@@ -3,7 +3,7 @@ use rosalind::util::words;
 use std::str::FromStr;
 
 fn main() {
-    let data = include_str!("iev_data.txt");
+    let data = include_str!("h_iev_data.txt");
 
     #[allow(non_snake_case)]
     let [AA_AA, AA_Aa, AA_aa, Aa_Aa, Aa_aa, _aa_aa] = words(data)

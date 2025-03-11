@@ -1,7 +1,7 @@
 use itertools::Itertools;
 
 fn main() {
-    let data = include_str!("perm_data.txt");
+    let data = include_str!("c_perm_data.txt");
 
     let length: usize = data.parse().unwrap();
 

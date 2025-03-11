@@ -3,7 +3,7 @@ use reqwest::Url;
 use rosalind::util::{fasta_polymers, lines, positions_regex};
 
 fn main() {
-    let data = include_str!("mprt_data.txt");
+    let data = include_str!("s_mprt_data.txt");
 
     let client = reqwest::blocking::Client::new();
     let regex = Regex::new("N[^P][ST][^P]").unwrap();

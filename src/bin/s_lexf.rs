@@ -3,7 +3,7 @@ use rosalind::util::{lines, words};
 use std::str::FromStr;
 
 fn main() {
-    let data = include_str!("lexf_data.txt");
+    let data = include_str!("s_lexf_data.txt");
 
     let [alphabet_str, length] = lines(data).collect_array().unwrap();
     let alphabet: Vec<_> = words(alphabet_str).collect();

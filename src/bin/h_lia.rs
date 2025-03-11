@@ -4,7 +4,7 @@ use rosalind::util::words;
 use std::str::FromStr;
 
 fn main() {
-    let data = include_str!("lia_data.txt");
+    let data = include_str!("h_lia_data.txt");
 
     #[allow(non_snake_case)]
     let [k, N] = words(data)

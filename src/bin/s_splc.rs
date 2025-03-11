@@ -2,7 +2,7 @@ use rosalind::polymers::{DnaNt, ProteinAa, translate_rna};
 use rosalind::util::fasta_polymers;
 
 fn main() {
-    let data = include_str!("splc_data.txt");
+    let data = include_str!("s_splc_data.txt");
 
     let mut polymers: Vec<_> = fasta_polymers(data).collect();
 

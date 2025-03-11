@@ -4,7 +4,7 @@ use std::collections::HashMap;
 use std::iter;
 
 fn main() {
-    let data = include_str!("mrna_data.txt");
+    let data = include_str!("c_mrna_data.txt");
 
     let coding_count: HashMap<Codon, u64> =
         all_codons().fold(HashMap::default(), |mut map, codon| {

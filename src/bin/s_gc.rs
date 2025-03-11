@@ -2,7 +2,7 @@ use itertools::Itertools;
 use rosalind::util::{FastaEntry, fasta_polymers};
 
 fn main() {
-    let data = include_str!("gc_data.txt");
+    let data = include_str!("s_gc_data.txt");
 
     let entries = fasta_polymers(data)
         .map(|entry| EntryWithGc {

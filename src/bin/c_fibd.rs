@@ -3,7 +3,7 @@ use rosalind::util::words;
 use std::collections::VecDeque;
 
 fn main() {
-    let data = include_str!("fibd_data.txt");
+    let data = include_str!("c_fibd_data.txt");
 
     let [n, m]: [u64; 2] = words(data)
         .map(|val| val.parse().unwrap())

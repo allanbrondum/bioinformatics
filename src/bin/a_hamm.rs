@@ -2,7 +2,7 @@ use itertools::Itertools;
 use rosalind::util::lines;
 
 fn main() {
-    let data = include_str!("hamm_data.txt");
+    let data = include_str!("a_hamm_data.txt");
 
     let [line1, line2] = lines(data).collect_array().unwrap();
 

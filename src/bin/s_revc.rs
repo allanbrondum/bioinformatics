@@ -2,7 +2,7 @@ use rosalind::polymers::DnaNt;
 use rosalind::util::chars;
 
 fn main() {
-    let data = include_str!("revc_data.txt");
+    let data = include_str!("s_revc_data.txt");
 
     let recv: String = chars(data)
         .map(DnaNt::from_char)
