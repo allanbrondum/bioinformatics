@@ -3,15 +3,12 @@ use rosalind::util::chars_file;
 use std::collections::HashMap;
 
 fn main() {
-
-
-    let nt_count: HashMap<DnaNt, usize> =
-        chars_file("src/bin/s_dna_data.txt")
-            .map(DnaNt::from_char)
-            .fold(HashMap::default(), |mut nt_count, nt| {
-                *nt_count.entry(nt).or_default() += 1;
-                nt_count
-            });
+    let nt_count: HashMap<DnaNt, usize> = chars_file("src/bin/s_dna_data.txt")
+        .map(DnaNt::from_char)
+        .fold(HashMap::default(), |mut nt_count, nt| {
+            *nt_count.entry(nt).or_default() += 1;
+            nt_count
+        });
 
     println!(
         "{} {} {} {}",

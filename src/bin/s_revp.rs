@@ -2,8 +2,6 @@ use rosalind::polymers::DnaNt;
 use rosalind::util::fasta_polymers;
 
 fn main() {
-
-
     let dna: Vec<_> = fasta_polymers("src/bin/s_revp_data.txt")
         .next()
         .unwrap()

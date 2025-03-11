@@ -2,8 +2,6 @@ use itertools::Itertools;
 use rosalind::util::fasta_polymers;
 
 fn main() {
-
-
     let mut strs: Vec<_> = fasta_polymers("src/bin/s_lcsm_data.txt").collect_vec();
 
     let first = strs.remove(0);

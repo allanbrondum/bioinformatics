@@ -1,5 +1,5 @@
-use std::fs;
 use regex::Regex;
+use std::fs;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 use std::path::Path;
@@ -23,7 +23,9 @@ pub fn words(s: &str) -> impl Iterator<Item = &str> {
 }
 
 pub fn lines_file(path: impl AsRef<Path>) -> impl Iterator<Item = String> {
-    BufReader::new(File::open(path).unwrap()).lines().map(|res|res.unwrap())
+    BufReader::new(File::open(path).unwrap())
+        .lines()
+        .map(|res| res.unwrap())
 }
 
 #[derive(Debug, Clone, Default)]

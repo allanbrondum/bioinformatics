@@ -12,7 +12,7 @@ fn main() {
     let mut rng = rand::rng();
     for _ in 0..length {
         let ch = if rng.random::<f64>() < gc {
-            if rng.random::<bool>() { b'C' } else { b'G'}
+            if rng.random::<bool>() { b'C' } else { b'G' }
         } else {
             if rng.random::<bool>() { b'A' } else { b'T' }
         };
@@ -20,5 +20,4 @@ fn main() {
         file.write_all(&[ch]).unwrap();
     }
     writeln!(file).unwrap();
-
 }

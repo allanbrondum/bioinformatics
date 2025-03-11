@@ -2,7 +2,9 @@ use itertools::Itertools;
 use rosalind::util::lines_file;
 
 fn main() {
-    let [line1, line2] = lines_file("src/bin/a_hamm_data.txt").collect_array().unwrap();
+    let [line1, line2] = lines_file("src/bin/a_hamm_data.txt")
+        .collect_array()
+        .unwrap();
 
     let dist = line1
         .chars()

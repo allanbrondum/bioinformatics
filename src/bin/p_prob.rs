@@ -3,9 +3,9 @@ use rosalind::util::{lines_file, words};
 use std::str::FromStr;
 
 fn main() {
-
-
-    let [dna, gc_prop_str] = lines_file("src/bin/p_prob_data.txt").collect_array().unwrap();
+    let [dna, gc_prop_str] = lines_file("src/bin/p_prob_data.txt")
+        .collect_array()
+        .unwrap();
     let gc_prob = words(&gc_prop_str)
         .map(|word| f64::from_str(word).unwrap())
         .collect_vec();

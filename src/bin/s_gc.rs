@@ -2,8 +2,6 @@ use itertools::Itertools;
 use rosalind::util::{FastaEntry, fasta_polymers};
 
 fn main() {
-
-
     let entries = fasta_polymers("src/bin/s_gc_data.txt")
         .map(|entry| EntryWithGc {
             gc: gc_content(&entry.polymer),
