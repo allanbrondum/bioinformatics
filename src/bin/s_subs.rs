@@ -1,12 +1,12 @@
 use itertools::Itertools;
-use rosalind::util::{lines, positions_str};
+use rosalind::util::{lines_file, positions_str};
 
 fn main() {
-    let data = include_str!("s_subs_data.txt");
 
-    let [s, t]: [&str; 2] = lines(data).collect_array().unwrap();
 
-    for position in positions_str(s, t) {
+    let [s, t]: [String; 2] = lines_file("src/bin/s_subs_data.txt").collect_array().unwrap();
+
+    for position in positions_str(&s, &t) {
         print!("{} ", position);
     }
 }

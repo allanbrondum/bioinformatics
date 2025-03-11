@@ -1,12 +1,12 @@
 use rosalind::polymers::DnaNt;
-use rosalind::util::chars;
+use rosalind::util::chars_file;
 use std::collections::HashMap;
 
 fn main() {
-    let data = include_str!("s_dna_data.txt");
+
 
     let nt_count: HashMap<DnaNt, usize> =
-        chars(data)
+        chars_file("src/bin/s_dna_data.txt")
             .map(DnaNt::from_char)
             .fold(HashMap::default(), |mut nt_count, nt| {
                 *nt_count.entry(nt).or_default() += 1;

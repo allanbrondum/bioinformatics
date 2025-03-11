@@ -1,10 +1,10 @@
 use rosalind::polymers::{ProteinAa, RnaNt, translate_rna};
-use rosalind::util::chars;
+use rosalind::util::chars_file;
 
 fn main() {
-    let data = include_str!("prot_data.txt");
 
-    let codons: String = translate_rna(chars(data).map(RnaNt::from_char))
+
+    let codons: String = translate_rna(chars_file("src/bin/prot_data.txt").map(RnaNt::from_char))
         .into_iter()
         .map(ProteinAa::to_char)
         .collect();

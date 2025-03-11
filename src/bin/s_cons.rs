@@ -3,9 +3,7 @@ use rosalind::polymers::DnaNt;
 use rosalind::util::fasta_polymers;
 
 fn main() {
-    let data = include_str!("s_cons_data.txt");
-
-    let dnas = fasta_polymers(data)
+    let dnas = fasta_polymers("src/bin/s_cons_data.txt")
         .map(|entry| entry.polymer.chars().map(DnaNt::from_char).collect_vec())
         .collect_vec();
     let mut profile = vec![Freq::default(); dnas[0].len()];

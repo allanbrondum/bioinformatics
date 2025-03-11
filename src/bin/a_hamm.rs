@@ -1,10 +1,8 @@
 use itertools::Itertools;
-use rosalind::util::lines;
+use rosalind::util::lines_file;
 
 fn main() {
-    let data = include_str!("a_hamm_data.txt");
-
-    let [line1, line2] = lines(data).collect_array().unwrap();
+    let [line1, line2] = lines_file("src/bin/a_hamm_data.txt").collect_array().unwrap();
 
     let dist = line1
         .chars()

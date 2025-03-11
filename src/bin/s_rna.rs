@@ -1,10 +1,10 @@
 use rosalind::polymers::{DnaNt, RnaNt};
-use rosalind::util::chars;
+use rosalind::util::chars_file;
 
 fn main() {
-    let data = include_str!("s_rna_data.txt");
 
-    let rna: String = chars(data)
+
+    let rna: String = chars_file("src/bin/s_rna_data.txt")
         .map(DnaNt::from_char)
         .map(DnaNt::transcribe)
         .map(RnaNt::to_char)

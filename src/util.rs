@@ -1,7 +1,15 @@
+use std::fs;
 use regex::Regex;
+use std::fs::File;
+use std::io::{BufRead, BufReader};
+use std::path::Path;
 
 pub fn chars(s: &str) -> impl DoubleEndedIterator<Item = char> {
     s.trim().chars()
+}
+
+pub fn chars_file(path: impl AsRef<Path>) -> impl DoubleEndedIterator<Item = char> {
+    fs::read_to_string(path).unwrap().into_chars()
 }
 
 pub fn lines(s: &str) -> impl Iterator<Item = &str> {
@@ -12,6 +20,10 @@ pub fn lines(s: &str) -> impl Iterator<Item = &str> {
 
 pub fn words(s: &str) -> impl Iterator<Item = &str> {
     s.split_whitespace()
+}
+
+pub fn lines_file(path: impl AsRef<Path>) -> impl Iterator<Item = String> {
+    BufReader::new(File::open(path).unwrap()).lines().map(|res|res.unwrap())
 }
 
 #[derive(Debug, Clone, Default)]
@@ -29,18 +41,18 @@ impl FastaEntry {
     }
 }
 
-pub fn fasta_polymers(s: &str) -> impl Iterator<Item = FastaEntry> {
+pub fn fasta_polymers(path: impl AsRef<Path>) -> impl Iterator<Item = FastaEntry> {
     let mut res = Vec::new();
 
     let mut entry = None;
-    for line in lines(s) {
+    for line in lines_file(path) {
         if let Some(descr) = line.strip_prefix(">") {
             if let Some(entry) = entry.take() {
                 res.push(entry);
             }
             entry = Some(FastaEntry::new(descr.to_string()));
         } else if let Some(entry) = &mut entry {
-            entry.polymer.push_str(line);
+            entry.polymer.push_str(&line);
         } else {
             panic!("invalid format");
         }
