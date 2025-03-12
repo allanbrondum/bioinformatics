@@ -1,6 +1,6 @@
 genome_length: 10000
 num_reads: 125
-bases_covered: 8812
+bases_covered: 9241
 avg_depth: 2.5
-var_depth: 3.192319231923192
-num_islands: 16
+var_depth: 2.7284728472847286
+num_islands: 12
