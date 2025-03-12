@@ -1,6 +1,7 @@
-#![feature(string_into_chars)]
+#![feature(string_into_chars, ascii_char)]
 
-pub mod genes;
-pub mod polymers;
+pub mod genotype;
+pub mod polymers_model;
 pub mod probability;
+pub mod string;
 pub mod util;

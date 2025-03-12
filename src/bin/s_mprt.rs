@@ -1,6 +1,7 @@
 use regex::Regex;
 use reqwest::Url;
-use rosalind::util::{fasta_polymers, lines, positions_regex};
+use rosalind::string::positions_regex;
+use rosalind::util::{fasta_polymers, lines};
 
 fn main() {
     let data = include_str!("s_mprt_data.txt");

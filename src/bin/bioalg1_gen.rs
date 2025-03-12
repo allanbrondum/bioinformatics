@@ -8,9 +8,10 @@ fn main() {
     let gc = 0.4;
 
     let mut file = File::create(output_path).unwrap();
-    writeln!(file, ">dna").unwrap();
+    writeln!(file, ">generated dna").unwrap();
     let mut rng = rand::rng();
     for _ in 0..length {
+        #[allow(clippy::collapsible_else_if)]
         let ch = if rng.random::<f64>() < gc {
             if rng.random::<bool>() { b'C' } else { b'G' }
         } else {

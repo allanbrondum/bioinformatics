@@ -1,5 +1,6 @@
 use itertools::Itertools;
-use rosalind::util::{lines_file, positions_str};
+use rosalind::string::positions_str;
+use rosalind::util::lines_file;
 
 fn main() {
     let [s, t]: [String; 2] = lines_file("src/bin/s_subs_data.txt")

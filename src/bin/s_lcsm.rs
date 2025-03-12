@@ -1,26 +1,23 @@
+#![feature(ascii_char)]
+
 use itertools::Itertools;
+use rosalind::string::{AsciiStr, lc_substr};
 use rosalind::util::fasta_polymers;
+use std::time::Instant;
 
 fn main() {
-    let mut strs: Vec<_> = fasta_polymers("src/bin/s_lcsm_data.txt").collect_vec();
+    let strs: Vec<_> = fasta_polymers("src/bin/s_lcsm_data.txt").collect_vec();
 
-    let first = strs.remove(0);
-    let mut substr = "";
-    for i in 0..first.polymer.len() {
-        for j in i + 1..first.polymer.len() {
-            let substr_cur = &first.polymer[i..j];
+    let start = Instant::now();
 
-            if strs.iter().all(|str| str.polymer.contains(substr_cur)) {
-                if substr_cur.len() > substr.len() {
-                    substr = substr_cur;
-                }
-            } else {
-                break;
-            }
-        }
+    let mut lcs = strs[0].polymer.as_ascii().unwrap();
+    for str in strs.iter().skip(1) {
+        lcs = lc_substr(lcs, str.polymer.as_ascii().unwrap());
     }
 
-    println!("{}", substr);
+    println!("{}", AsciiStr(lcs));
+
+    println!("elapsed: {:?}", start.elapsed());
 }
 
 //alg longest common substr

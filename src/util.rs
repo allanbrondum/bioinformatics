@@ -1,4 +1,3 @@
-use regex::Regex;
 use std::fs;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
@@ -62,54 +61,6 @@ pub fn fasta_polymers(path: impl AsRef<Path>) -> impl Iterator<Item = FastaEntry
 
     if let Some(entry) = entry.take() {
         res.push(entry);
-    }
-
-    res.into_iter()
-}
-
-pub fn positions<T: PartialEq>(s: &[T], t: &[T]) -> impl Iterator<Item = usize> {
-    let mut res = Vec::new();
-
-    let mut offset = 0;
-    while let Some(index) = find(&s[offset..], t) {
-        offset += index + 1;
-        res.push(offset);
-    }
-
-    res.into_iter()
-}
-
-pub fn find<T: PartialEq>(s: &[T], t: &[T]) -> Option<usize> {
-    'outer: for i in 0..s.len() {
-        for j in 0..t.len() {
-            if i + j >= s.len() || s[i + j] != t[j] {
-                continue 'outer;
-            }
-        }
-        return Some(i);
-    }
-    None
-}
-
-pub fn positions_str(s: &str, t: &str) -> impl Iterator<Item = usize> {
-    let mut res = Vec::new();
-
-    let mut offset = 0;
-    while let Some(index) = s[offset..].find(t) {
-        offset += index + 1;
-        res.push(offset);
-    }
-
-    res.into_iter()
-}
-
-pub fn positions_regex(s: &str, regex: &Regex) -> impl Iterator<Item = usize> {
-    let mut res = Vec::new();
-
-    let mut offset = 0;
-    while let Some(mtch) = regex.find_at(s, offset) {
-        offset = mtch.start() + 1;
-        res.push(offset);
     }
 
     res.into_iter()

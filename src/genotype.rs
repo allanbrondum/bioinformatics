@@ -104,8 +104,8 @@ impl SomaticGene {
 
 #[cfg(test)]
 mod test {
-    use crate::genes::Allele::Dominant;
-    use crate::genes::{Allele, GameteGene, Genotype, SomaticGene, mix_gametes};
+    use crate::genotype::Allele::Dominant;
+    use crate::genotype::{Allele, GameteGene, Genotype, SomaticGene, mix_gametes};
 
     #[test]
     fn test_somatic_gene_gametes_1() {

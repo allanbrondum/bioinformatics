@@ -10,6 +10,7 @@ fn main() {
     let theta = 0.1;
     let input_path = "src/bin/bioalg1_seq_sim_data.txt";
     let output_path = "src/bin/bioalg1_assemble_data.txt";
+    let stats_output_path = "src/bin/bioalg1_assemble_data_stats.txt";
 
     let polymer = fasta_polymers(input_path).next().unwrap().polymer;
     let mut out_file = File::create(output_path).unwrap();
@@ -27,22 +28,15 @@ fn main() {
         }
         writeln!(out_file, ">{}:{}:{}", i, start + 1, read_len).unwrap();
         out_file
-            .write_all(polymer[start..start + read_len].as_bytes())
+            .write_all(&polymer.as_bytes()[start..start + read_len])
             .unwrap();
         writeln!(out_file).unwrap();
     }
 
-    let bases_covered = base_read_depths.iter().filter(|&&count| count != 0).count();
     let bases_covered2 = cover_depth(read_start_ends.iter().copied())
         .filter(|depth| depth.depth != 0)
         .count();
     let avg_depth = (num_reads * read_len) as f64 / genome_length as f64;
-    let var_depth = base_read_depths
-        .iter()
-        .copied()
-        .map(|base_depth| (base_depth as f64 - avg_depth).powi(2))
-        .sum::<f64>()
-        / (genome_length - 1) as f64;
     let var_depth2 = cover_depth(read_start_ends.iter().copied())
         .map(|base_depth| (base_depth.depth as f64 - avg_depth).powi(2))
         .sum::<f64>()
@@ -78,17 +72,13 @@ fn main() {
     })
     .0;
 
-    println!(
-        "genome_length: {}, num_reads: {}, bases_covered: {}, bases_covered2: {}, avg_depth: {}, var_depth: {}, var_depth2: {}, num_islands: {}",
-        genome_length,
-        num_reads,
-        bases_covered,
-        bases_covered2,
-        avg_depth,
-        var_depth,
-        var_depth2,
-        num_islands
-    );
+    let mut stats_out_file = File::create(stats_output_path).unwrap();
+    writeln!(stats_out_file, "genome_length: {}", genome_length).unwrap();
+    writeln!(stats_out_file, "num_reads: {}", num_reads).unwrap();
+    writeln!(stats_out_file, "bases_covered: {}", bases_covered2).unwrap();
+    writeln!(stats_out_file, "avg_depth: {}", avg_depth).unwrap();
+    writeln!(stats_out_file, "var_depth: {}", var_depth2).unwrap();
+    writeln!(stats_out_file, "num_islands: {}", num_islands).unwrap();
 }
 
 fn cover_depth(iter: impl IntoIterator<Item = StartEnd>) -> impl Iterator<Item = CoverDepth> {

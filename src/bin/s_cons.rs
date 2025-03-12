@@ -1,5 +1,5 @@
 use itertools::Itertools;
-use rosalind::polymers::DnaNt;
+use rosalind::polymers_model::DnaNt;
 use rosalind::util::fasta_polymers;
 
 fn main() {

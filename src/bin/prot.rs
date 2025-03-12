@@ -1,4 +1,4 @@
-use rosalind::polymers::{ProteinAa, RnaNt, translate_rna};
+use rosalind::polymers_model::{ProteinAa, RnaNt, translate_rna};
 use rosalind::util::chars_file;
 
 fn main() {
