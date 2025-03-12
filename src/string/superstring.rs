@@ -8,6 +8,8 @@ use std::io::Write;
 use std::path::Path;
 use std::rc::Rc;
 
+const GRAPH_DEBUG: bool = false;
+
 pub fn sc_supstr(
     strs: impl IntoIterator<Item = String> + Clone,
     min_overlap: usize,
@@ -40,11 +42,13 @@ pub fn sc_supstr(
 
     let mut graph_number = 0;
     loop {
-        to_dot(
-            format!("target/graph_{}.dot", graph_number),
-            &nodes,
-            edge_heap.iter().map(|entry| &entry.edge),
-        );
+        if GRAPH_DEBUG {
+            to_dot(
+                format!("target/graph_{}.dot", graph_number),
+                &nodes,
+                edge_heap.iter().map(|entry| &entry.edge),
+            );
+        }
         graph_number += 1;
 
         let Some(edge) = edge_heap.pop() else {
@@ -103,11 +107,13 @@ pub fn sc_supstr(
         }
     }
 
-    to_dot(
-        "target/graph_f.dot",
-        &nodes,
-        edge_heap.iter().map(|entry| &entry.edge),
-    );
+    if GRAPH_DEBUG {
+        to_dot(
+            "target/graph_f.dot",
+            &nodes,
+            edge_heap.iter().map(|entry| &entry.edge),
+        );
+    }
 
     nodes
         .iter()
