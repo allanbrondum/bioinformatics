@@ -17,15 +17,11 @@ fn main() {
     let genome_length = polymer.len();
     let num_reads = (target_depth * genome_length as f64 / read_len as f64).ceil() as usize;
     let mut rng = rand::rng();
-    let mut base_read_depths = vec![0; polymer.len()];
     let mut read_start_ends = vec![StartEnd::default(); polymer.len()];
     for i in 0..num_reads {
         let start = rng.random_range(0..genome_length - read_len);
         read_start_ends[start].start += 1;
         read_start_ends[start + read_len].end += 1;
-        for base in &mut base_read_depths[start..start + read_len] {
-            *base += 1;
-        }
         writeln!(out_file, ">{}:{}:{}", i, start + 1, read_len).unwrap();
         out_file
             .write_all(&polymer.as_bytes()[start..start + read_len])
