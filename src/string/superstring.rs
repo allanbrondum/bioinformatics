@@ -249,7 +249,7 @@ fn to_dot<'a>(
 
 #[cfg(test)]
 mod test {
-    use crate::string::sc_supstr;
+    use super::*;
 
     #[test]
     fn test_sc_supstr_one() {

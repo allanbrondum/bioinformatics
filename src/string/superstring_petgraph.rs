@@ -1,15 +1,17 @@
 use crate::string::overlap_str;
 use itertools::Itertools;
-use petgraph::dot::{Config, Dot};
+use petgraph::Direction;
+use petgraph::dot::Dot;
 use petgraph::matrix_graph::{MatrixGraph, NodeIndex};
-use petgraph::visit::{IntoEdgeReferences, IntoNodeIdentifiers, IntoNodeReferences};
-use std::cell::RefCell;
+use petgraph::visit::{
+    Data, GraphProp, IntoEdgeReferences, IntoNodeIdentifiers, IntoNodeReferences, NodeIndexable,
+};
 use std::cmp::Ordering;
 use std::collections::BinaryHeap;
+use std::fmt::{Display, Formatter};
 use std::fs::File;
 use std::io::Write;
 use std::path::Path;
-use std::rc::Rc;
 
 const GRAPH_DEBUG: bool = false;
 
@@ -20,7 +22,10 @@ pub fn sc_supstr(
     let strs = strs.into_iter();
     let mut graph: MatrixGraph<Node, Edge> = MatrixGraph::with_capacity(strs.size_hint().0);
 
-    let node_idxs = strs.into_iter().map(|str| graph.add_node(Node::new(str))).collect_vec();
+    let node_idxs = strs
+        .into_iter()
+        .map(|str| graph.add_node(Node::new(str)))
+        .collect_vec();
 
     let edges = node_idxs.into_iter().permutations(2).map(|edge_nodes| {
         let [node1_idx, node2_idx] = edge_nodes.into_iter().collect_array().expect("length 2");
@@ -59,6 +64,17 @@ pub fn sc_supstr(
             continue;
         }
 
+        let new_outgoing = graph
+            .edges_directed(edge_entry.target_idx, Direction::Outgoing)
+            .map(|edge| (edge.0, edge.1, edge.2.clone()))
+            .filter(|edge| edge.1 != edge_entry.source_idx)
+            .collect_vec();
+        let new_incoming = graph
+            .edges_directed(edge_entry.source_idx, Direction::Incoming)
+            .map(|edge| (edge.1, edge.0, edge.2.clone()))
+            .filter(|edge| edge.0 != edge_entry.target_idx)
+            .collect_vec();
+
         let source = graph.remove_node(edge_entry.source_idx);
         let target = graph.remove_node(edge_entry.target_idx);
 
@@ -69,20 +85,15 @@ pub fn sc_supstr(
         let merged = source.str.clone() + &target.str[edge_entry.overlap..];
         let new_node = graph.add_node(Node::new(merged));
 
-        // for source_inc in source_mut.incoming() {
-        //     let mut source_inc_mut = source_inc.borrow_mut();
-        //     if Rc::ptr_eq(&source_inc_mut.source, &edge_ref.target) {
-        //         source_inc_mut.deleted = true;
-        //     } else {
-        //         source_inc_mut.target = new_node.clone();
-        //         new_node_mut.incoming.push(source_inc.clone());
-        //     }
-        // }
-        //
-        // for target_out in target_mut.outgoing() {
-        //     target_out.borrow_mut().source = new_node.clone();
-        //     new_node_mut.outgoing.push(target_out.clone());
-        // }
+        for outgoing in new_outgoing {
+            edge_heap.push(EdgeHeapEntry::new(new_node, outgoing.1, outgoing.2.overlap));
+            graph.add_edge(new_node, outgoing.1, outgoing.2);
+        }
+
+        for incoming in new_incoming {
+            edge_heap.push(EdgeHeapEntry::new(incoming.0, new_node, incoming.2.overlap));
+            graph.add_edge(incoming.0, new_node, incoming.2);
+        }
     }
 
     if GRAPH_DEBUG {
@@ -90,7 +101,9 @@ pub fn sc_supstr(
     }
 
     graph
-        .node_identifiers().collect_vec().into_iter()
+        .node_identifiers()
+        .collect_vec()
+        .into_iter()
         .map(|node_idx| graph.remove_node(node_idx).str)
         .collect()
 }
@@ -99,14 +112,27 @@ struct Node {
     str: String,
 }
 
+impl Display for Node {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        self.str.fmt(f)
+    }
+}
+
 impl Node {
     fn new(str: String) -> Self {
         Self { str }
     }
 }
 
+#[derive(Clone)]
 struct Edge {
     overlap: usize,
+}
+
+impl Display for Edge {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        self.overlap.fmt(f)
+    }
 }
 
 impl Edge {
@@ -151,14 +177,20 @@ impl PartialEq for EdgeHeapEntry {
 
 impl Eq for EdgeHeapEntry {}
 
-fn to_dot<'a>(filepath: impl AsRef<Path>, graph: impl IntoNodeReferences + IntoEdgeReferences) {
+fn to_dot<I: IntoNodeReferences + IntoEdgeReferences + NodeIndexable + GraphProp>(
+    filepath: impl AsRef<Path>,
+    graph: I,
+) where
+    <I as Data>::EdgeWeight: std::fmt::Display,
+    <I as Data>::NodeWeight: std::fmt::Display,
+{
     let mut file = File::create(filepath).unwrap();
-    // write!(file, "{}", Dot::new(&graph)).unwrap(); // todo
+    write!(file, "{}", Dot::new(&graph)).unwrap();
 }
 
 #[cfg(test)]
 mod test {
-    use crate::string::sc_supstr;
+    use super::*;
 
     #[test]
     fn test_sc_supstr_one() {
