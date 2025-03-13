@@ -57,13 +57,11 @@ pub fn sc_supstr(
 
         let edge_ref = edge.edge.borrow();
 
-        if edge_ref.deleted || edge_ref.overlap < min_overlap {
-            // todo!();
-
+        if edge_ref.deleted {
             continue;
         }
 
-        // Merge the two nodes on `edge`
+        // Merge the two nodes on `edge` if overlap is big enough
 
         drop(edge_ref);
         let mut edge_mut = edge.edge.borrow_mut();
@@ -71,6 +69,10 @@ pub fn sc_supstr(
         drop(edge_mut);
 
         let edge_ref = edge.edge.borrow();
+        if edge_ref.overlap < min_overlap {
+            continue;
+        }
+
         let mut source_mut = edge_ref.source.borrow_mut();
         let mut target_mut = edge_ref.target.borrow_mut();
         source_mut.deleted = true;
@@ -139,23 +141,17 @@ impl Node {
         }
     }
 
-    fn incoming(
-        &self,
-        //excluding_source: &Rc<RefCell<Node>>,
-    ) -> impl Iterator<Item = &Rc<RefCell<Edge>>> {
+    fn incoming(&self) -> impl Iterator<Item = &Rc<RefCell<Edge>>> {
         self.incoming.iter().filter(|edge| {
             let edge_ref = edge.borrow();
-            !edge_ref.deleted //&& !Rc::ptr_eq(&edge_ref.left, excluding_source)
+            !edge_ref.deleted
         })
     }
 
-    fn outgoing(
-        &self,
-        //excluding_target: &Rc<RefCell<Node>>,
-    ) -> impl Iterator<Item = &Rc<RefCell<Edge>>> {
+    fn outgoing(&self) -> impl Iterator<Item = &Rc<RefCell<Edge>>> {
         self.outgoing.iter().filter(|edge| {
             let edge_ref = edge.borrow();
-            !edge_ref.deleted //&& !Rc::ptr_eq(&edge_ref.right, excluding_target)
+            !edge_ref.deleted
         })
     }
 }

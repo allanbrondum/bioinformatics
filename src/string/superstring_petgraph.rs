@@ -1,0 +1,216 @@
+use crate::string::overlap_str;
+use itertools::Itertools;
+use petgraph::dot::{Config, Dot};
+use petgraph::matrix_graph::{MatrixGraph, NodeIndex};
+use petgraph::visit::{IntoEdgeReferences, IntoNodeIdentifiers, IntoNodeReferences};
+use std::cell::RefCell;
+use std::cmp::Ordering;
+use std::collections::BinaryHeap;
+use std::fs::File;
+use std::io::Write;
+use std::path::Path;
+use std::rc::Rc;
+
+const GRAPH_DEBUG: bool = false;
+
+pub fn sc_supstr(
+    strs: impl IntoIterator<Item = String> + Clone,
+    min_overlap: usize,
+) -> Vec<String> {
+    let strs = strs.into_iter();
+    let mut graph: MatrixGraph<Node, Edge> = MatrixGraph::with_capacity(strs.size_hint().0);
+
+    let node_idxs = strs.into_iter().map(|str| graph.add_node(Node::new(str))).collect_vec();
+
+    let edges = node_idxs.into_iter().permutations(2).map(|edge_nodes| {
+        let [node1_idx, node2_idx] = edge_nodes.into_iter().collect_array().expect("length 2");
+
+        let node1 = graph.node_weight(node1_idx);
+        let node2 = graph.node_weight(node2_idx);
+
+        let overlap = overlap_str(&node1.str, &node2.str);
+        graph.add_edge(node1_idx, node2_idx, Edge::new(overlap));
+
+        EdgeHeapEntry::new(node1_idx, node2_idx, overlap)
+    });
+
+    let mut edge_heap: BinaryHeap<_> = edges.collect();
+
+    let mut graph_number = 0;
+    loop {
+        if GRAPH_DEBUG {
+            to_dot(format!("target/graph_{}.dot", graph_number), &graph);
+        }
+        graph_number += 1;
+
+        let Some(edge_entry) = edge_heap.pop() else {
+            break;
+        };
+
+        if !graph.has_edge(edge_entry.source_idx, edge_entry.target_idx) {
+            continue;
+        }
+
+        // Merge the two nodes on `edge` if overlap is big enough
+
+        let edge = graph.remove_edge(edge_entry.source_idx, edge_entry.target_idx);
+
+        if edge.overlap < min_overlap {
+            continue;
+        }
+
+        let source = graph.remove_node(edge_entry.source_idx);
+        let target = graph.remove_node(edge_entry.target_idx);
+
+        assert_eq!(
+            source.str[source.str.len() - edge.overlap..],
+            target.str[..edge.overlap]
+        );
+        let merged = source.str.clone() + &target.str[edge_entry.overlap..];
+        let new_node = graph.add_node(Node::new(merged));
+
+        // for source_inc in source_mut.incoming() {
+        //     let mut source_inc_mut = source_inc.borrow_mut();
+        //     if Rc::ptr_eq(&source_inc_mut.source, &edge_ref.target) {
+        //         source_inc_mut.deleted = true;
+        //     } else {
+        //         source_inc_mut.target = new_node.clone();
+        //         new_node_mut.incoming.push(source_inc.clone());
+        //     }
+        // }
+        //
+        // for target_out in target_mut.outgoing() {
+        //     target_out.borrow_mut().source = new_node.clone();
+        //     new_node_mut.outgoing.push(target_out.clone());
+        // }
+    }
+
+    if GRAPH_DEBUG {
+        to_dot("target/graph_f.dot", &graph);
+    }
+
+    graph
+        .node_identifiers().collect_vec().into_iter()
+        .map(|node_idx| graph.remove_node(node_idx).str)
+        .collect()
+}
+
+struct Node {
+    str: String,
+}
+
+impl Node {
+    fn new(str: String) -> Self {
+        Self { str }
+    }
+}
+
+struct Edge {
+    overlap: usize,
+}
+
+impl Edge {
+    fn new(overlap: usize) -> Self {
+        Self { overlap }
+    }
+}
+
+struct EdgeHeapEntry {
+    source_idx: NodeIndex,
+    target_idx: NodeIndex,
+    overlap: usize,
+}
+
+impl EdgeHeapEntry {
+    fn new(node1_idx: NodeIndex, node2_idx: NodeIndex, overlap: usize) -> Self {
+        Self {
+            source_idx: node1_idx,
+            target_idx: node2_idx,
+            overlap,
+        }
+    }
+}
+
+impl PartialOrd for EdgeHeapEntry {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(Ord::cmp(self, other))
+    }
+}
+
+impl Ord for EdgeHeapEntry {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.overlap.cmp(&other.overlap)
+    }
+}
+
+impl PartialEq for EdgeHeapEntry {
+    fn eq(&self, other: &Self) -> bool {
+        self.overlap == other.overlap
+    }
+}
+
+impl Eq for EdgeHeapEntry {}
+
+fn to_dot<'a>(filepath: impl AsRef<Path>, graph: impl IntoNodeReferences + IntoEdgeReferences) {
+    let mut file = File::create(filepath).unwrap();
+    // write!(file, "{}", Dot::new(&graph)).unwrap(); // todo
+}
+
+#[cfg(test)]
+mod test {
+    use crate::string::sc_supstr;
+
+    #[test]
+    fn test_sc_supstr_one() {
+        assert_eq!(
+            sc_supstr(["uioefghabcd".to_string()], 3),
+            vec!["uioefghabcd".to_string()],
+        );
+    }
+
+    #[test]
+    fn test_sc_supstr_two() {
+        assert_eq!(
+            sc_supstr(["uioefghabcd".to_string(), "abcdefghijk".to_string()], 3),
+            vec!["uioefghabcdefghijk".to_string()],
+        );
+    }
+
+    #[test]
+    fn test_sc_supstr_three() {
+        assert_eq!(
+            sc_supstr(
+                [
+                    "uioefghabcd".to_string(),
+                    "abcdefghijk".to_string(),
+                    "ijklm".to_string()
+                ],
+                3
+            ),
+            vec!["uioefghabcdefghijklm".to_string()],
+        );
+    }
+
+    #[test]
+    fn test_sc_supstr_dupl() {
+        assert_eq!(
+            sc_supstr(
+                [
+                    "uioefghabcd".to_string(),
+                    "abcdefghijk".to_string(),
+                    "abcdefghijk".to_string()
+                ],
+                3
+            ),
+            vec!["uioefghabcdefghijk".to_string()],
+        );
+    }
+
+    #[test]
+    fn test_sc_supstr_no_overlap() {
+        assert_eq!(
+            sc_supstr(["uioefghabcd".to_string(), "abcdefghijk".to_string()], 5),
+            vec!["uioefghabcd".to_string(), "abcdefghijk".to_string()],
+        );
+    }
+}

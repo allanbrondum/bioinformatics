@@ -1,4 +1,5 @@
 mod superstring;
+mod superstring_petgraph;
 
 use regex::Regex;
 use std::ascii::Char;
