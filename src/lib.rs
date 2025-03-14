@@ -5,3 +5,4 @@ pub mod polymers_model;
 pub mod probability;
 pub mod string;
 pub mod util;
+pub mod alphabet_model;

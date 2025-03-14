@@ -1,12 +1,13 @@
-mod superstring;
+mod superstring_rcrefcell;
 mod superstring_petgraph;
+mod suffix_trie;
 
 use regex::Regex;
 use std::ascii::Char;
 use std::fmt::{Display, Formatter, Write};
 use std::ops::Sub;
 
-pub use superstring::sc_supstr;
+pub use superstring_rcrefcell::sc_supstr;
 pub use superstring_petgraph::sc_supstr as sc_supstr_petgraph;
 
 pub fn positions_slice<T: PartialEq>(s: &[T], t: &[T]) -> impl Iterator<Item = usize> {
