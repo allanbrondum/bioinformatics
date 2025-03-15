@@ -18,8 +18,8 @@ pub fn indexes_slice<T: PartialEq>(s: &[T], t: &[T]) -> Vec<usize> {
 
     let mut offset = 0;
     while let Some(index) = find_slice(&s[offset..], t) {
-        offset += index;
-        res.push(offset);
+        res.push(offset + index);
+        offset += index + 1;
     }
 
     res
@@ -42,8 +42,8 @@ pub fn indexes_str(s: &str, t: &str) -> impl Iterator<Item = usize> {
 
     let mut offset = 0;
     while let Some(index) = s[offset..].find(t) {
-        offset += index;
-        res.push(offset);
+        res.push(offset + index);
+        offset += index + 1;
     }
 
     res.into_iter()

@@ -7,7 +7,7 @@ use std::io::Write;
 use std::path::Path;
 use std::ptr;
 
-const GRAPH_DEBUG: bool = true;
+const GRAPH_DEBUG: bool = false;
 
 #[derive(Debug)]
 pub struct SuffixTrie<C: CharT> {
@@ -162,6 +162,7 @@ mod test {
     use proptest::collection::vec;
     use proptest::{prop_assert_eq, proptest};
     use std::fmt::{Debug, Display};
+    use proptest::prelude::ProptestConfig;
     use crate::string;
 
     #[test]
@@ -179,6 +180,8 @@ mod test {
     }
 
     proptest! {
+        #![proptest_config(ProptestConfig::with_cases(2000))]
+
         #[test]
         fn prop_test_trie(s in vec(any::<Char>(), 0..20), t in vec(any::<Char>(), 3)) {
             let trie = build_trie(&s);
