@@ -78,7 +78,7 @@ fn insert_rec<A: AlphabetT>(suffix: usize, s: &[A::Char], node: &mut Node<A>) {
 
 fn to_dot<A: AlphabetT>(filepath: impl AsRef<Path>, trie: &SuffixTrie<A>) {
     let mut file = File::create(filepath).unwrap();
-    writeln!(file, "graph G {{").unwrap();
+    writeln!(file, "digraph G {{").unwrap();
 
     to_dot_rec(&mut file, &trie.root);
 
@@ -103,7 +103,7 @@ fn to_dot_rec<A: AlphabetT>(write: &mut impl Write, node: &Node<A>) {
             .unwrap();
         writeln!(
             write,
-            "    \"{}\" -- \"{}\" [label=\"{}\"];",
+            "    \"{}\" -> \"{}\" [label=\"{}\" dir=none];",
             ptr::from_ref(node) as usize,
             ptr::from_ref(terminal) as usize,
             '$'
@@ -113,7 +113,7 @@ fn to_dot_rec<A: AlphabetT>(write: &mut impl Write, node: &Node<A>) {
     for edge in node.children.iter().filter_map(|edge| edge.as_ref()) {
         writeln!(
             write,
-            "    \"{}\" -- \"{}\" [label=\"{}\"];",
+            "    \"{}\" -> \"{}\" [label=\"{}\" dir=none];",
             ptr::from_ref(node) as usize,
             ptr::from_ref(&edge.target) as usize,
             edge.char

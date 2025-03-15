@@ -1,6 +1,7 @@
 mod superstring_rcrefcell;
 mod superstring_petgraph;
-mod suffix_trie;
+mod suffix_trie_simple;
+mod suffix_trie_suffix_links;
 
 use regex::Regex;
 use std::ascii::Char;
