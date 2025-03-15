@@ -2,6 +2,8 @@ mod superstring_rcrefcell;
 mod superstring_petgraph;
 mod suffix_trie_simple;
 mod suffix_trie_suffix_links;
+#[cfg(test)]
+mod test_util;
 
 use regex::Regex;
 use std::ascii::Char;
@@ -11,16 +13,16 @@ use std::ops::Sub;
 pub use superstring_rcrefcell::sc_supstr;
 pub use superstring_petgraph::sc_supstr as sc_supstr_petgraph;
 
-pub fn positions_slice<T: PartialEq>(s: &[T], t: &[T]) -> impl Iterator<Item = usize> {
+pub fn indexes_slice<T: PartialEq>(s: &[T], t: &[T]) -> Vec<usize> {
     let mut res = Vec::new();
 
     let mut offset = 0;
     while let Some(index) = find_slice(&s[offset..], t) {
-        offset += index + 1;
+        offset += index;
         res.push(offset);
     }
 
-    res.into_iter()
+    res
 }
 
 pub fn find_slice<T: PartialEq>(s: &[T], t: &[T]) -> Option<usize> {
@@ -35,12 +37,12 @@ pub fn find_slice<T: PartialEq>(s: &[T], t: &[T]) -> Option<usize> {
     None
 }
 
-pub fn positions_str(s: &str, t: &str) -> impl Iterator<Item = usize> {
+pub fn indexes_str(s: &str, t: &str) -> impl Iterator<Item = usize> {
     let mut res = Vec::new();
 
     let mut offset = 0;
     while let Some(index) = s[offset..].find(t) {
-        offset += index + 1;
+        offset += index;
         res.push(offset);
     }
 
@@ -58,6 +60,8 @@ pub fn positions_regex(s: &str, regex: &Regex) -> impl Iterator<Item = usize> {
 
     res.into_iter()
 }
+
+// todo perf + reimpl using suffix trie
 
 pub fn lc_substr<'a>(a: &'a [Char], b: &[Char]) -> &'a [Char] {
     let mut substr: &[Char] = &[];
@@ -105,21 +109,48 @@ pub fn overlap_str(a: &str, b: &str) -> usize {
 
 #[cfg(test)]
 mod test {
-    use crate::string::{lc_substr, overlap_str};
+    use std::ascii::Char;
+    use crate::string::{find_slice, indexes_slice, lc_substr, overlap_str};
+
+    fn ascii(s: &str) -> &[Char] {
+        s.as_ascii().unwrap()
+    }
 
     #[test]
     fn test_lc_substr() {
         assert_eq!(
             lc_substr(
-                "abcdefghijk".as_ascii().unwrap(),
-                "uioefghijlm".as_ascii().unwrap()
+                ascii("abcdefghijk"),
+                ascii("uioefghijlm")
             ),
-            "efghij".as_ascii().unwrap()
+            ascii("efghij")
+        );
+        assert_eq!(
+            lc_substr(
+                ascii("abcd"),
+                ascii("abcd")
+            ),
+            ascii("abcd")
         );
     }
 
     #[test]
+    fn test_find_slice() {
+        assert_eq!(find_slice(ascii("abcd"), ascii("ijk")), None);
+        assert_eq!(find_slice(ascii("abcdijk"), ascii("ijk")), Some(4));
+        assert_eq!(find_slice(ascii("abcdijk"), ascii("abc")), Some(0));
+        assert_eq!(find_slice(ascii("abcdijk"), ascii("cdi")), Some(2));
+    }
+
+    #[test]
+    fn test_indexes_slice() {
+        assert_eq!(indexes_slice(ascii("abcd"), ascii("ijk")), vec![]);
+        assert_eq!(indexes_slice(ascii("ijkabcdijk"), ascii("ijk")), vec![0, 7]);
+    }
+
+    #[test]
     fn test_overlap_str() {
+        assert_eq!(overlap_str("uioefgh", "ijk",), 0);
         assert_eq!(overlap_str("uioefghabcd", "abcdefghijk",), 4);
         assert_eq!(overlap_str("abcd", "abcd",), 4);
     }

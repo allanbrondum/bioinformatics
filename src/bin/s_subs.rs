@@ -1,5 +1,5 @@
 use itertools::Itertools;
-use rosalind::string::positions_str;
+use rosalind::string::indexes_str;
 use rosalind::util::lines_file;
 
 fn main() {
@@ -7,8 +7,8 @@ fn main() {
         .collect_array()
         .unwrap();
 
-    for position in positions_str(&s, &t) {
-        print!("{} ", position);
+    for index in indexes_str(&s, &t) {
+        print!("{} ", index + 1);
     }
 }
 
