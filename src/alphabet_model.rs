@@ -1,9 +1,9 @@
-use std::fmt::Debug;
+use std::fmt::{Debug, Display};
 use generic_array::ArrayLength;
 
 pub trait AlphabetT {
     type N: ArrayLength+ Debug;
-    type Char: CharT + Debug;
+    type Char: CharT + Debug + Display;
 }
 
 pub trait CharT: Copy {
