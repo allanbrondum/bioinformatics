@@ -1,7 +1,7 @@
 mod superstring_rcrefcell;
 mod superstring_petgraph;
-mod suffix_trie_simple;
-mod suffix_trie_suffix_links;
+pub mod suffix_trie_simple;
+pub mod suffix_trie_suffix_links;
 #[cfg(test)]
 mod test_util;
 

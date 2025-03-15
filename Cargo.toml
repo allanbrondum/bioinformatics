@@ -12,3 +12,14 @@ petgraph = "0.7.1"
 generic-array = "1.2.0"
 proptest = "1.6.0"
 proptest-derive = "0.5.1"
+
+[dev-dependencies]
+criterion = "0.5.1"
+
+[[bench]]
+name = "suffix_trie_simple"
+harness = false
+
+#[[bench]]
+#name = "suffix_trie_suffix_links"
+#harness = false
