@@ -86,19 +86,8 @@ fn terminals_rec<C: CharT>(node: &Node<C>, result: &mut HashSet<usize>) {
 pub fn build_trie<C: CharT>(s: &[C]) -> SuffixTrie<C> {
     let mut trie = SuffixTrie { root: Node::new() };
 
-    if let Some(ch) = s.first() {
-        let mut node_0 = Node::new();
-        node_0.terminal = Some(Terminal { suffix_index: 0 });
-        trie.root.children[ch.index()] = Some(Box::new(Edge {
-            chars: s.to_vec(),
-            target: node_0,
-        }));
-
-        for i in 1..s.len() {
-            insert_rec(i, &s[i..], &mut trie.root);
-        }
-    } else {
-        trie.root.terminal = Some(Terminal { suffix_index: 0 });
+    for i in 0..s.len() {
+        insert_rec(i, &s[i..], &mut trie.root);
     }
 
     if GRAPH_DEBUG {
@@ -108,7 +97,7 @@ pub fn build_trie<C: CharT>(s: &[C]) -> SuffixTrie<C> {
     trie
 }
 
-fn insert_rec<C: CharT>(suffix: usize, s: &[C], node: &mut Node<C>) {
+fn insert_rec<C: CharT>(suffix_index: usize, s: &[C], node: &mut Node<C>) {
     if let Some(ch) = s.first() {
         if let Some(edge) = &mut node.children[ch.index()] {
             if s.len() <= edge.chars.len() {
@@ -122,12 +111,14 @@ fn insert_rec<C: CharT>(suffix: usize, s: &[C], node: &mut Node<C>) {
             }
         } else {
             let mut new_node = Node::new();
-            new_node.terminal = Some(Terminal { suffix_index: suffix });
+            new_node.terminal = Some(Terminal { suffix_index });
             node.children[ch.index()] = Some(Box::new(Edge {
                 chars: s.to_vec(),
                 target: new_node,
             }));
         }
+    } else {
+        node.terminal = Some(Terminal { suffix_index });
     }
 
 }

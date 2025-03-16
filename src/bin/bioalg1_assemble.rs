@@ -1,5 +1,5 @@
 use itertools::Itertools;
-use rosalind::string::sc_supstr;
+use rosalind::string::scs;
 use rosalind::util::fasta_polymers;
 use std::fs::File;
 use std::io::Write;
@@ -13,7 +13,7 @@ fn main() {
     let polymers = fasta_polymers(input_path).collect_vec();
 
     let start = Instant::now();
-    let dnas = sc_supstr(polymers.into_iter().map(|pol| pol.polymer), min_olap);
+    let dnas = scs(polymers.into_iter().map(|pol| pol.polymer), min_olap);
     println!("assemble elapsed: {:?}", start.elapsed());
 
     let mut file = File::create(output_path).unwrap();

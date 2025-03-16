@@ -15,7 +15,7 @@ use std::path::Path;
 
 const GRAPH_DEBUG: bool = false;
 
-pub fn sc_supstr(
+pub fn scs(
     strs: impl IntoIterator<Item = String> + Clone,
     min_overlap: usize,
 ) -> Vec<String> {
@@ -195,7 +195,7 @@ mod test {
     #[test]
     fn test_sc_supstr_one() {
         assert_eq!(
-            sc_supstr(["uioefghabcd".to_string()], 3),
+            scs(["uioefghabcd".to_string()], 3),
             vec!["uioefghabcd".to_string()],
         );
     }
@@ -203,7 +203,7 @@ mod test {
     #[test]
     fn test_sc_supstr_two() {
         assert_eq!(
-            sc_supstr(["uioefghabcd".to_string(), "abcdefghijk".to_string()], 3),
+            scs(["uioefghabcd".to_string(), "abcdefghijk".to_string()], 3),
             vec!["uioefghabcdefghijk".to_string()],
         );
     }
@@ -211,7 +211,7 @@ mod test {
     #[test]
     fn test_sc_supstr_three() {
         assert_eq!(
-            sc_supstr(
+            scs(
                 [
                     "uioefghabcd".to_string(),
                     "abcdefghijk".to_string(),
@@ -226,7 +226,7 @@ mod test {
     #[test]
     fn test_sc_supstr_dupl() {
         assert_eq!(
-            sc_supstr(
+            scs(
                 [
                     "uioefghabcd".to_string(),
                     "abcdefghijk".to_string(),
@@ -241,7 +241,7 @@ mod test {
     #[test]
     fn test_sc_supstr_no_overlap() {
         assert_eq!(
-            sc_supstr(["uioefghabcd".to_string(), "abcdefghijk".to_string()], 5),
+            scs(["uioefghabcd".to_string(), "abcdefghijk".to_string()], 5),
             vec!["uioefghabcd".to_string(), "abcdefghijk".to_string()],
         );
     }

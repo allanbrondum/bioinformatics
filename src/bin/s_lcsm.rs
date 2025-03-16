@@ -1,9 +1,10 @@
 #![feature(ascii_char)]
 
 use itertools::Itertools;
-use rosalind::string::{AsciiStr, lc_substr};
+use rosalind::string::{AsciiStr, lcs};
 use rosalind::util::fasta_polymers;
 use std::time::Instant;
+use rosalind::string;
 
 fn main() {
     let strs: Vec<_> = fasta_polymers("src/bin/s_lcsm_data.txt").collect_vec();
@@ -12,7 +13,7 @@ fn main() {
 
     let mut lcs = strs[0].polymer.as_ascii().unwrap();
     for str in strs.iter().skip(1) {
-        lcs = lc_substr(lcs, str.polymer.as_ascii().unwrap());
+        lcs = string::lcs(lcs, str.polymer.as_ascii().unwrap());
     }
 
     println!("{}", AsciiStr(lcs));

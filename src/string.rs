@@ -11,8 +11,8 @@ use std::ascii::Char;
 use std::fmt::{Display, Formatter, Write};
 use std::ops::Sub;
 
-pub use superstring_rcrefcell::sc_supstr;
-pub use superstring_petgraph::sc_supstr as sc_supstr_petgraph;
+pub use superstring_rcrefcell::scs;
+pub use superstring_petgraph::scs as sc_supstr_petgraph;
 
 pub fn indexes_slice<T: PartialEq>(s: &[T], t: &[T]) -> Vec<usize> {
     let mut res = Vec::new();
@@ -64,7 +64,7 @@ pub fn positions_regex(s: &str, regex: &Regex) -> impl Iterator<Item = usize> {
 
 // todo perf + reimpl using suffix trie
 
-pub fn lc_substr<'a>(a: &'a [Char], b: &[Char]) -> &'a [Char] {
+pub fn lcs<'a>(a: &'a [Char], b: &[Char]) -> &'a [Char] {
     let mut substr: &[Char] = &[];
     for i in 0..a.len() {
         if a.len() - i <= substr.len() {
@@ -111,7 +111,7 @@ pub fn overlap_str(a: &str, b: &str) -> usize {
 #[cfg(test)]
 mod test {
     use std::ascii::Char;
-    use crate::string::{find_slice, indexes_slice, lc_substr, overlap_str};
+    use crate::string::{find_slice, indexes_slice, lcs, overlap_str};
 
     fn ascii(s: &str) -> &[Char] {
         s.as_ascii().unwrap()
@@ -120,14 +120,14 @@ mod test {
     #[test]
     fn test_lc_substr() {
         assert_eq!(
-            lc_substr(
+            lcs(
                 ascii("abcdefghijk"),
                 ascii("uioefghijlm")
             ),
             ascii("efghij")
         );
         assert_eq!(
-            lc_substr(
+            lcs(
                 ascii("abcd"),
                 ascii("abcd")
             ),
