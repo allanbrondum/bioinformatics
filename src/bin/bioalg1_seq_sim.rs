@@ -3,6 +3,7 @@ use rosalind::util::fasta_polymers;
 use std::fs::File;
 use std::io::Write;
 use std::iter;
+use rosalind::polymers::DnaNt;
 
 fn main() {
     let read_len = 200;
@@ -12,7 +13,7 @@ fn main() {
     let output_path = "src/bin/bioalg1_assemble_data.txt";
     let stats_output_path = "src/bin/bioalg1_assemble_data_stats.txt";
 
-    let polymer = fasta_polymers(input_path).next().unwrap().polymer;
+    let polymer = fasta_polymers::<DnaNt>(input_path).next().unwrap().polymer;
     let mut out_file = File::create(output_path).unwrap();
     let genome_length = polymer.len();
     let num_reads = (target_depth * genome_length as f64 / read_len as f64).ceil() as usize;
@@ -23,10 +24,7 @@ fn main() {
         read_start_ends[start].start += 1;
         read_start_ends[start + read_len].end += 1;
         writeln!(out_file, ">{}:{}:{}", i, start + 1, read_len).unwrap();
-        out_file
-            .write_all(&polymer.as_bytes()[start..start + read_len])
-            .unwrap();
-        writeln!(out_file).unwrap();
+        writeln!(out_file, "{}", &polymer[start..start + read_len]).unwrap();
     }
 
     let bases_covered2 = cover_depth(read_start_ends.iter().copied())

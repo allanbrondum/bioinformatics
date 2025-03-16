@@ -40,6 +40,10 @@ impl<C: CharT> AStr<C> {
     pub fn as_slice(&self) -> &[C] {
         &self.0
     }
+
+    pub fn iter(&self) -> impl Iterator<Item = &C> {
+        self.into_iter()
+    }
 }
 
 impl<C: CharT> Deref for AStr<C> {
@@ -58,6 +62,12 @@ impl<C: CharT> AsRef<[C]> for AStr<C> {
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub struct AString<C: CharT>(Vec<C>);
+
+impl<C:CharT> FromIterator<C> for AString<C> {
+    fn from_iter<T: IntoIterator<Item=C>>(iter: T) -> Self {
+        Self(Vec::from_iter(iter))
+    }
+}
 
 impl<C: CharT> Default for AString<C> {
     fn default() -> Self {

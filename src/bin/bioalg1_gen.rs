@@ -1,4 +1,6 @@
 use rand::Rng;
+use rosalind::polymers::DnaNt;
+use rosalind::string_model::AString;
 use std::fs::File;
 use std::io::Write;
 
@@ -10,15 +12,23 @@ fn main() {
     let mut file = File::create(output_path).unwrap();
     writeln!(file, ">generated dna").unwrap();
     let mut rng = rand::rng();
-    for _ in 0..length {
-        #[allow(clippy::collapsible_else_if)]
-        let ch = if rng.random::<f64>() < gc {
-            if rng.random::<bool>() { b'C' } else { b'G' }
-        } else {
-            if rng.random::<bool>() { b'A' } else { b'T' }
-        };
-
-        file.write_all(&[ch]).unwrap();
-    }
-    writeln!(file).unwrap();
+    let data: AString<_> = (0..length)
+        .map(|_| {
+            #[allow(clippy::collapsible_else_if)]
+            if rng.random::<f64>() < gc {
+                if rng.random::<bool>() {
+                    DnaNt::C
+                } else {
+                    DnaNt::G
+                }
+            } else {
+                if rng.random::<bool>() {
+                    DnaNt::A
+                } else {
+                    DnaNt::T
+                }
+            }
+        })
+        .collect();
+    writeln!(file, "{}", data).unwrap();
 }

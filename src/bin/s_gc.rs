@@ -1,4 +1,6 @@
 use itertools::Itertools;
+use rosalind::polymers::DnaNt;
+use rosalind::string_model::AStr;
 use rosalind::util::{FastaEntry, fasta_polymers};
 
 fn main() {
@@ -19,10 +21,10 @@ fn main() {
 }
 
 struct EntryWithGc {
-    entry: FastaEntry,
+    entry: FastaEntry<DnaNt>,
     gc: f64,
 }
 
-fn gc_content(dna: &str) -> f64 {
-    dna.chars().filter(|&ch| ch == 'C' || ch == 'G').count() as f64 / dna.len() as f64
+fn gc_content(dna: &AStr<DnaNt>) -> f64 {
+    dna.iter().copied().filter(|&ch| ch == DnaNt::C || ch == DnaNt::G).count() as f64 / dna.len() as f64
 }
