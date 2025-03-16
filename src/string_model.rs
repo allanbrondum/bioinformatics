@@ -7,7 +7,6 @@ use ::proptest::strategy::Strategy;
 use ::proptest::{arbitrary, collection};
 use itertools::Itertools;
 use proptest::arbitrary::Arbitrary;
-use proptest::prop_compose;
 use std::borrow::Borrow;
 use std::fmt::{Display, Formatter};
 use std::mem;
@@ -226,7 +225,7 @@ impl<C: CharT> Index<RangeInclusive<usize>> for AStr<C> {
 }
 
 #[cfg(test)]
-prop_compose! {
+proptest::prop_compose! {
     pub fn arb_astring2(size: impl Into<SizeRange>)
                 (s in collection::vec(arbitrary::any::<crate::string_model::test_util::Char>(), size))
                 -> AString<crate::string_model::test_util::Char> {
