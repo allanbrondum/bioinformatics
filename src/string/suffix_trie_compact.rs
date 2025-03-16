@@ -11,6 +11,7 @@ use std::fs::File;
 use std::io::Write;
 use std::path::Path;
 use std::ptr;
+use crate::string;
 
 const GRAPH_DEBUG: bool = false;
 
@@ -99,15 +100,18 @@ pub fn build_trie<C: CharT>(s: &AStr<C>) -> SuffixTrie<C> {
 fn insert_rec<C: CharT>(suffix_index: usize, s: &AStr<C>, node: &mut Node<C>) {
     if let Some(ch) = s.first() {
         if let Some(edge) = &mut node.children[ch.index()] {
-            if s.len() <= edge.chars.len() {
-                // if t[1..] == edge.chars[1..t.len()] {
-                //     terminals_rec(&edge.target.borrow(), result);
-                // }
+            let lcp_len = string::lcp(&s[1..], &edge.chars[1..]).len() + 1;
+
+            if lcp_len >= edge.chars.len() {
+                insert_rec(suffix_index, &s[lcp_len..], &mut edge.target);
             } else {
-                // if t[1..edge.chars.len()] == edge.chars[1..] {
-                //     indexes_substr_rec(&edge.target.borrow(), &t[edge.chars.len()..], result);
-                // }
+                let mut new_node = Node::new();
+                node.children[ch.index()] = Some(Box::new(Edge {
+                    chars: s[..lcp_len].to_owned(),
+                    target: new_node,
+                }));
             }
+
         } else {
             let mut new_node = Node::new();
             new_node.terminal = Some(Terminal { suffix_index });

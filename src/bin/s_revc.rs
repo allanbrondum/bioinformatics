@@ -1,4 +1,4 @@
-use rosalind::polymers_model::DnaNt;
+use rosalind::polymers::DnaNt;
 use rosalind::util::chars_file;
 
 fn main() {

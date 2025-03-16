@@ -1,4 +1,4 @@
-use rosalind::polymers_model::{ProteinAa, protein_aa_mass};
+use rosalind::polymers::{ProteinAa, protein_aa_mass};
 use rosalind::util::chars_file;
 
 fn main() {

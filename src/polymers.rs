@@ -1,41 +1,8 @@
+use std::fmt::Formatter;
 use itertools::Itertools;
+use crate::enum_char;
 
-macro_rules! char_identification {
-    ($enum_ident:ident; $( $variant_ident:ident ),+ ) => {
-        #[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
-        pub enum $enum_ident {
-            $(
-                $variant_ident,
-            )+
-        }
-
-        impl $enum_ident {
-            pub fn from_char(ch: char) -> Self {
-                let mut buffer = [0u8; 4];
-                match ch.encode_utf8(&mut buffer) as &str {
-                    $(
-                        stringify!($variant_ident) => Self::$variant_ident,
-                    )+
-                    _ => panic!("unrecognized char '{}'", ch),
-                }
-            }
-
-            pub fn to_char(self) -> char {
-                match self {
-                    $(
-                        Self::$variant_ident => stringify!($variant_ident).chars().next().unwrap(),
-                    )+
-                }
-            }
-
-            pub fn all() -> &'static [Self] {
-                &[$( Self::$variant_ident, )+]
-            }
-        }
-    };
-}
-
-char_identification!(DnaNt; A, C, G, T);
+enum_char!(DnaNt; A, C, G, T);
 
 impl DnaNt {
     pub fn bonding_complement(self) -> Self {
@@ -57,9 +24,9 @@ impl DnaNt {
     }
 }
 
-char_identification!(RnaNt; A, C, G, U);
+enum_char!(RnaNt; A, C, G, U);
 
-char_identification!(ProteinAa; A, C, D, E, F, G, H, I, K, L, M, N, P, Q, R, S, T, V, W, Y);
+enum_char!(ProteinAa; A, C, D, E, F, G, H, I, K, L, M, N, P, Q, R, S, T, V, W, Y);
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
 pub enum Codon {

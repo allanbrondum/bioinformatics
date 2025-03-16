@@ -9,6 +9,14 @@ impl CharT for ascii::Char {
     fn index(self) -> usize {
         self as usize
     }
+
+    fn from_char(ch: char) -> Self {
+        ch.as_ascii().unwrap()
+    }
+
+    fn to_char(self) -> char {
+        self.to_char()
+    }
 }
 
 pub fn ascii(s: &str) -> &AStr<ascii::Char> {

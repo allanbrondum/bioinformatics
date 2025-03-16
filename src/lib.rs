@@ -3,7 +3,7 @@
 pub mod alphabet_model;
 pub mod ascii;
 pub mod genotype;
-pub mod polymers_model;
+pub mod polymers;
 pub mod probability;
 pub mod string;
 pub mod string_model;

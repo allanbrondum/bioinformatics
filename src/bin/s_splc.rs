@@ -1,4 +1,4 @@
-use rosalind::polymers_model::{DnaNt, ProteinAa, translate_rna};
+use rosalind::polymers::{DnaNt, ProteinAa, translate_rna};
 use rosalind::util::fasta_polymers;
 
 fn main() {
