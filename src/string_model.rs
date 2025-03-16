@@ -101,3 +101,5 @@ impl<C:CharT> ToOwned for AStr<C> {
         AString(self.as_slice().to_vec())
     }
 }
+
+
