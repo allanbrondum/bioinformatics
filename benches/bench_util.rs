@@ -10,7 +10,7 @@ pub enum Char {
 }
 
 impl CharT for Char {
-    type N = U2;
+    type AlphabetSize = U2;
 
     fn index(self) -> usize {
         match self {

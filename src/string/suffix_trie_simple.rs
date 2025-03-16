@@ -16,7 +16,7 @@ pub struct SuffixTrie<C: CharT> {
 
 #[derive(Debug)]
 struct Node<C: CharT> {
-    children: GenericArray<Option<Box<Edge<C>>>, C::N>,
+    children: GenericArray<Option<Box<Edge<C>>>, C::AlphabetSize>,
     terminal: Option<Terminal>,
 }
 
@@ -115,9 +115,8 @@ fn to_dot<C: CharT>(filepath: impl AsRef<Path>, trie: &SuffixTrie<C>) {
 fn to_dot_rec<C: CharT>(write: &mut impl Write, node: &Node<C>) {
     writeln!(
         write,
-        "    {} [label=\"{}\" shape=point];",
+        "    {} [label=\"\" shape=point];",
         ptr::from_ref(node) as usize,
-        ""
     )
     .unwrap();
     if let Some(terminal) = &node.terminal {
@@ -162,6 +161,20 @@ mod test {
     use proptest::prelude::ProptestConfig;
     use proptest::{prop_assert_eq, proptest};
     use std::fmt::{Debug, Display};
+
+    #[test]
+    fn test_build_trie_and_find_substr_empty() {
+        use crate::string::test_util::Char::*;
+
+        let s:[Char;0] = [];
+
+        let trie = build_trie(&s);
+
+        assert_eq!(
+            indexes_substr(&trie, &[]),
+            HashSet::from([])
+        );
+    }
 
     #[test]
     fn test_build_trie_and_find_substr() {
