@@ -12,6 +12,7 @@ use std::borrow::Borrow;
 use std::fmt::{Display, Formatter};
 use std::mem;
 use std::ops::{Add, Deref, Index, Range, RangeFrom, RangeInclusive, RangeTo, RangeToInclusive};
+use std::str::FromStr;
 
 #[derive(Debug, Eq, PartialEq, Hash)]
 pub struct AStr<C: CharT>([C]);
@@ -48,6 +49,18 @@ impl<C: CharT> AsRef<[C]> for AStr<C> {
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub struct AString<C: CharT>(Vec<C>);
+
+impl<C: CharT> FromStr for AString<C> {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let vec = s
+            .chars()
+            .map(|ch| C::from_char(ch).ok_or_else(|| format!("invalid char {}", ch)))
+            .collect::<Result<Vec<_>, String>>()?;
+        Ok(Self::from(vec))
+    }
+}
 
 impl<C: CharT> From<Vec<C>> for AString<C> {
     fn from(value: Vec<C>) -> Self {

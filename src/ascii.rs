@@ -10,8 +10,8 @@ impl CharT for ascii::Char {
         self as usize
     }
 
-    fn from_char(ch: char) -> Self {
-        ch.as_ascii().unwrap()
+    fn from_char(ch: char) -> Option<Self> {
+        ch.as_ascii()
     }
 
     fn to_char(self) -> char {

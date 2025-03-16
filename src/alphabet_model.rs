@@ -6,7 +6,7 @@ pub trait CharT: Debug + Display + Copy + Eq + PartialEq + 'static {
 
     fn index(self) -> usize;
 
-    fn from_char(ch: char) -> Self;
+    fn from_char(ch: char) -> Option<Self>;
 
     fn to_char(self) -> char;
 }
@@ -49,13 +49,13 @@ macro_rules! enum_char {
                 self as usize
             }
 
-            fn from_char(ch: char) -> Self {
+            fn from_char(ch: char) -> Option<Self> {
                 let mut buffer = [0u8; 4];
                 match ch.encode_utf8(&mut buffer) as &str {
                     $(
-                        stringify!($variant_ident) => Self::$variant_ident,
+                        stringify!($variant_ident) => Some(Self::$variant_ident),
                     )+
-                    _ => panic!("unrecognized char '{}'", ch),
+                    _ => None,
                 }
             }
 
