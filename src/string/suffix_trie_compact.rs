@@ -1,10 +1,10 @@
 //! McCreight algorithm
 
 use crate::alphabet_model::CharT;
-use crate::string_model::AStr;
+use crate::string_model::{AStr, AString};
 use generic_array::GenericArray;
 use itertools::Itertools;
-use petgraph::matrix_graph::Nullable;
+
 use std::collections::HashSet;
 use std::fmt::Display;
 use std::fs::File;
@@ -41,7 +41,7 @@ struct Terminal {
 
 #[derive(Debug)]
 struct Edge<C: CharT> {
-    chars: Vec<C>,
+    chars: AString<C>,
     target: Node<C>,
 }
 
@@ -65,7 +65,7 @@ fn indexes_substr_rec<C: CharT>(node: &Node<C>, t: &AStr<C>, result: &mut HashSe
                 if t[1..edge.chars.len()] == edge.chars[1..] {
                     indexes_substr_rec(
                         &edge.target,
-                        AStr::from_slice(&t[edge.chars.len()..]),
+                        &t[edge.chars.len()..],
                         result,
                     );
                 }
@@ -90,7 +90,7 @@ pub fn build_trie<C: CharT>(s: &AStr<C>) -> SuffixTrie<C> {
     let mut trie = SuffixTrie { root: Node::new() };
 
     for i in 0..s.len() {
-        insert_rec(i, AStr::from_slice(&s[i..]), &mut trie.root);
+        insert_rec(i, &s[i..], &mut trie.root);
     }
 
     if GRAPH_DEBUG {
@@ -116,7 +116,7 @@ fn insert_rec<C: CharT>(suffix_index: usize, s: &AStr<C>, node: &mut Node<C>) {
             let mut new_node = Node::new();
             new_node.terminal = Some(Terminal { suffix_index });
             node.children[ch.index()] = Some(Box::new(Edge {
-                chars: s.to_vec(),
+                chars: s.to_owned(),
                 target: new_node,
             }));
         }

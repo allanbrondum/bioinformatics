@@ -4,13 +4,15 @@ pub mod test_util;
 use std::borrow::Borrow;
 use std::fmt::{Display, Formatter};
 use std::mem;
-use std::ops::{Add, Deref};
+use std::ops::{Add, Deref, Index, Range, RangeFrom, RangeInclusive, RangeTo, RangeToInclusive};
 
 use crate::alphabet_model::CharT;
 use itertools::Itertools;
 
 #[derive(Debug, Eq, PartialEq, Hash)]
 pub struct AStr<C: CharT>([C]);
+
+
 
 impl<C: CharT> Display for AStr<C> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
@@ -100,6 +102,54 @@ impl<C: CharT> ToOwned for AStr<C> {
 
     fn to_owned(&self) -> Self::Owned {
         AString(self.as_slice().to_vec())
+    }
+}
+
+impl<C: CharT> Index<usize> for AStr<C> {
+    type Output = C;
+
+    fn index(&self, index: usize) -> &Self::Output {
+        &self.as_slice()[index]
+    }
+}
+
+impl<C: CharT> Index<Range<usize>> for AStr<C> {
+    type Output = AStr<C>;
+
+    fn index(&self, index: Range<usize>) -> &Self::Output {
+        AStr::from_slice(&self.as_slice()[index])
+    }
+}
+
+impl<C: CharT> Index<RangeFrom<usize>> for AStr<C> {
+    type Output = AStr<C>;
+
+    fn index(&self, index: RangeFrom<usize>) -> &Self::Output {
+        AStr::from_slice(&self.as_slice()[index])
+    }
+}
+
+impl<C: CharT> Index<RangeTo<usize>> for AStr<C> {
+    type Output = AStr<C>;
+
+    fn index(&self, index: RangeTo<usize>) -> &Self::Output {
+        AStr::from_slice(&self.as_slice()[index])
+    }
+}
+
+impl<C: CharT> Index<RangeToInclusive<usize>> for AStr<C> {
+    type Output = AStr<C>;
+
+    fn index(&self, index: RangeToInclusive<usize>) -> &Self::Output {
+        AStr::from_slice(&self.as_slice()[index])
+    }
+}
+
+impl<C: CharT> Index<RangeInclusive<usize>> for AStr<C> {
+    type Output = AStr<C>;
+
+    fn index(&self, index: RangeInclusive<usize>) -> &Self::Output {
+        AStr::from_slice(&self.as_slice()[index])
     }
 }
 

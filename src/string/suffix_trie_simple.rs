@@ -1,7 +1,7 @@
 use crate::alphabet_model::CharT;
 use crate::string_model::AStr;
 use generic_array::GenericArray;
-use petgraph::matrix_graph::Nullable;
+
 use std::collections::HashSet;
 use std::fs::File;
 use std::io::Write;
@@ -74,7 +74,7 @@ pub fn build_trie<C: CharT>(s: &AStr<C>) -> SuffixTrie<C> {
     let mut trie = SuffixTrie { root: Node::new() };
 
     for i in 0..s.len() {
-        insert_rec(i, AStr::from_slice(&s[i..]), &mut trie.root);
+        insert_rec(i, &s[i..], &mut trie.root);
     }
 
     if GRAPH_DEBUG {
