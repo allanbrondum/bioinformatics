@@ -2,6 +2,9 @@ use std::fs;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 use std::path::Path;
+use std::str::FromStr;
+use crate::alphabet_model::CharT;
+use crate::string_model::AString;
 
 pub fn chars(s: &str) -> impl DoubleEndedIterator<Item = char> {
     s.trim().chars()
@@ -28,21 +31,21 @@ pub fn lines_file(path: impl AsRef<Path>) -> impl Iterator<Item = String> {
 }
 
 #[derive(Debug, Clone, Default)]
-pub struct FastaEntry {
+pub struct FastaEntry<C:CharT> {
     pub description: String,
-    pub polymer: String,
+    pub polymer: AString<C>,
 }
 
-impl FastaEntry {
+impl<C:CharT> FastaEntry<C> {
     fn new(description: String) -> Self {
         Self {
             description,
-            polymer: String::default(),
+            polymer: AString::default(),
         }
     }
 }
 
-pub fn fasta_polymers(path: impl AsRef<Path>) -> impl Iterator<Item = FastaEntry> {
+pub fn fasta_polymers<C:CharT>(path: impl AsRef<Path>) -> impl Iterator<Item = FastaEntry<C>> {
     let mut res = Vec::new();
 
     let mut entry = None;
@@ -53,7 +56,8 @@ pub fn fasta_polymers(path: impl AsRef<Path>) -> impl Iterator<Item = FastaEntry
             }
             entry = Some(FastaEntry::new(descr.to_string()));
         } else if let Some(entry) = &mut entry {
-            entry.polymer.push_str(&line);
+            let astring = AString::from_str(&line).unwrap();
+            entry.polymer.push_str(&astring);
         } else {
             panic!("invalid format");
         }

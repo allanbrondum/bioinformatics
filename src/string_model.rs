@@ -17,6 +17,15 @@ use std::str::FromStr;
 #[derive(Debug, Eq, PartialEq, Hash)]
 pub struct AStr<C: CharT>([C]);
 
+impl<'a, C:CharT> IntoIterator for &'a AStr<C> {
+    type Item = &'a C;
+    type IntoIter = <&'a [C] as IntoIterator>::IntoIter;
+
+    fn into_iter(self) -> Self::IntoIter {
+        (&self.0).into_iter()
+    }
+}
+
 impl<C: CharT> Display for AStr<C> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.0.iter().format_with("", |ch, f| f(ch)))
@@ -49,6 +58,40 @@ impl<C: CharT> AsRef<[C]> for AStr<C> {
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub struct AString<C: CharT>(Vec<C>);
+
+impl<C:CharT> Default for AString<C> {
+    fn default() -> Self {
+        Self(Vec::default())
+    }
+}
+
+impl<C:CharT> IntoIterator for AString<C> {
+    type Item = C;
+    type IntoIter = <Vec<C> as IntoIterator>::IntoIter;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.0.into_iter()
+    }
+}
+
+impl<'a, C:CharT> IntoIterator for &'a AString<C> {
+    type Item = &'a C;
+    type IntoIter = <&'a Vec<C> as IntoIterator>::IntoIter;
+
+    fn into_iter(self) -> Self::IntoIter {
+        (&self.0).into_iter()
+    }
+}
+
+impl<C: CharT> AString<C> {
+    pub fn extend_from_slice(&mut self, slice: &[C]) {
+        self.0.extend_from_slice(slice);
+    }
+
+    pub fn push_str(&mut self, str: &AStr<C>) {
+        self.0.extend_from_slice(str.as_slice());
+    }
+}
 
 impl<C: CharT> FromStr for AString<C> {
     type Err = String;
