@@ -1,14 +1,11 @@
 use rosalind::polymers::DnaNt;
-use rosalind::util::fasta_polymers;
+use rosalind::util::fasta_polymers_file;
 
 fn main() {
-    let dna: Vec<_> = fasta_polymers("src/bin/s_revp_data.txt")
+    let dna = fasta_polymers_file::<DnaNt>("src/bin/s_revp_data.txt")
         .next()
         .unwrap()
-        .polymer
-        .chars()
-        .map(DnaNt::from_char)
-        .collect();
+        .polymer;
 
     for i in 0..dna.len() {
         for l in 4..=12 {

@@ -5,7 +5,7 @@ mod superstring_petgraph;
 mod superstring_rcrefcell;
 
 use crate::alphabet_model::CharT;
-use crate::string_model::AStr;
+use crate::string_model::{AStr, AString};
 use regex::Regex;
 use std::ops::Sub;
 pub use superstring_petgraph::scs as sc_supstr_petgraph;
@@ -33,6 +33,20 @@ pub fn find<C: CharT>(s: &AStr<C>, t: &AStr<C>) -> Option<usize> {
         return Some(i);
     }
     None
+}
+
+pub fn replace_all<C: CharT>(s: AString<C>, t: &AStr<C>, u: &AStr<C>) -> AString<C> {
+    let mut res = AString::default();
+
+    let mut i = 0;
+    while let Some(idx) = find(&s[i..], t) {
+        res.push_str(&s[i..i + idx]);
+        res.push_str(&u);
+        i += idx + t.len();
+    }
+    res.push_str(&s[i..]);
+
+    res
 }
 
 pub fn overlap<C: CharT>(a: &AStr<C>, b: &AStr<C>) -> usize {
@@ -105,7 +119,7 @@ pub fn indexes_regex(s: &str, regex: &Regex) -> impl Iterator<Item = usize> {
 #[cfg(test)]
 mod test {
     use crate::ascii::ascii;
-    use crate::string::{find, indexes, lcp, lcs, overlap};
+    use crate::string::{find, indexes, lcp, lcs, overlap, replace_all};
 
     #[test]
     fn test_lcs() {
@@ -129,6 +143,18 @@ mod test {
         assert_eq!(find(ascii("abcdijk"), ascii("ijk")), Some(4));
         assert_eq!(find(ascii("abcdijk"), ascii("abc")), Some(0));
         assert_eq!(find(ascii("abcdijk"), ascii("cdi")), Some(2));
+    }
+
+    #[test]
+    fn test_replace_All() {
+        assert_eq!(
+            replace_all(ascii("abcd").to_owned(), ascii("ijk"), ascii("lmn")),
+            ascii("abcd").to_owned()
+        );
+        assert_eq!(
+            replace_all(ascii("abcdabcd").to_owned(), ascii("bc"), ascii("lmn")),
+            ascii("almndalmnd").to_owned()
+        );
     }
 
     #[test]

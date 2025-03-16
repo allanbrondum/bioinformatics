@@ -1,6 +1,7 @@
 use crate::enum_char;
 use itertools::Itertools;
 use std::fmt::Formatter;
+use crate::string_model::AString;
 
 enum_char!(DnaNt; A, C, G, T);
 
@@ -141,7 +142,7 @@ pub fn protein_aa_mass(aa: ProteinAa) -> f64 {
     }
 }
 
-pub fn translate_rna(rna: impl IntoIterator<Item = RnaNt>) -> Vec<ProteinAa> {
+pub fn translate_rna(rna: impl IntoIterator<Item = RnaNt>) -> AString<ProteinAa> {
     rna.into_iter()
         .chunks(3)
         .into_iter()

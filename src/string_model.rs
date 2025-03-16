@@ -41,7 +41,7 @@ impl<C: CharT> AStr<C> {
         &self.0
     }
 
-    pub fn iter(&self) -> impl Iterator<Item = &C> {
+    pub fn iter(&self) -> impl Iterator<Item = &C> + DoubleEndedIterator {
         self.into_iter()
     }
 }
@@ -63,8 +63,8 @@ impl<C: CharT> AsRef<[C]> for AStr<C> {
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub struct AString<C: CharT>(Vec<C>);
 
-impl<C:CharT> FromIterator<C> for AString<C> {
-    fn from_iter<T: IntoIterator<Item=C>>(iter: T) -> Self {
+impl<C: CharT> FromIterator<C> for AString<C> {
+    fn from_iter<T: IntoIterator<Item = C>>(iter: T) -> Self {
         Self(Vec::from_iter(iter))
     }
 }
@@ -100,6 +100,10 @@ impl<C: CharT> AString<C> {
 
     pub fn push_str(&mut self, str: &AStr<C>) {
         self.0.extend_from_slice(str.as_slice());
+    }
+
+    pub fn as_str(&self) -> &AStr<C> {
+        AStr::from_slice(self.0.as_slice())
     }
 }
 

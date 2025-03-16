@@ -1,10 +1,10 @@
 use itertools::Itertools;
 use rosalind::polymers::DnaNt;
 use rosalind::string_model::AStr;
-use rosalind::util::{FastaEntry, fasta_polymers};
+use rosalind::util::{FastaEntry, fasta_polymers_file};
 
 fn main() {
-    let entries = fasta_polymers("src/bin/s_gc_data.txt")
+    let entries = fasta_polymers_file("src/bin/s_gc_data.txt")
         .map(|entry| EntryWithGc {
             gc: gc_content(&entry.polymer),
             entry,

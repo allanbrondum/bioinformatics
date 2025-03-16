@@ -1,19 +1,18 @@
 use rosalind::polymers::{DnaNt, ProteinAa, translate_rna};
-use rosalind::util::fasta_polymers;
+use rosalind::string::replace_all;
+use rosalind::string_model::AStr;
+use rosalind::util::fasta_polymers_file;
 
 fn main() {
-    let mut polymers: Vec<_> = fasta_polymers("src/bin/s_splc_data.txt").collect();
+    let mut polymers: Vec<_> = fasta_polymers_file::<DnaNt>("src/bin/s_splc_data.txt").collect();
 
     let mut rna = polymers.remove(0).polymer;
 
     for polymer in &polymers {
-        rna = rna.replace(&polymer.polymer, "");
+        rna = replace_all(rna, &polymer.polymer, AStr::from_slice(&[]));
     }
 
-    let protein: String = translate_rna(rna.chars().map(DnaNt::from_char).map(DnaNt::transcribe))
-        .into_iter()
-        .map(ProteinAa::to_char)
-        .collect();
+    let protein = translate_rna(rna.into_iter().map(DnaNt::transcribe));
 
     println!("{}", protein);
 }

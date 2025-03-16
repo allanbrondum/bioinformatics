@@ -1,4 +1,5 @@
 #![feature(string_into_chars, ascii_char)]
+extern crate core;
 
 pub mod alphabet_model;
 pub mod ascii;

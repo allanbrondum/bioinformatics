@@ -157,7 +157,7 @@ mod test {
 
     use crate::string;
     use crate::string_model::test_util::Char;
-    use crate::string_model::{AString, arb_astring, arb_astring2};
+    use crate::string_model::{AString, arb_astring};
     use proptest::arbitrary::any;
     use proptest::collection::vec;
     use proptest::prelude::ProptestConfig;

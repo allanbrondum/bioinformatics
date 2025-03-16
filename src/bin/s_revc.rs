@@ -1,12 +1,11 @@
 use rosalind::polymers::DnaNt;
+use rosalind::string_model::AString;
 use rosalind::util::chars_file;
 
 fn main() {
-    let recv: String = chars_file("src/bin/s_revc_data.txt")
-        .map(DnaNt::from_char)
+    let recv: AString<_> = chars_file::<DnaNt>("src/bin/s_revc_data.txt")
         .rev()
         .map(DnaNt::bonding_complement)
-        .map(DnaNt::to_char)
         .collect();
 
     println!("{}", recv)

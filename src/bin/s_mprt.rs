@@ -1,7 +1,9 @@
 use regex::Regex;
 use reqwest::Url;
+use rosalind::polymers::{DnaNt, ProteinAa};
 use rosalind::string::indexes_regex;
-use rosalind::util::{fasta_polymers, lines};
+use rosalind::string_model::AString;
+use rosalind::util::{fasta_polymers, fasta_polymers_file, lines};
 
 fn main() {
     let data = include_str!("s_mprt_data.txt");
@@ -10,7 +12,7 @@ fn main() {
     let regex = Regex::new("N[^P][ST][^P]").unwrap();
     for prot_id in lines(data) {
         let db_id = prot_id.split("_").next().unwrap();
-        let aas = prot_aas(&client, db_id);
+        let aas = prot_aas(&client, db_id).to_string();
 
         let mut any_matches = false;
         for position in indexes_regex(&aas, &regex) {
@@ -26,7 +28,7 @@ fn main() {
     }
 }
 
-fn prot_aas(client: &reqwest::blocking::Client, prot_id: &str) -> String {
+fn prot_aas(client: &reqwest::blocking::Client, prot_id: &str) -> AString<ProteinAa> {
     let fasta = client
         .get(
             format!("https://rest.uniprot.org/uniprotkb/{}.fasta", prot_id)
@@ -40,7 +42,7 @@ fn prot_aas(client: &reqwest::blocking::Client, prot_id: &str) -> String {
         .text()
         .unwrap();
 
-    let mut polymers = fasta_polymers(&fasta);
+    let mut polymers = fasta_polymers::<ProteinAa>(&fasta);
 
     match (polymers.next(), polymers.next()) {
         (Some(polymer), None) => polymer.polymer,

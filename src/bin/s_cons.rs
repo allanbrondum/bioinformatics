@@ -1,10 +1,11 @@
 use itertools::Itertools;
 use rosalind::polymers::DnaNt;
-use rosalind::util::fasta_polymers;
+use rosalind::string_model::AString;
+use rosalind::util::fasta_polymers_file;
 
 fn main() {
-    let dnas = fasta_polymers("src/bin/s_cons_data.txt")
-        .map(|entry| entry.polymer.chars().map(DnaNt::from_char).collect_vec())
+    let dnas = fasta_polymers_file::<DnaNt>("src/bin/s_cons_data.txt")
+        .map(|entry| entry.polymer)
         .collect_vec();
     let mut profile = vec![Freq::default(); dnas[0].len()];
     for dna in &dnas {
@@ -12,10 +13,9 @@ fn main() {
             freq.observe(*nt);
         }
     }
-    let cons: String = profile
+    let cons: AString<_> = profile
         .iter()
         .map(|freq| freq.most_frequent())
-        .map(DnaNt::to_char)
         .collect();
 
     println!("{}", cons);

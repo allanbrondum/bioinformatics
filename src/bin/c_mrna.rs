@@ -12,8 +12,7 @@ fn main() {
             map
         });
 
-    let count = chars(data)
-        .map(ProteinAa::from_char)
+    let count = chars::<ProteinAa>(data)
         .map(|aa| coding_count[&Codon::Aa(aa)])
         .chain(iter::once(coding_count[&Codon::Stop]))
         .reduce(|it1, it2| it1 * it2 % 1_000_000)
