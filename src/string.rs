@@ -45,6 +45,14 @@ pub fn overlap<C: CharT>(a: &AStr<C>, b: &AStr<C>) -> usize {
     0
 }
 
+pub fn lcp<'a, C: CharT>(a: &'a AStr<C>, b: &AStr<C>) -> &'a AStr<C> {
+    let mut i = 0;
+    while i < a.len() && i < b.len() && a[i] == b[i] {
+        i += 1;
+    }
+    &a[0..i]
+}
+
 // todo perf + reimpl using suffix trie
 
 pub fn lcs<'a, C: CharT>(a: &'a AStr<C>, b: &AStr<C>) -> &'a AStr<C> {
@@ -97,7 +105,7 @@ pub fn indexes_regex(s: &str, regex: &Regex) -> impl Iterator<Item = usize> {
 #[cfg(test)]
 mod test {
     use crate::ascii::ascii;
-    use crate::string::{find, indexes, lcs, overlap};
+    use crate::string::{find, indexes, lcp, lcs, overlap};
 
     #[test]
     fn test_lcs() {
@@ -106,6 +114,22 @@ mod test {
             ascii("efghij")
         );
         assert_eq!(lcs(ascii("abcd"), ascii("abcd")), ascii("abcd"));
+    }
+
+    #[test]
+    fn test_lcp() {
+        assert_eq!(
+            lcp(ascii("abcdefghijk"), ascii("abcd")),
+            ascii("abcd")
+        );
+        assert_eq!(
+            lcp( ascii("abcd"), ascii("abcdefghijk")),
+            ascii("abcd")
+        );
+        assert_eq!(
+            lcp( ascii("abcd"), ascii("defghijk")),
+            ascii("")
+        );
     }
 
     #[test]
