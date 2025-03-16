@@ -9,7 +9,7 @@ use proptest::collection::vec;
 use crate::bench_util::Char;
 use proptest::strategy::{Strategy, ValueTree};
 use rosalind::string::{suffix_trie_simple, suffix_trie_suffix_links};
-use rosalind::string_model::{arb_astring, AStr, AString};
+use rosalind::string_model::{AStr, AString, arb_astring};
 
 const STRING_LENGTHS: &[usize] = &[32, 256, 1_024];
 
@@ -48,7 +48,8 @@ fn criterion_benches(criterion: &mut Criterion) {
         let mut runner = proptest::test_runner::TestRunner::default();
         let s = arb_astring::<Char>(string_length)
             .new_tree(&mut runner)
-            .unwrap().current();
+            .unwrap()
+            .current();
 
         build_trie_benches
             .bench_with_input(

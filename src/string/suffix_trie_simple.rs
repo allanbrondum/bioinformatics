@@ -156,8 +156,8 @@ mod test {
     use std::collections::HashSet;
 
     use crate::string;
-    use crate::string_model::{arb_astring, AString};
     use crate::string_model::test_util::Char;
+    use crate::string_model::{AString, arb_astring, arb_astring2};
     use proptest::arbitrary::any;
     use proptest::collection::vec;
     use proptest::prelude::ProptestConfig;

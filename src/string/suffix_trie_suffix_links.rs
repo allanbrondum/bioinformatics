@@ -66,11 +66,7 @@ fn indexes_substr_rec<C: CharT>(node: &Node<C>, t: &AStr<C>, result: &mut HashSe
                 }
             } else {
                 if t[1..edge.chars.len()] == edge.chars[1..] {
-                    indexes_substr_rec(
-                        &edge.target.borrow(),
-                        &t[edge.chars.len()..],
-                        result,
-                    );
+                    indexes_substr_rec(&edge.target.borrow(), &t[edge.chars.len()..], result);
                 }
             }
         }
@@ -208,6 +204,7 @@ mod test {
     use super::*;
     use crate::alphabet_model::CharT;
     use crate::string;
+    use crate::string_model::arb_astring;
     use crate::string_model::test_util::Char;
     use generic_array::typenum::U2;
     use proptest::arbitrary::any;
@@ -216,7 +213,6 @@ mod test {
     use proptest::{prop_assert_eq, proptest};
     use proptest_derive::Arbitrary;
     use std::fmt::{Debug, Display, Formatter};
-    use crate::string_model::arb_astring;
 
     #[test]
     fn test_build_trie_and_find_substr() {
