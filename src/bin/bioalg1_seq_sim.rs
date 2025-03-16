@@ -1,9 +1,9 @@
 use rand::Rng;
+use rosalind::polymers::DnaNt;
 use rosalind::util::fasta_polymers_file;
 use std::fs::File;
 use std::io::Write;
 use std::iter;
-use rosalind::polymers::DnaNt;
 
 fn main() {
     let read_len = 200;
@@ -13,7 +13,10 @@ fn main() {
     let output_path = "src/bin/bioalg1_assemble_data.txt";
     let stats_output_path = "src/bin/bioalg1_assemble_data_stats.txt";
 
-    let polymer = fasta_polymers_file::<DnaNt>(input_path).next().unwrap().polymer;
+    let polymer = fasta_polymers_file::<DnaNt>(input_path)
+        .next()
+        .unwrap()
+        .polymer;
     let mut out_file = File::create(output_path).unwrap();
     let genome_length = polymer.len();
     let num_reads = (target_depth * genome_length as f64 / read_len as f64).ceil() as usize;

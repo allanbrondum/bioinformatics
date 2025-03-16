@@ -1,10 +1,10 @@
 use itertools::Itertools;
+use rosalind::polymers::DnaNt;
 use rosalind::string::scs;
 use rosalind::util::fasta_polymers_file;
 use std::fs::File;
 use std::io::Write;
 use std::time::Instant;
-use rosalind::polymers::DnaNt;
 
 fn main() {
     let min_olap = 20;

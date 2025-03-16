@@ -1,4 +1,4 @@
-use rosalind::polymers::{translate_rna, RnaNt};
+use rosalind::polymers::{RnaNt, translate_rna};
 use rosalind::string_model::AString;
 use rosalind::util::chars_file;
 

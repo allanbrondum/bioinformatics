@@ -172,25 +172,19 @@ fn to_dot_rec<C: CharT>(write: &mut impl Write, node: &Node<C>) {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::alphabet_model::CharT;
+
     use crate::string;
     use crate::string_model::arb_astring;
     use crate::string_model::test_util::Char;
-    use generic_array::typenum::U2;
-    use proptest::arbitrary::any;
-    use proptest::collection::vec;
+
     use proptest::prelude::ProptestConfig;
     use proptest::{prop_assert_eq, proptest};
-    use proptest_derive::Arbitrary;
-    use std::fmt::{Debug, Display, Formatter};
 
     #[test]
     fn test_build_trie_and_find_substr_empty() {
-        use crate::string_model::test_util::Char::*;
-
         let s: &AStr<Char> = AStr::from_slice(&[]);
 
-        let trie = build_trie(&s);
+        let trie = build_trie(s);
 
         assert_eq!(
             indexes_substr(&trie, AStr::from_slice(&[])),
@@ -204,7 +198,7 @@ mod test {
 
         let s = AStr::from_slice(&[A, B, A, A, B, A, B, A, A]);
 
-        let trie = build_trie(&s);
+        let trie = build_trie(s);
 
         assert_eq!(
             indexes_substr(&trie, AStr::from_slice(&[])),

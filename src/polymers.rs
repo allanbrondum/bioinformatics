@@ -1,7 +1,7 @@
 use crate::enum_char;
+use crate::string_model::AString;
 use itertools::Itertools;
 use std::fmt::Formatter;
-use crate::string_model::AString;
 
 enum_char!(DnaNt; A, C, G, T);
 

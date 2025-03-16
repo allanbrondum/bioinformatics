@@ -26,5 +26,9 @@ struct EntryWithGc {
 }
 
 fn gc_content(dna: &AStr<DnaNt>) -> f64 {
-    dna.iter().copied().filter(|&ch| ch == DnaNt::C || ch == DnaNt::G).count() as f64 / dna.len() as f64
+    dna.iter()
+        .copied()
+        .filter(|&ch| ch == DnaNt::C || ch == DnaNt::G)
+        .count() as f64
+        / dna.len() as f64
 }

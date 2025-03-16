@@ -1,9 +1,9 @@
 use regex::Regex;
 use reqwest::Url;
-use rosalind::polymers::{DnaNt, ProteinAa};
+use rosalind::polymers::ProteinAa;
 use rosalind::string::indexes_regex;
 use rosalind::string_model::AString;
-use rosalind::util::{fasta_polymers, fasta_polymers_file, lines};
+use rosalind::util::{fasta_polymers, lines};
 
 fn main() {
     let data = include_str!("s_mprt_data.txt");

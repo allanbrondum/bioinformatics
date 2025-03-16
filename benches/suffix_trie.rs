@@ -3,13 +3,11 @@
 mod bench_util;
 
 use criterion::{Bencher, BenchmarkId, Criterion, Throughput, criterion_group, criterion_main};
-use proptest::arbitrary::any;
-use proptest::collection::vec;
 
 use crate::bench_util::Char;
 use proptest::strategy::{Strategy, ValueTree};
 use rosalind::string::{suffix_trie_simple, suffix_trie_suffix_links};
-use rosalind::string_model::{AStr, AString, arb_astring};
+use rosalind::string_model::{AStr, arb_astring};
 
 const STRING_LENGTHS: &[usize] = &[32, 256, 1_024];
 

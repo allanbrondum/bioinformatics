@@ -41,7 +41,7 @@ pub fn replace_all<C: CharT>(s: AString<C>, t: &AStr<C>, u: &AStr<C>) -> AString
     let mut i = 0;
     while let Some(idx) = find(&s[i..], t) {
         res.push_str(&s[i..i + idx]);
-        res.push_str(&u);
+        res.push_str(u);
         i += idx + t.len();
     }
     res.push_str(&s[i..]);

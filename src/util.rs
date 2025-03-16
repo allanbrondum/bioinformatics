@@ -16,8 +16,12 @@ pub fn chars_file<C: CharT>(path: impl AsRef<Path>) -> impl DoubleEndedIterator<
     fs::read_to_string(path)
         .unwrap()
         .into_chars()
-        .filter(|ch|!ch.is_whitespace())
-        .map(|ch| C::from_char(ch).ok_or_else(||format!("invalid char {}", ch)).unwrap())
+        .filter(|ch| !ch.is_whitespace())
+        .map(|ch| {
+            C::from_char(ch)
+                .ok_or_else(|| format!("invalid char {}", ch))
+                .unwrap()
+        })
 }
 
 pub fn lines(s: &str) -> impl Iterator<Item = &str> {
@@ -51,7 +55,9 @@ impl<C: CharT> FastaEntry<C> {
     }
 }
 
-pub fn fasta_polymers_file<C: CharT>(path: impl AsRef<Path>) -> impl Iterator<Item = FastaEntry<C>> {
+pub fn fasta_polymers_file<C: CharT>(
+    path: impl AsRef<Path>,
+) -> impl Iterator<Item = FastaEntry<C>> {
     fasta_polymers_lines(lines_file(path))
 }
 
@@ -59,8 +65,9 @@ pub fn fasta_polymers<C: CharT>(data: &str) -> impl Iterator<Item = FastaEntry<C
     fasta_polymers_lines(lines(data))
 }
 
-
-fn fasta_polymers_lines<C: CharT, S: AsRef<str>>(lines: impl Iterator<Item = S>) -> impl Iterator<Item = FastaEntry<C>> {
+fn fasta_polymers_lines<C: CharT, S: AsRef<str>>(
+    lines: impl Iterator<Item = S>,
+) -> impl Iterator<Item = FastaEntry<C>> {
     let mut res = Vec::new();
 
     let mut entry = None;
@@ -72,7 +79,7 @@ fn fasta_polymers_lines<C: CharT, S: AsRef<str>>(lines: impl Iterator<Item = S>)
             }
             entry = Some(FastaEntry::new(descr.to_string()));
         } else if let Some(entry) = &mut entry {
-            let astring = AString::from_str(&line).unwrap();
+            let astring = AString::from_str(line).unwrap();
             entry.polymer.push_str(&astring);
         } else {
             panic!("invalid format");

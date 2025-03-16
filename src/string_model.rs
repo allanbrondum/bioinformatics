@@ -21,7 +21,7 @@ impl<'a, C: CharT> IntoIterator for &'a AStr<C> {
     type IntoIter = <&'a [C] as IntoIterator>::IntoIter;
 
     fn into_iter(self) -> Self::IntoIter {
-        (&self.0).into_iter()
+        self.0.iter()
     }
 }
 
@@ -40,7 +40,7 @@ impl<C: CharT> AStr<C> {
         &self.0
     }
 
-    pub fn iter(&self) -> impl Iterator<Item = &C> + DoubleEndedIterator {
+    pub fn iter(&self) -> impl DoubleEndedIterator<Item = &C> {
         self.into_iter()
     }
 }
@@ -88,7 +88,7 @@ impl<'a, C: CharT> IntoIterator for &'a AString<C> {
     type IntoIter = <&'a Vec<C> as IntoIterator>::IntoIter;
 
     fn into_iter(self) -> Self::IntoIter {
-        (&self.0).into_iter()
+        self.0.iter()
     }
 }
 
@@ -236,7 +236,7 @@ proptest::prop_compose! {
 pub fn arb_astring<C: CharT + Arbitrary>(
     size: impl Into<SizeRange>,
 ) -> impl Strategy<Value = AString<C>> {
-    collection::vec(arbitrary::any::<C>(), size).prop_map(|vec| AString::from(vec))
+    collection::vec(arbitrary::any::<C>(), size).prop_map(AString::from)
 }
 
 #[cfg(test)]

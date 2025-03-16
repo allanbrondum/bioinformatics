@@ -13,10 +13,7 @@ fn main() {
             freq.observe(*nt);
         }
     }
-    let cons: AString<_> = profile
-        .iter()
-        .map(|freq| freq.most_frequent())
-        .collect();
+    let cons: AString<_> = profile.iter().map(|freq| freq.most_frequent()).collect();
 
     println!("{}", cons);
     println!("A: {}", profile.iter().map(|freq| freq.a).join(" "));

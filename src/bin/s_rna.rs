@@ -1,4 +1,4 @@
-use rosalind::polymers::{DnaNt, RnaNt};
+use rosalind::polymers::DnaNt;
 use rosalind::string_model::AString;
 use rosalind::util::chars_file;
 
