@@ -1,6 +1,6 @@
-use std::fmt::Formatter;
-use itertools::Itertools;
 use crate::enum_char;
+use itertools::Itertools;
+use std::fmt::Formatter;
 
 enum_char!(DnaNt; A, C, G, T);
 

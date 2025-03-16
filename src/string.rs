@@ -118,18 +118,9 @@ mod test {
 
     #[test]
     fn test_lcp() {
-        assert_eq!(
-            lcp(ascii("abcdefghijk"), ascii("abcd")),
-            ascii("abcd")
-        );
-        assert_eq!(
-            lcp( ascii("abcd"), ascii("abcdefghijk")),
-            ascii("abcd")
-        );
-        assert_eq!(
-            lcp( ascii("abcd"), ascii("defghijk")),
-            ascii("")
-        );
+        assert_eq!(lcp(ascii("abcdefghijk"), ascii("abcd")), ascii("abcd"));
+        assert_eq!(lcp(ascii("abcd"), ascii("abcdefghijk")), ascii("abcd"));
+        assert_eq!(lcp(ascii("abcd"), ascii("defghijk")), ascii(""));
     }
 
     #[test]

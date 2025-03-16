@@ -1,17 +1,22 @@
+use crate::alphabet_model::CharT;
+use crate::string_model::AString;
 use std::fs;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 use std::path::Path;
 use std::str::FromStr;
-use crate::alphabet_model::CharT;
-use crate::string_model::AString;
 
-pub fn chars(s: &str) -> impl DoubleEndedIterator<Item = char> {
-    s.trim().chars()
+pub fn chars<C: CharT>(s: &str) -> impl DoubleEndedIterator<Item = C> {
+    s.trim()
+        .chars()
+        .map(|ch| C::from_char(ch).expect("invalid char"))
 }
 
-pub fn chars_file(path: impl AsRef<Path>) -> impl DoubleEndedIterator<Item = char> {
-    fs::read_to_string(path).unwrap().into_chars()
+pub fn chars_file<C: CharT>(path: impl AsRef<Path>) -> impl DoubleEndedIterator<Item = C> {
+    fs::read_to_string(path)
+        .unwrap()
+        .into_chars()
+        .map(|ch| C::from_char(ch).expect("invalid char"))
 }
 
 pub fn lines(s: &str) -> impl Iterator<Item = &str> {
@@ -31,12 +36,12 @@ pub fn lines_file(path: impl AsRef<Path>) -> impl Iterator<Item = String> {
 }
 
 #[derive(Debug, Clone, Default)]
-pub struct FastaEntry<C:CharT> {
+pub struct FastaEntry<C: CharT> {
     pub description: String,
     pub polymer: AString<C>,
 }
 
-impl<C:CharT> FastaEntry<C> {
+impl<C: CharT> FastaEntry<C> {
     fn new(description: String) -> Self {
         Self {
             description,
@@ -45,7 +50,7 @@ impl<C:CharT> FastaEntry<C> {
     }
 }
 
-pub fn fasta_polymers<C:CharT>(path: impl AsRef<Path>) -> impl Iterator<Item = FastaEntry<C>> {
+pub fn fasta_polymers<C: CharT>(path: impl AsRef<Path>) -> impl Iterator<Item = FastaEntry<C>> {
     let mut res = Vec::new();
 
     let mut entry = None;

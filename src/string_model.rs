@@ -17,7 +17,7 @@ use std::str::FromStr;
 #[derive(Debug, Eq, PartialEq, Hash)]
 pub struct AStr<C: CharT>([C]);
 
-impl<'a, C:CharT> IntoIterator for &'a AStr<C> {
+impl<'a, C: CharT> IntoIterator for &'a AStr<C> {
     type Item = &'a C;
     type IntoIter = <&'a [C] as IntoIterator>::IntoIter;
 
@@ -59,13 +59,13 @@ impl<C: CharT> AsRef<[C]> for AStr<C> {
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub struct AString<C: CharT>(Vec<C>);
 
-impl<C:CharT> Default for AString<C> {
+impl<C: CharT> Default for AString<C> {
     fn default() -> Self {
         Self(Vec::default())
     }
 }
 
-impl<C:CharT> IntoIterator for AString<C> {
+impl<C: CharT> IntoIterator for AString<C> {
     type Item = C;
     type IntoIter = <Vec<C> as IntoIterator>::IntoIter;
 
@@ -74,7 +74,7 @@ impl<C:CharT> IntoIterator for AString<C> {
     }
 }
 
-impl<'a, C:CharT> IntoIterator for &'a AString<C> {
+impl<'a, C: CharT> IntoIterator for &'a AString<C> {
     type Item = &'a C;
     type IntoIter = <&'a Vec<C> as IntoIterator>::IntoIter;
 

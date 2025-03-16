@@ -5,13 +5,13 @@ use crate::string_model::{AStr, AString};
 use generic_array::GenericArray;
 use itertools::Itertools;
 
+use crate::string;
 use std::collections::HashSet;
 use std::fmt::Display;
 use std::fs::File;
 use std::io::Write;
 use std::path::Path;
 use std::ptr;
-use crate::string;
 
 const GRAPH_DEBUG: bool = false;
 
@@ -111,7 +111,6 @@ fn insert_rec<C: CharT>(suffix_index: usize, s: &AStr<C>, node: &mut Node<C>) {
                     target: new_node,
                 }));
             }
-
         } else {
             let mut new_node = Node::new();
             new_node.terminal = Some(Terminal { suffix_index });
