@@ -12,28 +12,29 @@ use proptest::collection::vec;
 use crate::bench_util::Char;
 use proptest::strategy::{Strategy, ValueTree};
 use rosalind::string::{suffix_trie_simple, suffix_trie_suffix_links};
+use rosalind::string_model::{AStr, AString};
 
 const STRING_LENGTHS: &[usize] = &[32, 256, 1_024];
 
-fn bench_build_trie_simple(bencher: &mut Bencher<'_>, s: &[Char]) {
+fn bench_build_trie_simple(bencher: &mut Bencher<'_>, s: &AStr<Char>) {
     bencher.iter_with_large_drop(|| {
         suffix_trie_simple::build_trie(s)
     });
 }
 
-fn bench_build_trie_suffix_links(bencher: &mut Bencher<'_>, s: &[Char]) {
+fn bench_build_trie_suffix_links(bencher: &mut Bencher<'_>, s: &AStr<Char>) {
     bencher.iter_with_large_drop(|| {
         suffix_trie_suffix_links::build_trie(s)
     });
 }
 
-fn bench_build_and_drop_trie_simple(bencher: &mut Bencher<'_>, s: &[Char]) {
+fn bench_build_and_drop_trie_simple(bencher: &mut Bencher<'_>, s: &AStr<Char>) {
     bencher.iter(|| {
         suffix_trie_simple::build_trie(s)
     });
 }
 
-fn bench_build_and_drop_trie_suffix_links(bencher: &mut Bencher<'_>, s: &[Char]) {
+fn bench_build_and_drop_trie_suffix_links(bencher: &mut Bencher<'_>, s: &AStr<Char>) {
     bencher.iter(|| {
         suffix_trie_suffix_links::build_trie(s)
     });
@@ -57,7 +58,7 @@ fn criterion_benches(criterion: &mut Criterion) {
     for &string_length in STRING_LENGTHS {
         let mut runner = proptest::test_runner::TestRunner::default();
         let mut value = vec(any::<Char>(), string_length).new_tree(&mut runner).unwrap();
-        let s = value.current();
+        let s = AString::from(value.current());
 
         build_trie_benches
             .bench_with_input(

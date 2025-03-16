@@ -6,3 +6,5 @@ pub mod probability;
 pub mod string;
 pub mod util;
 pub mod alphabet_model;
+pub mod string_model;
+pub mod ascii;

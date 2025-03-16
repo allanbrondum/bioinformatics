@@ -1,6 +1,6 @@
 use regex::Regex;
 use reqwest::Url;
-use rosalind::string::positions_regex;
+use rosalind::string::indexes_regex;
 use rosalind::util::{fasta_polymers, lines};
 
 fn main() {
@@ -13,7 +13,7 @@ fn main() {
         let aas = prot_aas(&client, db_id);
 
         let mut any_matches = false;
-        for position in positions_regex(&aas, &regex) {
+        for position in indexes_regex(&aas, &regex) {
             if !any_matches {
                 println!("{}", prot_id);
                 any_matches = true;

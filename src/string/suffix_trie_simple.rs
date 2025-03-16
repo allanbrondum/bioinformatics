@@ -6,6 +6,7 @@ use std::fs::File;
 use std::io::Write;
 use std::path::Path;
 use std::ptr;
+use crate::string_model::AStr;
 
 const GRAPH_DEBUG: bool = false;
 
@@ -41,7 +42,7 @@ struct Edge<C: CharT> {
 }
 
 /// Finds indexes of given string in the string represented in the trie
-pub fn indexes_substr<C: CharT>(trie: &SuffixTrie<C>, t: &[C]) -> HashSet<usize> {
+pub fn indexes_substr<C: CharT>(trie: &SuffixTrie<C>, t: &AStr<C>) -> HashSet<usize> {
     let mut result = HashSet::new();
 
     indexes_substr_rec(&trie.root, t, &mut result);
@@ -49,10 +50,10 @@ pub fn indexes_substr<C: CharT>(trie: &SuffixTrie<C>, t: &[C]) -> HashSet<usize>
     result
 }
 
-fn indexes_substr_rec<C: CharT>(node: &Node<C>, t: &[C], result: &mut HashSet<usize>) {
+fn indexes_substr_rec<C: CharT>(node: &Node<C>, t: &AStr<C>, result: &mut HashSet<usize>) {
     if let Some((ch, t_rest)) = t.split_first() {
         if let Some(edge) = &node.children[ch.index()] {
-            indexes_substr_rec(&edge.target, t_rest, result);
+            indexes_substr_rec(&edge.target, AStr::from_slice(t_rest), result);
         }
     } else {
         terminals_rec(node, result);
@@ -69,11 +70,11 @@ fn terminals_rec<C: CharT>(node: &Node<C>, result: &mut HashSet<usize>) {
 }
 
 /// Builds suffix trie
-pub fn build_trie<C: CharT>(s: &[C]) -> SuffixTrie<C> {
+pub fn build_trie<C: CharT>(s: &AStr<C>) -> SuffixTrie<C> {
     let mut trie = SuffixTrie { root: Node::new() };
 
     for i in 0..s.len() {
-        insert_rec(i, &s[i..], &mut trie.root);
+        insert_rec(i, AStr::from_slice(&s[i..]), &mut trie.root);
     }
 
     if GRAPH_DEBUG {
@@ -83,7 +84,7 @@ pub fn build_trie<C: CharT>(s: &[C]) -> SuffixTrie<C> {
     trie
 }
 
-fn insert_rec<C: CharT>(suffix: usize, s: &[C], node: &mut Node<C>) {
+fn insert_rec<C: CharT>(suffix: usize, s: &AStr<C>, node: &mut Node<C>) {
     match s.split_first() {
         None => {
             assert!(node.terminal.is_none());
@@ -98,7 +99,7 @@ fn insert_rec<C: CharT>(suffix: usize, s: &[C], node: &mut Node<C>) {
                     target: Node::new(),
                 })
             });
-            insert_rec(suffix, s_rest, &mut edge.target);
+            insert_rec(suffix, AStr::from_slice(s_rest), &mut edge.target);
         }
     }
 }
@@ -161,17 +162,18 @@ mod test {
     use proptest::prelude::ProptestConfig;
     use proptest::{prop_assert_eq, proptest};
     use std::fmt::{Debug, Display};
+    use crate::string_model::AString;
 
     #[test]
     fn test_build_trie_and_find_substr_empty() {
         use crate::string::test_util::Char::*;
 
-        let s:[Char;0] = [];
+        let s: &AStr<Char> = AStr::from_slice(&[]);
 
-        let trie = build_trie(&s);
+        let trie = build_trie(s);
 
         assert_eq!(
-            indexes_substr(&trie, &[]),
+            indexes_substr(&trie, AStr::from_slice(&[])),
             HashSet::from([])
         );
     }
@@ -180,17 +182,17 @@ mod test {
     fn test_build_trie_and_find_substr() {
         use crate::string::test_util::Char::*;
 
-        let s = [A, B, A, A, B, A, B, A, A];
+        let s = AStr::from_slice(&[A, B, A, A, B, A, B, A, A]);
 
         let trie = build_trie(&s);
 
         assert_eq!(
-            indexes_substr(&trie, &[]),
+            indexes_substr(&trie, AStr::from_slice(&[])),
             HashSet::from([0, 1, 2, 3, 4, 5, 6, 7, 8])
         );
-        assert_eq!(indexes_substr(&trie, &[A, A, A]), HashSet::from([]));
-        assert_eq!(indexes_substr(&trie, &[A, B, A]), HashSet::from([0, 3, 5]));
-        assert_eq!(indexes_substr(&trie, &[B, A, A]), HashSet::from([1, 6]));
+        assert_eq!(indexes_substr(&trie, AStr::from_slice(&[A, A, A])), HashSet::from([]));
+        assert_eq!(indexes_substr(&trie, AStr::from_slice(&[A, B, A])), HashSet::from([0, 3, 5]));
+        assert_eq!(indexes_substr(&trie, AStr::from_slice(&[B, A, A])), HashSet::from([1, 6]));
     }
 
     proptest! {
@@ -198,9 +200,9 @@ mod test {
 
         #[test]
         fn prop_test_trie(s in vec(any::<Char>(), 0..20), t in vec(any::<Char>(), 3)) {
-            let trie = build_trie(&s);
-            let expected = string::indexes_slice(&s, &t);
-            let indexes = indexes_substr(&trie, &t);
+            let trie = build_trie(AStr::from_slice(&s));
+            let expected = string::indexes(AStr::from_slice(&s), AStr::from_slice(&t));
+            let indexes = indexes_substr(&trie, AStr::from_slice(&t));
             prop_assert_eq!(indexes, HashSet::from_iter(expected.into_iter()));
         }
     }

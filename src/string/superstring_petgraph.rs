@@ -1,4 +1,4 @@
-use crate::string::overlap_str;
+use crate::string::{overlap};
 use itertools::Itertools;
 use petgraph::Direction;
 use petgraph::dot::Dot;
@@ -12,15 +12,17 @@ use std::fmt::{Display, Formatter};
 use std::fs::File;
 use std::io::Write;
 use std::path::Path;
+use crate::alphabet_model::CharT;
+use crate::string_model::AString;
 
 const GRAPH_DEBUG: bool = false;
 
-pub fn scs(
-    strs: impl IntoIterator<Item = String> + Clone,
+pub fn scs<C:CharT>(
+    strs: impl IntoIterator<Item = AString<C>> + Clone,
     min_overlap: usize,
-) -> Vec<String> {
+) -> Vec< AString<C>> {
     let strs = strs.into_iter();
-    let mut graph: MatrixGraph<Node, Edge> = MatrixGraph::with_capacity(strs.size_hint().0);
+    let mut graph: MatrixGraph<Node<C>, Edge> = MatrixGraph::with_capacity(strs.size_hint().0);
 
     let node_idxs = strs
         .into_iter()
@@ -33,7 +35,7 @@ pub fn scs(
         let node1 = graph.node_weight(node1_idx);
         let node2 = graph.node_weight(node2_idx);
 
-        let overlap = overlap_str(&node1.str, &node2.str);
+        let overlap = overlap(&node1.str, &node2.str);
         graph.add_edge(node1_idx, node2_idx, Edge::new(overlap));
 
         EdgeHeapEntry::new(node1_idx, node2_idx, overlap)
@@ -108,18 +110,18 @@ pub fn scs(
         .collect()
 }
 
-struct Node {
-    str: String,
+struct Node<C:CharT> {
+    str:  AString<C>,
 }
 
-impl Display for Node {
+impl<C: CharT> Display for Node<C> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         self.str.fmt(f)
     }
 }
 
-impl Node {
-    fn new(str: String) -> Self {
+impl<C:CharT> Node<C> {
+    fn new(str: AString<C>) -> Self {
         Self { str }
     }
 }
@@ -181,8 +183,8 @@ fn to_dot<I: IntoNodeReferences + IntoEdgeReferences + NodeIndexable + GraphProp
     filepath: impl AsRef<Path>,
     graph: I,
 ) where
-    <I as Data>::EdgeWeight: std::fmt::Display,
-    <I as Data>::NodeWeight: std::fmt::Display,
+    <I as Data>::EdgeWeight: Display,
+    <I as Data>::NodeWeight: Display,
 {
     let mut file = File::create(filepath).unwrap();
     write!(file, "{}", Dot::new(&graph)).unwrap();
@@ -190,21 +192,22 @@ fn to_dot<I: IntoNodeReferences + IntoEdgeReferences + NodeIndexable + GraphProp
 
 #[cfg(test)]
 mod test {
+    use crate::ascii::ascii;
     use super::*;
 
     #[test]
     fn test_sc_supstr_one() {
         assert_eq!(
-            scs(["uioefghabcd".to_string()], 3),
-            vec!["uioefghabcd".to_string()],
+            scs([ascii("uioefghabcd").to_owned()], 3),
+            vec![ascii("uioefghabcd").to_owned()],
         );
     }
 
     #[test]
     fn test_sc_supstr_two() {
         assert_eq!(
-            scs(["uioefghabcd".to_string(), "abcdefghijk".to_string()], 3),
-            vec!["uioefghabcdefghijk".to_string()],
+            scs([ascii("uioefghabcd").to_owned(), ascii("abcdefghijk").to_owned()], 3),
+            vec![ascii("uioefghabcdefghijk").to_owned()],
         );
     }
 
@@ -213,13 +216,13 @@ mod test {
         assert_eq!(
             scs(
                 [
-                    "uioefghabcd".to_string(),
-                    "abcdefghijk".to_string(),
-                    "ijklm".to_string()
+                    ascii("uioefghabcd").to_owned(),
+                    ascii("abcdefghijk").to_owned(),
+                    ascii("ijklm").to_owned()
                 ],
                 3
             ),
-            vec!["uioefghabcdefghijklm".to_string()],
+            vec![ascii("uioefghabcdefghijklm").to_owned()],
         );
     }
 
@@ -228,21 +231,21 @@ mod test {
         assert_eq!(
             scs(
                 [
-                    "uioefghabcd".to_string(),
-                    "abcdefghijk".to_string(),
-                    "abcdefghijk".to_string()
+                    ascii("uioefghabcd").to_owned(),
+                    ascii("abcdefghijk").to_owned(),
+                    ascii("abcdefghijk").to_owned()
                 ],
                 3
             ),
-            vec!["uioefghabcdefghijk".to_string()],
+            vec![ascii("uioefghabcdefghijk").to_owned()],
         );
     }
 
     #[test]
     fn test_sc_supstr_no_overlap() {
         assert_eq!(
-            scs(["uioefghabcd".to_string(), "abcdefghijk".to_string()], 5),
-            vec!["uioefghabcd".to_string(), "abcdefghijk".to_string()],
+            scs([ascii("uioefghabcd").to_owned(), ascii("abcdefghijk").to_owned()], 5),
+            vec![ascii("uioefghabcd").to_owned(), ascii("abcdefghijk").to_owned()],
         );
     }
 }

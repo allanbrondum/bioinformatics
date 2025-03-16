@@ -1,4 +1,4 @@
-use crate::string::overlap_str;
+use crate::string::{overlap};
 use itertools::Itertools;
 use std::cell::RefCell;
 use std::cmp::Ordering;
@@ -7,13 +7,15 @@ use std::fs::File;
 use std::io::Write;
 use std::path::Path;
 use std::rc::Rc;
+use crate::alphabet_model::CharT;
+use crate::string_model::AString;
 
 const GRAPH_DEBUG: bool = false;
 
-pub fn scs(
-    strs: impl IntoIterator<Item = String> + Clone,
+pub fn scs<C:CharT>(
+    strs: impl IntoIterator<Item = AString<C>> + Clone,
     min_overlap: usize,
-) -> Vec<String> {
+) -> Vec<AString<C>> {
     let mut nodes = strs
         .into_iter()
         .map(|str| Rc::new(RefCell::new(Node::new(str))))
@@ -25,7 +27,7 @@ pub fn scs(
         let mut node1_mut = node1.borrow_mut();
         let mut node2_mut = node2.borrow_mut();
 
-        let overlap = overlap_str(&node1_mut.str, &node2_mut.str);
+        let overlap = overlap(&node1_mut.str, &node2_mut.str);
         let edge = Rc::new(RefCell::new(Edge::new(
             node1.clone(),
             node2.clone(),
@@ -124,15 +126,15 @@ pub fn scs(
         .collect()
 }
 
-struct Node {
-    str: String,
-    incoming: Vec<Rc<RefCell<Edge>>>,
-    outgoing: Vec<Rc<RefCell<Edge>>>,
+struct Node<C:CharT> {
+    str: AString<C>,
+    incoming: Vec<Rc<RefCell<Edge<C>>>>,
+    outgoing: Vec<Rc<RefCell<Edge<C>>>>,
     deleted: bool,
 }
 
-impl Node {
-    fn new(str: String) -> Self {
+impl<C:CharT> Node<C> {
+    fn new(str: AString<C>) -> Self {
         Self {
             str,
             incoming: Default::default(),
@@ -141,14 +143,14 @@ impl Node {
         }
     }
 
-    fn incoming(&self) -> impl Iterator<Item = &Rc<RefCell<Edge>>> {
+    fn incoming(&self) -> impl Iterator<Item = &Rc<RefCell<Edge<C>>>> {
         self.incoming.iter().filter(|edge| {
             let edge_ref = edge.borrow();
             !edge_ref.deleted
         })
     }
 
-    fn outgoing(&self) -> impl Iterator<Item = &Rc<RefCell<Edge>>> {
+    fn outgoing(&self) -> impl Iterator<Item = &Rc<RefCell<Edge<C>>>> {
         self.outgoing.iter().filter(|edge| {
             let edge_ref = edge.borrow();
             !edge_ref.deleted
@@ -156,15 +158,15 @@ impl Node {
     }
 }
 
-struct Edge {
-    source: Rc<RefCell<Node>>,
-    target: Rc<RefCell<Node>>,
+struct Edge<C:CharT> {
+    source: Rc<RefCell<Node<C>>>,
+    target: Rc<RefCell<Node<C>>>,
     overlap: usize,
     deleted: bool,
 }
 
-impl Edge {
-    fn new(source: Rc<RefCell<Node>>, target: Rc<RefCell<Node>>, overlap: usize) -> Self {
+impl<C:CharT> Edge<C> {
+    fn new(source: Rc<RefCell<Node<C>>>, target: Rc<RefCell<Node<C>>>, overlap: usize) -> Self {
         Self {
             source,
             target,
@@ -174,43 +176,43 @@ impl Edge {
     }
 }
 
-struct HeapEntry {
-    edge: Rc<RefCell<Edge>>,
+struct HeapEntry<C:CharT> {
+    edge: Rc<RefCell<Edge<C>>>,
     overlap: usize,
 }
 
-impl HeapEntry {
-    fn new(edge: Rc<RefCell<Edge>>) -> Self {
+impl<C:CharT> HeapEntry<C> {
+    fn new(edge: Rc<RefCell<Edge<C>>>) -> Self {
         let overlap = edge.borrow().overlap;
 
         Self { edge, overlap }
     }
 }
 
-impl PartialOrd for HeapEntry {
+impl<C:CharT> PartialOrd for HeapEntry<C> {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         Some(Ord::cmp(self, other))
     }
 }
 
-impl Ord for HeapEntry {
+impl<C:CharT> Ord for HeapEntry<C> {
     fn cmp(&self, other: &Self) -> Ordering {
         self.overlap.cmp(&other.overlap)
     }
 }
 
-impl PartialEq for HeapEntry {
+impl<C:CharT> PartialEq for HeapEntry<C> {
     fn eq(&self, other: &Self) -> bool {
         self.overlap == other.overlap
     }
 }
 
-impl Eq for HeapEntry {}
+impl<C:CharT> Eq for HeapEntry<C> {}
 
-fn to_dot<'a>(
+fn to_dot<'a, C:CharT>(
     filepath: impl AsRef<Path>,
-    nodes: impl IntoIterator<Item = &'a Rc<RefCell<Node>>>,
-    edges: impl IntoIterator<Item = &'a Rc<RefCell<Edge>>>,
+    nodes: impl IntoIterator<Item = &'a Rc<RefCell<Node<C>>>>,
+    edges: impl IntoIterator<Item = &'a Rc<RefCell<Edge<C>>>>,
 ) {
     let mut file = File::create(filepath).unwrap();
     writeln!(file, "digraph G {{").unwrap();
@@ -224,7 +226,7 @@ fn to_dot<'a>(
             file,
             "    {} [label=\"{}\"];",
             Rc::as_ptr(node) as usize,
-            &node_ref.str
+            node_ref.str
         )
         .unwrap();
     }
@@ -249,21 +251,22 @@ fn to_dot<'a>(
 
 #[cfg(test)]
 mod test {
+    use crate::ascii::ascii;
     use super::*;
 
     #[test]
     fn test_sc_supstr_one() {
         assert_eq!(
-            scs(["uioefghabcd".to_string()], 3),
-            vec!["uioefghabcd".to_string()],
+            scs([ascii("uioefghabcd").to_owned()], 3),
+            vec![ascii("uioefghabcd").to_owned()],
         );
     }
 
     #[test]
     fn test_sc_supstr_two() {
         assert_eq!(
-            scs(["uioefghabcd".to_string(), "abcdefghijk".to_string()], 3),
-            vec!["uioefghabcdefghijk".to_string()],
+            scs([ascii("uioefghabcd").to_owned(), ascii("abcdefghijk").to_owned()], 3),
+            vec![ascii("uioefghabcdefghijk").to_owned()],
         );
     }
 
@@ -272,13 +275,13 @@ mod test {
         assert_eq!(
             scs(
                 [
-                    "uioefghabcd".to_string(),
-                    "abcdefghijk".to_string(),
-                    "ijklm".to_string()
+                    ascii("uioefghabcd").to_owned(),
+                    ascii("abcdefghijk").to_owned(),
+                    ascii("ijklm").to_owned()
                 ],
                 3
             ),
-            vec!["uioefghabcdefghijklm".to_string()],
+            vec![ascii("uioefghabcdefghijklm").to_owned()],
         );
     }
 
@@ -287,21 +290,21 @@ mod test {
         assert_eq!(
             scs(
                 [
-                    "uioefghabcd".to_string(),
-                    "abcdefghijk".to_string(),
-                    "abcdefghijk".to_string()
+                    ascii("uioefghabcd").to_owned(),
+                    ascii("abcdefghijk").to_owned(),
+                    ascii("abcdefghijk").to_owned()
                 ],
                 3
             ),
-            vec!["uioefghabcdefghijk".to_string()],
+            vec![ascii("uioefghabcdefghijk").to_owned()],
         );
     }
 
     #[test]
     fn test_sc_supstr_no_overlap() {
         assert_eq!(
-            scs(["uioefghabcd".to_string(), "abcdefghijk".to_string()], 5),
-            vec!["uioefghabcd".to_string(), "abcdefghijk".to_string()],
+            scs([ascii("uioefghabcd").to_owned(), ascii("abcdefghijk").to_owned()], 5),
+            vec![ascii("uioefghabcd").to_owned(), ascii("abcdefghijk").to_owned()],
         );
     }
 }
