@@ -1,18 +1,19 @@
 #[cfg(test)]
 pub mod test_util;
 
+use crate::alphabet_model::CharT;
+use itertools::Itertools;
+use ::proptest::collection::SizeRange;
+use ::proptest::strategy::Strategy;
+use ::proptest::{arbitrary, collection};
 use std::borrow::Borrow;
 use std::fmt::{Display, Formatter};
 use std::mem;
 use std::ops::{Add, Deref, Index, Range, RangeFrom, RangeInclusive, RangeTo, RangeToInclusive};
-
-use crate::alphabet_model::CharT;
-use itertools::Itertools;
+use proptest::arbitrary::Arbitrary;
 
 #[derive(Debug, Eq, PartialEq, Hash)]
 pub struct AStr<C: CharT>([C]);
-
-
 
 impl<C: CharT> Display for AStr<C> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
@@ -151,6 +152,22 @@ impl<C: CharT> Index<RangeInclusive<usize>> for AStr<C> {
     fn index(&self, index: RangeInclusive<usize>) -> &Self::Output {
         AStr::from_slice(&self.as_slice()[index])
     }
+}
+
+// prop_compose! {
+//     pub fn arb_astring<C: CharT>(size: impl Into<SizeRange>)
+//                 (id in arb_order_id(), item in "[a-z]*",
+//                  quantity in 1..max_quantity)
+//                 -> AString<C> {
+//         Order { id, item, quantity }
+//     }
+// }
+
+#[cfg(test)]
+pub fn arb_astring<C: CharT + Arbitrary>(
+    size: impl Into<SizeRange>,
+) -> impl Strategy<Value = AString<C>> {
+    collection::vec(arbitrary::any::<C>(), size).prop_map(|vec| AString::from(vec))
 }
 
 #[cfg(test)]

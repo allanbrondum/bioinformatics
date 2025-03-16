@@ -216,6 +216,7 @@ mod test {
     use proptest::{prop_assert_eq, proptest};
     use proptest_derive::Arbitrary;
     use std::fmt::{Debug, Display, Formatter};
+    use crate::string_model::arb_astring;
 
     #[test]
     fn test_build_trie_and_find_substr() {
@@ -247,10 +248,10 @@ mod test {
         #![proptest_config(ProptestConfig::with_cases(2000))]
 
         #[test]
-        fn prop_test_trie(s in vec(any::<Char>(), 0..20), t in vec(any::<Char>(), 3)) {
-            let trie = build_trie(AStr::from_slice(&s));
-            let expected = string::indexes(AStr::from_slice(&s), AStr::from_slice(&t));
-            let indexes = indexes_substr(&trie, AStr::from_slice(&t));
+        fn prop_test_trie(s in arb_astring::<Char>(0..20), t in arb_astring::<Char>(3)) {
+            let trie = build_trie(&s);
+            let expected = string::indexes(&s, &t);
+            let indexes = indexes_substr(&trie, &t);
             prop_assert_eq!(indexes, HashSet::from_iter(expected.into_iter()));
         }
     }
