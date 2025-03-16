@@ -17,7 +17,7 @@ proptest-derive = "0.5.1"
 criterion = "0.5.1"
 
 [[bench]]
-name = "suffix_trie_simple"
+name = "suffix_trie"
 harness = false
 
 #[[bench]]

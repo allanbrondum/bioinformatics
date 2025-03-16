@@ -1,7 +1,7 @@
-use std::collections::HashSet;
 use crate::alphabet_model::CharT;
 use generic_array::GenericArray;
 use petgraph::matrix_graph::Nullable;
+use std::collections::HashSet;
 use std::fs::File;
 use std::io::Write;
 use std::path::Path;
@@ -52,9 +52,7 @@ pub fn indexes_substr<C: CharT>(trie: &SuffixTrie<C>, t: &[C]) -> HashSet<usize>
 fn indexes_substr_rec<C: CharT>(node: &Node<C>, t: &[C], result: &mut HashSet<usize>) {
     if let Some((ch, t_rest)) = t.split_first() {
         if let Some(edge) = &node.children[ch.index()] {
-            if edge.char.index() == ch.index() {
-                indexes_substr_rec(&edge.target, t_rest, result);
-            }
+            indexes_substr_rec(&edge.target, t_rest, result);
         }
     } else {
         terminals_rec(node, result);
@@ -154,16 +152,16 @@ fn to_dot_rec<C: CharT>(write: &mut impl Write, node: &Node<C>) {
 
 #[cfg(test)]
 mod test {
-    use std::collections::HashSet;
     use super::*;
+    use std::collections::HashSet;
 
+    use crate::string;
     use crate::string::test_util::Char;
     use proptest::arbitrary::any;
     use proptest::collection::vec;
+    use proptest::prelude::ProptestConfig;
     use proptest::{prop_assert_eq, proptest};
     use std::fmt::{Debug, Display};
-    use proptest::prelude::ProptestConfig;
-    use crate::string;
 
     #[test]
     fn test_build_trie_and_find_substr() {
@@ -173,7 +171,10 @@ mod test {
 
         let trie = build_trie(&s);
 
-        assert_eq!(indexes_substr(&trie, &[]), HashSet::from([0, 1, 2, 3, 4, 5, 6, 7, 8]));
+        assert_eq!(
+            indexes_substr(&trie, &[]),
+            HashSet::from([0, 1, 2, 3, 4, 5, 6, 7, 8])
+        );
         assert_eq!(indexes_substr(&trie, &[A, A, A]), HashSet::from([]));
         assert_eq!(indexes_substr(&trie, &[A, B, A]), HashSet::from([0, 3, 5]));
         assert_eq!(indexes_substr(&trie, &[B, A, A]), HashSet::from([1, 6]));
