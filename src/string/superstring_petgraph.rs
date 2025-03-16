@@ -1,4 +1,6 @@
-use crate::string::{overlap};
+use crate::alphabet_model::CharT;
+use crate::string::overlap;
+use crate::string_model::AString;
 use itertools::Itertools;
 use petgraph::Direction;
 use petgraph::dot::Dot;
@@ -12,15 +14,13 @@ use std::fmt::{Display, Formatter};
 use std::fs::File;
 use std::io::Write;
 use std::path::Path;
-use crate::alphabet_model::CharT;
-use crate::string_model::AString;
 
 const GRAPH_DEBUG: bool = false;
 
-pub fn scs<C:CharT>(
+pub fn scs<C: CharT>(
     strs: impl IntoIterator<Item = AString<C>> + Clone,
     min_overlap: usize,
-) -> Vec< AString<C>> {
+) -> Vec<AString<C>> {
     let strs = strs.into_iter();
     let mut graph: MatrixGraph<Node<C>, Edge> = MatrixGraph::with_capacity(strs.size_hint().0);
 
@@ -110,8 +110,8 @@ pub fn scs<C:CharT>(
         .collect()
 }
 
-struct Node<C:CharT> {
-    str:  AString<C>,
+struct Node<C: CharT> {
+    str: AString<C>,
 }
 
 impl<C: CharT> Display for Node<C> {
@@ -120,7 +120,7 @@ impl<C: CharT> Display for Node<C> {
     }
 }
 
-impl<C:CharT> Node<C> {
+impl<C: CharT> Node<C> {
     fn new(str: AString<C>) -> Self {
         Self { str }
     }
@@ -192,8 +192,8 @@ fn to_dot<I: IntoNodeReferences + IntoEdgeReferences + NodeIndexable + GraphProp
 
 #[cfg(test)]
 mod test {
-    use crate::ascii::ascii;
     use super::*;
+    use crate::ascii::ascii;
 
     #[test]
     fn test_sc_supstr_one() {
@@ -206,7 +206,13 @@ mod test {
     #[test]
     fn test_sc_supstr_two() {
         assert_eq!(
-            scs([ascii("uioefghabcd").to_owned(), ascii("abcdefghijk").to_owned()], 3),
+            scs(
+                [
+                    ascii("uioefghabcd").to_owned(),
+                    ascii("abcdefghijk").to_owned()
+                ],
+                3
+            ),
             vec![ascii("uioefghabcdefghijk").to_owned()],
         );
     }
@@ -244,8 +250,17 @@ mod test {
     #[test]
     fn test_sc_supstr_no_overlap() {
         assert_eq!(
-            scs([ascii("uioefghabcd").to_owned(), ascii("abcdefghijk").to_owned()], 5),
-            vec![ascii("uioefghabcd").to_owned(), ascii("abcdefghijk").to_owned()],
+            scs(
+                [
+                    ascii("uioefghabcd").to_owned(),
+                    ascii("abcdefghijk").to_owned()
+                ],
+                5
+            ),
+            vec![
+                ascii("uioefghabcd").to_owned(),
+                ascii("abcdefghijk").to_owned()
+            ],
         );
     }
 }

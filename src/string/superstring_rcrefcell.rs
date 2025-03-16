@@ -1,4 +1,6 @@
-use crate::string::{overlap};
+use crate::alphabet_model::CharT;
+use crate::string::overlap;
+use crate::string_model::AString;
 use itertools::Itertools;
 use std::cell::RefCell;
 use std::cmp::Ordering;
@@ -7,12 +9,10 @@ use std::fs::File;
 use std::io::Write;
 use std::path::Path;
 use std::rc::Rc;
-use crate::alphabet_model::CharT;
-use crate::string_model::AString;
 
 const GRAPH_DEBUG: bool = false;
 
-pub fn scs<C:CharT>(
+pub fn scs<C: CharT>(
     strs: impl IntoIterator<Item = AString<C>> + Clone,
     min_overlap: usize,
 ) -> Vec<AString<C>> {
@@ -126,14 +126,14 @@ pub fn scs<C:CharT>(
         .collect()
 }
 
-struct Node<C:CharT> {
+struct Node<C: CharT> {
     str: AString<C>,
     incoming: Vec<Rc<RefCell<Edge<C>>>>,
     outgoing: Vec<Rc<RefCell<Edge<C>>>>,
     deleted: bool,
 }
 
-impl<C:CharT> Node<C> {
+impl<C: CharT> Node<C> {
     fn new(str: AString<C>) -> Self {
         Self {
             str,
@@ -158,14 +158,14 @@ impl<C:CharT> Node<C> {
     }
 }
 
-struct Edge<C:CharT> {
+struct Edge<C: CharT> {
     source: Rc<RefCell<Node<C>>>,
     target: Rc<RefCell<Node<C>>>,
     overlap: usize,
     deleted: bool,
 }
 
-impl<C:CharT> Edge<C> {
+impl<C: CharT> Edge<C> {
     fn new(source: Rc<RefCell<Node<C>>>, target: Rc<RefCell<Node<C>>>, overlap: usize) -> Self {
         Self {
             source,
@@ -176,12 +176,12 @@ impl<C:CharT> Edge<C> {
     }
 }
 
-struct HeapEntry<C:CharT> {
+struct HeapEntry<C: CharT> {
     edge: Rc<RefCell<Edge<C>>>,
     overlap: usize,
 }
 
-impl<C:CharT> HeapEntry<C> {
+impl<C: CharT> HeapEntry<C> {
     fn new(edge: Rc<RefCell<Edge<C>>>) -> Self {
         let overlap = edge.borrow().overlap;
 
@@ -189,27 +189,27 @@ impl<C:CharT> HeapEntry<C> {
     }
 }
 
-impl<C:CharT> PartialOrd for HeapEntry<C> {
+impl<C: CharT> PartialOrd for HeapEntry<C> {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         Some(Ord::cmp(self, other))
     }
 }
 
-impl<C:CharT> Ord for HeapEntry<C> {
+impl<C: CharT> Ord for HeapEntry<C> {
     fn cmp(&self, other: &Self) -> Ordering {
         self.overlap.cmp(&other.overlap)
     }
 }
 
-impl<C:CharT> PartialEq for HeapEntry<C> {
+impl<C: CharT> PartialEq for HeapEntry<C> {
     fn eq(&self, other: &Self) -> bool {
         self.overlap == other.overlap
     }
 }
 
-impl<C:CharT> Eq for HeapEntry<C> {}
+impl<C: CharT> Eq for HeapEntry<C> {}
 
-fn to_dot<'a, C:CharT>(
+fn to_dot<'a, C: CharT>(
     filepath: impl AsRef<Path>,
     nodes: impl IntoIterator<Item = &'a Rc<RefCell<Node<C>>>>,
     edges: impl IntoIterator<Item = &'a Rc<RefCell<Edge<C>>>>,
@@ -251,8 +251,8 @@ fn to_dot<'a, C:CharT>(
 
 #[cfg(test)]
 mod test {
-    use crate::ascii::ascii;
     use super::*;
+    use crate::ascii::ascii;
 
     #[test]
     fn test_sc_supstr_one() {
@@ -265,7 +265,13 @@ mod test {
     #[test]
     fn test_sc_supstr_two() {
         assert_eq!(
-            scs([ascii("uioefghabcd").to_owned(), ascii("abcdefghijk").to_owned()], 3),
+            scs(
+                [
+                    ascii("uioefghabcd").to_owned(),
+                    ascii("abcdefghijk").to_owned()
+                ],
+                3
+            ),
             vec![ascii("uioefghabcdefghijk").to_owned()],
         );
     }
@@ -303,8 +309,17 @@ mod test {
     #[test]
     fn test_sc_supstr_no_overlap() {
         assert_eq!(
-            scs([ascii("uioefghabcd").to_owned(), ascii("abcdefghijk").to_owned()], 5),
-            vec![ascii("uioefghabcd").to_owned(), ascii("abcdefghijk").to_owned()],
+            scs(
+                [
+                    ascii("uioefghabcd").to_owned(),
+                    ascii("abcdefghijk").to_owned()
+                ],
+                5
+            ),
+            vec![
+                ascii("uioefghabcd").to_owned(),
+                ascii("abcdefghijk").to_owned()
+            ],
         );
     }
 }

@@ -2,12 +2,9 @@
 
 mod bench_util;
 
-use criterion::{
-    criterion_group, criterion_main, Bencher, BenchmarkId, Criterion, Throughput,
-};
+use criterion::{Bencher, BenchmarkId, Criterion, Throughput, criterion_group, criterion_main};
 use proptest::arbitrary::any;
 use proptest::collection::vec;
-
 
 use crate::bench_util::Char;
 use proptest::strategy::{Strategy, ValueTree};
@@ -17,27 +14,19 @@ use rosalind::string_model::{AStr, AString};
 const STRING_LENGTHS: &[usize] = &[32, 256, 1_024];
 
 fn bench_build_trie_simple(bencher: &mut Bencher<'_>, s: &AStr<Char>) {
-    bencher.iter_with_large_drop(|| {
-        suffix_trie_simple::build_trie(s)
-    });
+    bencher.iter_with_large_drop(|| suffix_trie_simple::build_trie(s));
 }
 
 fn bench_build_trie_suffix_links(bencher: &mut Bencher<'_>, s: &AStr<Char>) {
-    bencher.iter_with_large_drop(|| {
-        suffix_trie_suffix_links::build_trie(s)
-    });
+    bencher.iter_with_large_drop(|| suffix_trie_suffix_links::build_trie(s));
 }
 
 fn bench_build_and_drop_trie_simple(bencher: &mut Bencher<'_>, s: &AStr<Char>) {
-    bencher.iter(|| {
-        suffix_trie_simple::build_trie(s)
-    });
+    bencher.iter(|| suffix_trie_simple::build_trie(s));
 }
 
 fn bench_build_and_drop_trie_suffix_links(bencher: &mut Bencher<'_>, s: &AStr<Char>) {
-    bencher.iter(|| {
-        suffix_trie_suffix_links::build_trie(s)
-    });
+    bencher.iter(|| suffix_trie_suffix_links::build_trie(s));
 }
 
 fn bench_indexes_substr(bencher: &mut Bencher<'_>, trie: suffix_trie_simple::SuffixTrie<Char>) {
@@ -57,7 +46,9 @@ fn criterion_benches(criterion: &mut Criterion) {
     let mut build_trie_benches = criterion.benchmark_group("build_trie");
     for &string_length in STRING_LENGTHS {
         let mut runner = proptest::test_runner::TestRunner::default();
-        let mut value = vec(any::<Char>(), string_length).new_tree(&mut runner).unwrap();
+        let mut value = vec(any::<Char>(), string_length)
+            .new_tree(&mut runner)
+            .unwrap();
         let s = AString::from(value.current());
 
         build_trie_benches

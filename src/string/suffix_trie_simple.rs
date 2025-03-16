@@ -1,4 +1,5 @@
 use crate::alphabet_model::CharT;
+use crate::string_model::AStr;
 use generic_array::GenericArray;
 use petgraph::matrix_graph::Nullable;
 use std::collections::HashSet;
@@ -6,7 +7,6 @@ use std::fs::File;
 use std::io::Write;
 use std::path::Path;
 use std::ptr;
-use crate::string_model::AStr;
 
 const GRAPH_DEBUG: bool = false;
 
@@ -156,17 +156,17 @@ mod test {
     use std::collections::HashSet;
 
     use crate::string;
-    use crate::string::test_util::Char;
+    use crate::string_model::AString;
+    use crate::string_model::test_util::Char;
     use proptest::arbitrary::any;
     use proptest::collection::vec;
     use proptest::prelude::ProptestConfig;
     use proptest::{prop_assert_eq, proptest};
     use std::fmt::{Debug, Display};
-    use crate::string_model::AString;
 
     #[test]
     fn test_build_trie_and_find_substr_empty() {
-        use crate::string::test_util::Char::*;
+        use crate::string_model::test_util::Char::*;
 
         let s: &AStr<Char> = AStr::from_slice(&[]);
 
@@ -180,7 +180,7 @@ mod test {
 
     #[test]
     fn test_build_trie_and_find_substr() {
-        use crate::string::test_util::Char::*;
+        use crate::string_model::test_util::Char::*;
 
         let s = AStr::from_slice(&[A, B, A, A, B, A, B, A, A]);
 
@@ -190,9 +190,18 @@ mod test {
             indexes_substr(&trie, AStr::from_slice(&[])),
             HashSet::from([0, 1, 2, 3, 4, 5, 6, 7, 8])
         );
-        assert_eq!(indexes_substr(&trie, AStr::from_slice(&[A, A, A])), HashSet::from([]));
-        assert_eq!(indexes_substr(&trie, AStr::from_slice(&[A, B, A])), HashSet::from([0, 3, 5]));
-        assert_eq!(indexes_substr(&trie, AStr::from_slice(&[B, A, A])), HashSet::from([1, 6]));
+        assert_eq!(
+            indexes_substr(&trie, AStr::from_slice(&[A, A, A])),
+            HashSet::from([])
+        );
+        assert_eq!(
+            indexes_substr(&trie, AStr::from_slice(&[A, B, A])),
+            HashSet::from([0, 3, 5])
+        );
+        assert_eq!(
+            indexes_substr(&trie, AStr::from_slice(&[B, A, A])),
+            HashSet::from([1, 6])
+        );
     }
 
     proptest! {

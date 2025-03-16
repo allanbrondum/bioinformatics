@@ -3,8 +3,6 @@ pub mod suffix_trie_simple;
 pub mod suffix_trie_suffix_links;
 mod superstring_petgraph;
 mod superstring_rcrefcell;
-#[cfg(test)]
-mod test_util;
 
 use crate::alphabet_model::CharT;
 use crate::string_model::AStr;
@@ -71,7 +69,6 @@ pub fn lcs<'a, C: CharT>(a: &'a AStr<C>, b: &AStr<C>) -> &'a AStr<C> {
     }
     AStr::from_slice(substr)
 }
-
 
 pub fn indexes_str(s: &str, t: &str) -> impl Iterator<Item = usize> {
     let mut res = Vec::new();

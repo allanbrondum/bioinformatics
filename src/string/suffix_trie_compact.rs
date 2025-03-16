@@ -1,6 +1,7 @@
 //! McCreight algorithm
 
 use crate::alphabet_model::CharT;
+use crate::string_model::AStr;
 use generic_array::GenericArray;
 use itertools::Itertools;
 use petgraph::matrix_graph::Nullable;
@@ -10,7 +11,6 @@ use std::fs::File;
 use std::io::Write;
 use std::path::Path;
 use std::ptr;
-use crate::string_model::AStr;
 
 const GRAPH_DEBUG: bool = false;
 
@@ -63,7 +63,11 @@ fn indexes_substr_rec<C: CharT>(node: &Node<C>, t: &AStr<C>, result: &mut HashSe
                 }
             } else {
                 if t[1..edge.chars.len()] == edge.chars[1..] {
-                    indexes_substr_rec(&edge.target, AStr::from_slice(&t[edge.chars.len()..]), result);
+                    indexes_substr_rec(
+                        &edge.target,
+                        AStr::from_slice(&t[edge.chars.len()..]),
+                        result,
+                    );
                 }
             }
         }
@@ -119,7 +123,6 @@ fn insert_rec<C: CharT>(suffix_index: usize, s: &AStr<C>, node: &mut Node<C>) {
     } else {
         node.terminal = Some(Terminal { suffix_index });
     }
-
 }
 
 fn to_dot<C: CharT>(filepath: impl AsRef<Path>, trie: &SuffixTrie<C>) {
@@ -172,7 +175,7 @@ mod test {
     use super::*;
     use crate::alphabet_model::CharT;
     use crate::string;
-    use crate::string::test_util::Char;
+    use crate::string_model::test_util::Char;
     use generic_array::typenum::U2;
     use proptest::arbitrary::any;
     use proptest::collection::vec;
@@ -183,9 +186,9 @@ mod test {
 
     #[test]
     fn test_build_trie_and_find_substr_empty() {
-        use crate::string::test_util::Char::*;
+        use crate::string_model::test_util::Char::*;
 
-        let s:&AStr<Char> = AStr::from_slice(&[]);
+        let s: &AStr<Char> = AStr::from_slice(&[]);
 
         let trie = build_trie(&s);
 
@@ -197,7 +200,7 @@ mod test {
 
     #[test]
     fn test_build_trie_and_find_substr() {
-        use crate::string::test_util::Char::*;
+        use crate::string_model::test_util::Char::*;
 
         let s = AStr::from_slice(&[A, B, A, A, B, A, B, A, A]);
 
@@ -207,9 +210,18 @@ mod test {
             indexes_substr(&trie, AStr::from_slice(&[])),
             HashSet::from([0, 1, 2, 3, 4, 5, 6, 7, 8])
         );
-        assert_eq!(indexes_substr(&trie, AStr::from_slice(&[A, A, A])), HashSet::from([]));
-        assert_eq!(indexes_substr(&trie, AStr::from_slice(&[A, B, A])), HashSet::from([0, 3, 5]));
-        assert_eq!(indexes_substr(&trie, AStr::from_slice(&[B, A, A])), HashSet::from([1, 6]));
+        assert_eq!(
+            indexes_substr(&trie, AStr::from_slice(&[A, A, A])),
+            HashSet::from([])
+        );
+        assert_eq!(
+            indexes_substr(&trie, AStr::from_slice(&[A, B, A])),
+            HashSet::from([0, 3, 5])
+        );
+        assert_eq!(
+            indexes_substr(&trie, AStr::from_slice(&[B, A, A])),
+            HashSet::from([1, 6])
+        );
     }
 
     proptest! {

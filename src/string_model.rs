@@ -1,9 +1,10 @@
-// todo Display, test transmute
+#[cfg(test)]
+pub mod test_util;
 
 use std::borrow::Borrow;
 use std::fmt::{Display, Formatter};
-use std::ops::{Add, Deref};
 use std::mem;
+use std::ops::{Add, Deref};
 
 use crate::alphabet_model::CharT;
 use itertools::Itertools;
@@ -44,13 +45,13 @@ impl<C: CharT> AsRef<[C]> for AStr<C> {
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub struct AString<C: CharT>(Vec<C>);
 
-impl<C:CharT> From<Vec<C>> for AString<C> {
+impl<C: CharT> From<Vec<C>> for AString<C> {
     fn from(value: Vec<C>) -> Self {
         Self(value)
     }
 }
 
-impl<C:CharT> Add<&AStr<C>> for AString<C> {
+impl<C: CharT> Add<&AStr<C>> for AString<C> {
     type Output = Self;
 
     fn add(mut self, rhs: &AStr<C>) -> Self::Output {
@@ -59,7 +60,7 @@ impl<C:CharT> Add<&AStr<C>> for AString<C> {
     }
 }
 
-impl<C:CharT> Add<&[C]> for AString<C> {
+impl<C: CharT> Add<&[C]> for AString<C> {
     type Output = Self;
 
     fn add(mut self, rhs: &[C]) -> Self::Output {
@@ -88,13 +89,13 @@ impl<C: CharT> AsRef<AStr<C>> for AString<C> {
     }
 }
 
-impl<C:CharT> Borrow<AStr<C>> for AString<C> {
+impl<C: CharT> Borrow<AStr<C>> for AString<C> {
     fn borrow(&self) -> &AStr<C> {
         AStr::from_slice(self.0.as_slice())
     }
 }
 
-impl<C:CharT> ToOwned for AStr<C> {
+impl<C: CharT> ToOwned for AStr<C> {
     type Owned = AString<C>;
 
     fn to_owned(&self) -> Self::Owned {
@@ -102,4 +103,17 @@ impl<C:CharT> ToOwned for AStr<C> {
     }
 }
 
+#[cfg(test)]
+mod test {
+    use crate::string_model::AStr;
 
+    #[test]
+    fn test_astr_from_slice() {
+        use crate::string_model::test_util::Char::*;
+
+        let slice = &[A, B];
+        let astr = AStr::from_slice(slice);
+        assert_eq!(astr.len(), 2);
+        assert_eq!(astr.as_slice(), slice);
+    }
+}

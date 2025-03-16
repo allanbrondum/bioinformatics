@@ -1,7 +1,7 @@
-use std::ascii;
-use generic_array::typenum::U128;
 use crate::alphabet_model::CharT;
 use crate::string_model::AStr;
+use generic_array::typenum::U128;
+use std::ascii;
 
 impl CharT for ascii::Char {
     type AlphabetSize = U128;
