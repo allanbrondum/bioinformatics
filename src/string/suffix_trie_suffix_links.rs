@@ -4,14 +4,15 @@ use crate::alphabet_model::CharT;
 use crate::string_model::{AStr, AString};
 use generic_array::GenericArray;
 
+use crate::string;
 use std::cell::RefCell;
 use std::collections::HashSet;
 use std::fmt::Display;
 use std::fs::File;
 use std::io::Write;
 use std::path::Path;
-use std::ptr;
 use std::rc::Rc;
+use std::{mem, ptr};
 
 const GRAPH_DEBUG: bool = false;
 
@@ -86,56 +87,54 @@ fn terminals_rec<C: CharT>(node: &Node<C>, result: &mut HashSet<usize>) {
 
 /// Builds suffix trie
 pub fn build_trie<C: CharT>(s: &AStr<C>) -> SuffixTrie<C> {
-    assert_ne!(s.len(), 0);
-
     let mut trie = SuffixTrie {
         root: Rc::new(RefCell::new(Node::new())),
     };
 
-    let mut root_mut = trie.root.borrow_mut();
-    // root_mut.suffix = Some(trie.root.clone());
-    let mut node_0 = Node::new();
-    node_0.terminal = Some(Terminal { suffix_index: 0 });
-    root_mut.children[s[0].index()] = Some(Box::new(Edge {
-        chars: s.to_owned(),
-        target: Rc::new(RefCell::new(node_0)),
-    }));
-    drop(root_mut);
-
-    for i in 1..s.len() {
+    for i in 0..s.len() {
         insert_rec(i, &s[i..], &mut trie.root.borrow_mut());
     }
 
     if GRAPH_DEBUG {
-        to_dot("target/trie_suffix.dot", &trie);
+        to_dot("target/trie_comp.dot", &trie);
     }
 
     trie
 }
 
-fn insert_rec<C: CharT>(suffix: usize, s: &AStr<C>, node: &mut Node<C>) {
-    todo!()
-    // if let Some(ch) = t.first() {
-    //
-    //
-    // }
-    // match s.split_first() {
-    //     None => {
-    //         assert!(node.terminal.is_none());
-    //         node.terminal = Some(Terminal {
-    //             suffix_index: suffix,
-    //         });
-    //     }
-    //     Some((ch, s_rest)) => {
-    //         let edge = node.children[ch.index()].get_or_insert_with(|| {
-    //             Box::new(Edge {
-    //                 char: *ch,
-    //                 target: Rc::new(RefCell::new(Node::new())),
-    //             })
-    //         });
-    //         insert_rec(suffix, s_rest, &mut edge.target.borrow_mut());
-    //     }
-    // }
+fn insert_rec<C: CharT>(suffix_index: usize, s: &AStr<C>, node: &mut Node<C>) {
+    if let Some(ch) = s.first() {
+        if let Some(edge) = &mut node.children[ch.index()] {
+            let lcp_len = string::lcp(&s[1..], &edge.chars[1..]).len() + 1;
+
+            if lcp_len == edge.chars.len() {
+                insert_rec(suffix_index, &s[edge.chars.len()..], &mut edge.target.borrow_mut());
+            } else if lcp_len < edge.chars.len() {
+                let mut new_node = Node::new();
+                let new_edge = Edge {
+                    chars: edge.chars[..lcp_len].to_owned(),
+                    target: Rc::new(RefCell::new(new_node)),
+                };
+                let mut edge_remainder = mem::replace(edge, Box::new(new_edge));
+                edge_remainder.chars = edge_remainder.chars[lcp_len..].to_owned();
+                let rem_ch = edge_remainder.chars[0];
+                edge.target.borrow_mut().children[rem_ch.index()] = Some(edge_remainder);
+
+                insert_rec(suffix_index, &s[lcp_len..], &mut edge.target.borrow_mut());
+            } else {
+                unreachable!()
+            }
+        } else {
+            let mut new_node = Node::new();
+            new_node.terminal = Some(Terminal { suffix_index });
+            node.children[ch.index()] = Some(Box::new(Edge {
+                chars: s.to_owned(),
+                target: Rc::new(RefCell::new(new_node)),
+            }));
+        }
+    } else {
+        node.terminal = Some(Terminal { suffix_index });
+    }
 }
 
 fn to_dot<C: CharT>(filepath: impl AsRef<Path>, trie: &SuffixTrie<C>) {
@@ -152,51 +151,44 @@ fn node_id<C: CharT>(node: &Node<C>) -> impl Display {
 }
 
 fn to_dot_rec<C: CharT>(write: &mut impl Write, node: &Node<C>) {
-    todo!()
-    // writeln!(
-    //     write,
-    //     "    {} [label=\"{}\" shape=point];",
-    //     node_id(node),
-    //     ""
-    // )
-    // .unwrap();
-    // if let Some(terminal) = &node.terminal {
-    //     writeln!(
-    //         write,
-    //         "    {} [label=\"{}\"];",
-    //         ptr::from_ref(terminal) as usize,
-    //         terminal.suffix_index
-    //     )
-    //     .unwrap();
-    //     writeln!(
-    //         write,
-    //         "    \"{}\" -> \"{}\" [label=\"{}\" dir=none];",
-    //         node_id(node),
-    //         ptr::from_ref(terminal) as usize,
-    //         '$'
-    //     )
-    //     .unwrap();
-    // }
-    // if let Some(suffix) = &node.suffix {
-    //     writeln!(
-    //         write,
-    //         "    \"{}\" -> \"{}\" [style=dashed];",
-    //         node_id(node),
-    //         ptr::from_ref(&suffix.borrow()) as usize,
-    //     )
-    //     .unwrap();
-    // }
-    // for edge in node.children.iter().filter_map(|edge| edge.as_ref()) {
-    //     writeln!(
-    //         write,
-    //         "    \"{}\" -> \"{}\" [label=\"{}\" dir=none];",
-    //         node_id(node),
-    //         node_id(&edge.target.borrow()),
-    //         edge.char
-    //     )
-    //     .unwrap();
-    //     to_dot_rec(write, &edge.target.borrow());
-    // }
+    writeln!(write, "    {} [label=\"\" shape=point];", node_id(node)).unwrap();
+    if let Some(terminal) = &node.terminal {
+        writeln!(
+            write,
+            "    {} [label=\"{}\"];",
+            ptr::from_ref(terminal) as usize,
+            terminal.suffix_index
+        )
+        .unwrap();
+        writeln!(
+            write,
+            "    \"{}\" -> \"{}\" [label=\"{}\" dir=none];",
+            node_id(node),
+            ptr::from_ref(terminal) as usize,
+            '$'
+        )
+        .unwrap();
+    }
+    if let Some(suffix) = &node.suffix {
+        writeln!(
+            write,
+            "    \"{}\" -> \"{}\" [style=dashed];",
+            node_id(node),
+            ptr::from_ref(&suffix.borrow()) as usize,
+        )
+        .unwrap();
+    }
+    for edge in node.children.iter().filter_map(|edge| edge.as_ref()) {
+        writeln!(
+            write,
+            "    \"{}\" -> \"{}\" [label=\"{}\" dir=none];",
+            node_id(node),
+            node_id(&edge.target.borrow()),
+            edge.chars
+        )
+        .unwrap();
+        to_dot_rec(write, &edge.target.borrow());
+    }
 }
 
 #[cfg(test)]
@@ -209,6 +201,18 @@ mod test {
 
     use proptest::prelude::ProptestConfig;
     use proptest::{prop_assert_eq, proptest};
+
+    #[test]
+    fn test_build_trie_and_find_substr_empty() {
+        let s: &AStr<Char> = AStr::from_slice(&[]);
+
+        let trie = build_trie(s);
+
+        assert_eq!(
+            indexes_substr(&trie, AStr::from_slice(&[])),
+            HashSet::from([])
+        );
+    }
 
     #[test]
     fn test_build_trie_and_find_substr() {

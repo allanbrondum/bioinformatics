@@ -170,7 +170,7 @@ fn to_dot_rec<C: CharT>(write: &mut impl Write, node: &Node<C>) {
             "    \"{}\" -> \"{}\" [label=\"{}\" dir=none];",
             node_id(node),
             node_id(&edge.target),
-            edge.chars.iter().copied().join("")
+            edge.chars
         )
         .unwrap();
         to_dot_rec(write, &edge.target);
