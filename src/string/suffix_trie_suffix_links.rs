@@ -14,7 +14,7 @@ use std::path::Path;
 use std::rc::Rc;
 use std::{mem, ptr};
 
-const GRAPH_DEBUG: bool = false;
+const GRAPH_DEBUG: bool = true;
 
 #[derive(Debug)]
 pub struct SuffixTrie<C: CharT> {
@@ -23,14 +23,25 @@ pub struct SuffixTrie<C: CharT> {
 
 #[derive(Debug)]
 struct Node<C: CharT> {
+    parent: Option<Rc<RefCell<Node<C>>>>,
     children: GenericArray<Option<Box<Edge<C>>>, C::AlphabetSize>,
     terminal: Option<Terminal>,
     suffix: Option<Rc<RefCell<Node<C>>>>,
 }
 
 impl<C: CharT> Node<C> {
-    fn new() -> Self {
+    fn root() -> Self {
         Self {
+            parent: None,
+            children: Default::default(),
+            terminal: None,
+            suffix: None,
+        }
+    }
+
+    fn with_parent(parent: Rc<RefCell<Node<C>>>) -> Self {
+        Self {
+            parent: Some(parent),
             children: Default::default(),
             terminal: None,
             suffix: None,
@@ -88,52 +99,60 @@ fn terminals_rec<C: CharT>(node: &Node<C>, result: &mut HashSet<usize>) {
 /// Builds suffix trie
 pub fn build_trie<C: CharT>(s: &AStr<C>) -> SuffixTrie<C> {
     let mut trie = SuffixTrie {
-        root: Rc::new(RefCell::new(Node::new())),
+        root: Rc::new(RefCell::new(Node::root())),
     };
 
+    trie.root.borrow_mut().suffix = Some(trie.root.clone());
+
     for i in 0..s.len() {
-        insert_rec(i, &s[i..], &mut trie.root.borrow_mut());
+        insert_rec(i, &s[i..], &trie.root);
     }
 
     if GRAPH_DEBUG {
-        to_dot("target/trie_comp.dot", &trie);
+        to_dot("target/trie_suffix_link.dot", &trie);
     }
 
     trie
 }
 
-fn insert_rec<C: CharT>(suffix_index: usize, s: &AStr<C>, node: &mut Node<C>) {
+fn insert_rec<C: CharT>(suffix_index: usize, s: &AStr<C>, node: &Rc<RefCell<Node<C>>>) {
+    let mut node_mut = node.borrow_mut();
     if let Some(ch) = s.first() {
-        if let Some(edge) = &mut node.children[ch.index()] {
+        if let Some(edge) = &mut node_mut.children[ch.index()] {
             let lcp_len = string::lcp(&s[1..], &edge.chars[1..]).len() + 1;
 
             if lcp_len == edge.chars.len() {
-                insert_rec(suffix_index, &s[edge.chars.len()..], &mut edge.target.borrow_mut());
+                insert_rec(
+                    suffix_index,
+                    &s[edge.chars.len()..],
+                    &edge.target,
+                );
             } else if lcp_len < edge.chars.len() {
-                let mut new_node = Node::new();
+                let new_node = Node::with_parent(node.clone());
                 let new_edge = Edge {
                     chars: edge.chars[..lcp_len].to_owned(),
                     target: Rc::new(RefCell::new(new_node)),
                 };
                 let mut edge_remainder = mem::replace(edge, Box::new(new_edge));
                 edge_remainder.chars = edge_remainder.chars[lcp_len..].to_owned();
+                edge_remainder.target.borrow_mut().parent = Some(edge.target.clone());
                 let rem_ch = edge_remainder.chars[0];
                 edge.target.borrow_mut().children[rem_ch.index()] = Some(edge_remainder);
 
-                insert_rec(suffix_index, &s[lcp_len..], &mut edge.target.borrow_mut());
+                insert_rec(suffix_index, &s[lcp_len..], &edge.target);
             } else {
                 unreachable!()
             }
         } else {
-            let mut new_node = Node::new();
+            let mut new_node = Node::with_parent(node.clone());
             new_node.terminal = Some(Terminal { suffix_index });
-            node.children[ch.index()] = Some(Box::new(Edge {
+            node_mut.children[ch.index()] = Some(Box::new(Edge {
                 chars: s.to_owned(),
                 target: Rc::new(RefCell::new(new_node)),
             }));
         }
     } else {
-        node.terminal = Some(Terminal { suffix_index });
+        node_mut.terminal = Some(Terminal { suffix_index });
     }
 }
 
@@ -174,10 +193,19 @@ fn to_dot_rec<C: CharT>(write: &mut impl Write, node: &Node<C>) {
             write,
             "    \"{}\" -> \"{}\" [style=dashed];",
             node_id(node),
-            ptr::from_ref(&suffix.borrow()) as usize,
+            node_id(&suffix.borrow()) ,
         )
         .unwrap();
     }
+    // if let Some(parent) = &node.parent {
+    //     writeln!(
+    //         write,
+    //         "    \"{}\" -> \"{}\" [style=dashed label=\"parent\"];",
+    //         node_id(node),
+    //         node_id(&parent.borrow()),
+    //     )
+    //         .unwrap();
+    // }
     for edge in node.children.iter().filter_map(|edge| edge.as_ref()) {
         writeln!(
             write,
