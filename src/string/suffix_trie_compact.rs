@@ -91,7 +91,7 @@ pub fn build_trie<C: CharT>(s: &AStr<C>) -> SuffixTrie<C> {
     }
 
     if GRAPH_DEBUG {
-        to_dot("target/trie_suffix.dot", &trie);
+        to_dot("target/trie_comp.dot", &trie);
     }
 
     trie
