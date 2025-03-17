@@ -11,7 +11,7 @@ use std::fmt::Display;
 use std::fs::File;
 use std::io::Write;
 use std::path::Path;
-use std::ptr;
+use std::{mem, ptr};
 
 const GRAPH_DEBUG: bool = false;
 
@@ -102,14 +102,22 @@ fn insert_rec<C: CharT>(suffix_index: usize, s: &AStr<C>, node: &mut Node<C>) {
         if let Some(edge) = &mut node.children[ch.index()] {
             let lcp_len = string::lcp(&s[1..], &edge.chars[1..]).len() + 1;
 
-            if lcp_len >= edge.chars.len() {
+            if lcp_len == edge.chars.len() {
+                insert_rec(suffix_index, &s[edge.chars.len()..], &mut edge.target);
+            } else if lcp_len < edge.chars.len() {
+                let mut new_node = Node::new();
+                let new_edge = Edge {
+                    chars: edge.chars[..lcp_len].to_owned(),
+                    target: new_node,
+                };
+                let mut edge_remainder = mem::replace(edge, Box::new(new_edge));
+                edge_remainder.chars = edge_remainder.chars[lcp_len..].to_owned();
+                let rem_ch = edge_remainder.chars[0];
+                edge.target.children[rem_ch.index()] = Some(edge_remainder);
+
                 insert_rec(suffix_index, &s[lcp_len..], &mut edge.target);
             } else {
-                let mut new_node = Node::new();
-                node.children[ch.index()] = Some(Box::new(Edge {
-                    chars: s[..lcp_len].to_owned(),
-                    target: new_node,
-                }));
+                unreachable!()
             }
         } else {
             let mut new_node = Node::new();
