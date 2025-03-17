@@ -104,8 +104,10 @@ pub fn build_trie<C: CharT>(s: &AStr<C>) -> SuffixTrie<C> {
 
     trie.root.borrow_mut().suffix = Some(trie.root.clone());
 
+    let mut head = trie.root.clone();
+    let mut tail = s;
     for i in 0..s.len() {
-        insert_rec(i, &s[i..], &trie.root);
+        (head, tail) = insert_suffix(i, &head, tail);
     }
 
     if GRAPH_DEBUG {
@@ -115,18 +117,34 @@ pub fn build_trie<C: CharT>(s: &AStr<C>) -> SuffixTrie<C> {
     trie
 }
 
-fn insert_rec<C: CharT>(suffix_index: usize, s: &AStr<C>, node: &Rc<RefCell<Node<C>>>) {
+/// Returns (head(suffix_index), tail(suffix_index))
+fn insert_suffix<'a, C: CharT>(
+    suffix_index: usize,
+    prev_head: &Rc<RefCell<Node<C>>>,
+    prev_tail: &'a AStr<C>,
+) -> (Rc<RefCell<Node<C>>>, &'a AStr<C>) {
+    let prev_head_ref = prev_head.borrow();
+    if let Some(parent) = prev_head_ref.parent.as_ref() {
+        let parent_ref = parent.borrow();
+        let suffix_ref = parent_ref.suffix.as_ref().expect("suffix").borrow();
+    } else {
+        insert_rec(suffix_index, prev_head, prev_tail)
+    }
+}
+
+/// Returns head(suffix_index)
+fn insert_rec<'a, C: CharT>(
+    suffix_index: usize,
+    node: &Rc<RefCell<Node<C>>>,
+    s: &'a AStr<C>,
+) -> (Rc<RefCell<Node<C>>>, &'a AStr<C>) {
     let mut node_mut = node.borrow_mut();
     if let Some(ch) = s.first() {
         if let Some(edge) = &mut node_mut.children[ch.index()] {
             let lcp_len = string::lcp(&s[1..], &edge.chars[1..]).len() + 1;
 
             if lcp_len == edge.chars.len() {
-                insert_rec(
-                    suffix_index,
-                    &s[edge.chars.len()..],
-                    &edge.target,
-                );
+                insert_rec(suffix_index, &edge.target, &s[edge.chars.len()..]);
             } else if lcp_len < edge.chars.len() {
                 let new_node = Node::with_parent(node.clone());
                 let new_edge = Edge {
@@ -139,7 +157,7 @@ fn insert_rec<C: CharT>(suffix_index: usize, s: &AStr<C>, node: &Rc<RefCell<Node
                 let rem_ch = edge_remainder.chars[0];
                 edge.target.borrow_mut().children[rem_ch.index()] = Some(edge_remainder);
 
-                insert_rec(suffix_index, &s[lcp_len..], &edge.target);
+                insert_rec(suffix_index, &edge.target, &s[lcp_len..] );
             } else {
                 unreachable!()
             }
@@ -193,7 +211,7 @@ fn to_dot_rec<C: CharT>(write: &mut impl Write, node: &Node<C>) {
             write,
             "    \"{}\" -> \"{}\" [style=dashed];",
             node_id(node),
-            node_id(&suffix.borrow()) ,
+            node_id(&suffix.borrow()),
         )
         .unwrap();
     }
