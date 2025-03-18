@@ -41,40 +41,62 @@ struct Edge<C: CharT> {
     target: Node<C>,
 }
 
-fn scan_rec<'a, 'b, C: CharT>(node: &'a Node<C>, t: &'b AStr<C>) -> (&'a Node<C>, &'b AStr<C>) {
+enum ScanReturn<'a, 'b, C: CharT> {
+    FullMatch {
+        node: &'a Node<C>,
+    },
+    MaximalNotFullMatch {
+        node: &'a Node<C>,
+        t_rest: &'b AStr<C>,
+    },
+}
+
+fn scan_rec<'a, 'b, C: CharT>(node: &'a Node<C>, t: &'b AStr<C>) -> ScanReturn<'a, 'b, C> {
     if let Some((ch, t_rest)) = t.split_first() {
         if let Some(edge) = &node.children[ch.index()] {
             scan_rec(&edge.target, AStr::from_slice(t_rest))
         } else {
-            (node, t)
+            ScanReturn::MaximalNotFullMatch { node, t_rest: t }
         }
     } else {
-        (node, t)
+        ScanReturn::FullMatch { node }
     }
+}
+
+enum ScanReturnMut<'a, 'b, C: CharT> {
+    FullMatch {
+        node: &'a mut Node<C>,
+    },
+    MaximalNotFullMatch {
+        node: &'a mut Node<C>,
+        t_rest: &'b AStr<C>,
+    },
 }
 
 fn scan_rec_mut<'a, 'b, C: CharT>(
     node: &'a mut Node<C>,
     t: &'b AStr<C>,
-) -> (&'a mut Node<C>, &'b AStr<C>) {
+) -> ScanReturnMut<'a, 'b, C> {
     if let Some((ch, t_rest)) = t.split_first() {
         if node.children[ch.index()].is_some() {
-            return scan_rec_mut(
+            scan_rec_mut(
                 &mut node.children[ch.index()].as_mut().unwrap().target,
                 AStr::from_slice(t_rest),
-            );
+            )
+        } else {
+            ScanReturnMut::MaximalNotFullMatch { node, t_rest: t }
         }
+    } else {
+        ScanReturnMut::FullMatch { node }
     }
-
-    (node, t)
 }
 
 /// Finds indexes of given string in the string represented in the trie
 pub fn indexes_substr<C: CharT>(trie: &SuffixTrie<C>, t: &AStr<C>) -> HashSet<usize> {
-    let (node, t_rest) = scan_rec(&trie.root, t);
-
     let mut result = HashSet::new();
-    if t_rest.len() == 0 {
+
+    let scan_ret = scan_rec(&trie.root, t);
+    if let ScanReturn::FullMatch { node } = scan_ret {
         terminals_rec(node, &mut result);
     }
 
@@ -95,8 +117,14 @@ pub fn build_trie<C: CharT>(s: &AStr<C>) -> SuffixTrie<C> {
     let mut trie = SuffixTrie { root: Node::new() };
 
     for i in 0..s.len() {
-        let (node, t_rest) = scan_rec_mut(&mut trie.root, &s[i..]);
-        insert_rec(i, t_rest, node);
+        match scan_rec_mut(&mut trie.root, &s[i..]) {
+            ScanReturnMut::FullMatch { node } => {
+                insert_rec(i, node, AStr::empty() );
+            }
+            ScanReturnMut::MaximalNotFullMatch { node, t_rest } => {
+                insert_rec(i,node, t_rest, );
+            }
+        }
     }
 
     if GRAPH_DEBUG {
@@ -106,7 +134,7 @@ pub fn build_trie<C: CharT>(s: &AStr<C>) -> SuffixTrie<C> {
     trie
 }
 
-fn insert_rec<C: CharT>(suffix: usize, s: &AStr<C>, node: &mut Node<C>) {
+fn insert_rec<C: CharT>(suffix: usize,  node: &mut Node<C>, s: &AStr<C>) {
     match s.split_first() {
         None => {
             assert!(node.terminal.is_none());
@@ -121,7 +149,7 @@ fn insert_rec<C: CharT>(suffix: usize, s: &AStr<C>, node: &mut Node<C>) {
                     target: Node::new(),
                 })
             });
-            insert_rec(suffix, AStr::from_slice(s_rest), &mut edge.target);
+            insert_rec(suffix,  &mut edge.target, AStr::from_slice(s_rest));
         }
     }
 }

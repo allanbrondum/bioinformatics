@@ -43,6 +43,10 @@ impl<C: CharT> AStr<C> {
     pub fn iter(&self) -> impl DoubleEndedIterator<Item = &C> {
         self.into_iter()
     }
+
+    pub fn empty() -> &'static AStr<C> {
+        AStr::from_slice(&[])
+    }
 }
 
 impl<C: CharT> Deref for AStr<C> {

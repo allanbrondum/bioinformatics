@@ -46,31 +46,66 @@ struct Edge<C: CharT> {
     target: Node<C>,
 }
 
-/// Finds indexes of given string in the string represented in the trie
-pub fn indexes_substr<C: CharT>(trie: &SuffixTrie<C>, t: &AStr<C>) -> HashSet<usize> {
-    let mut result = HashSet::new();
-
-    indexes_substr_rec(&trie.root, t, &mut result);
-
-    result
+enum ScanReturn<'a, 'b, C: CharT> {
+    FullMatch {
+        upper: &'a Node<C>,
+        lower: &'a Node<C>,
+    },
+    MaximalNonFullMatch {
+        max: &'a Node<C>,
+        t_rest: &'b AStr<C>,
+    },
 }
 
-fn indexes_substr_rec<C: CharT>(node: &Node<C>, t: &AStr<C>, result: &mut HashSet<usize>) {
+fn scan_rec<'a, 'b, C: CharT>(node: &'a Node<C>, t: &'b AStr<C>) -> ScanReturn<'a, 'b, C> {
     if let Some(ch) = t.first() {
         if let Some(edge) = &node.children[ch.index()] {
             if t.len() <= edge.chars.len() {
                 if t[1..] == edge.chars[1..t.len()] {
-                    terminals_rec(&edge.target, result);
+                    ScanReturn::FullMatch {
+                        upper: node,
+                        lower: &edge.target,
+                    }
+                } else {
+                    ScanReturn::MaximalNonFullMatch {
+                        max: node,
+                        t_rest: t,
+                    }
                 }
             } else {
                 if t[1..edge.chars.len()] == edge.chars[1..] {
-                    indexes_substr_rec(&edge.target, &t[edge.chars.len()..], result);
+                    scan_rec(&edge.target, &t[edge.chars.len()..])
+                } else {
+                    ScanReturn::MaximalNonFullMatch {
+                        max: node,
+                        t_rest: t,
+                    }
                 }
+            }
+        } else {
+            ScanReturn::MaximalNonFullMatch {
+                max: node,
+                t_rest: t,
             }
         }
     } else {
-        terminals_rec(node, result);
+        ScanReturn::FullMatch {
+            upper: node,
+            lower: node,
+        }
     }
+}
+
+/// Finds indexes of given string in the string represented in the trie
+pub fn indexes_substr<C: CharT>(trie: &SuffixTrie<C>, t: &AStr<C>) -> HashSet<usize> {
+    let mut result = HashSet::new();
+
+    let scan_ret = scan_rec(&trie.root, t);
+    if let ScanReturn::FullMatch { lower, .. } = scan_ret {
+        terminals_rec(lower, &mut result);
+    }
+
+    result
 }
 
 fn terminals_rec<C: CharT>(node: &Node<C>, result: &mut HashSet<usize>) {
