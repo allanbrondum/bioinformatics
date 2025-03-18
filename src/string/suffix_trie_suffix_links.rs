@@ -173,7 +173,7 @@ struct HeadTail<C: CharT> {
 fn insert_suffix<C: CharT>(suffix_index: usize, prev_head_tail: HeadTail<C>) -> HeadTail<C> {
     let mut prev_head_mut_guard = prev_head_tail.head.borrow_mut();
     let mut prev_head_mut = prev_head_mut_guard.deref_mut();
-    if let Some(parent_edge) = prev_head_mut.parent.as_ref() {
+    let (tail_start_node, tail) = if let Some(parent_edge) = prev_head_mut.parent.as_ref() {
         let parent_edge_ref = parent_edge.borrow();
         let parent_ref = parent_edge_ref.source.borrow();
 
@@ -203,34 +203,35 @@ fn insert_suffix<C: CharT>(suffix_index: usize, prev_head_tail: HeadTail<C>) -> 
 
         prev_head_mut.suffix = Some(s_prev_head.clone());
 
-        let (upper, str_to_head, tail) = match scan_rec(&s_prev_head, &prev_head_tail.tail) {
-            ScanReturn::FullMatch {
-                upper,
-                t_rem_matched,
-                lower: _lower,
-            } => (upper, t_rem_matched, AStr::empty()),
-            ScanReturn::MaximalNonFullMatch {
-                max,
-                t_rem_matched,
-                t_unmatched,
-            } => (max, t_rem_matched, t_unmatched),
-        };
-
-        let head = if str_to_head.len() == 0 {
-            upper
-        } else {
-            insert_intermediate(&upper, str_to_head)
-        };
-
-        insert_tail(suffix_index, &head, tail);
-
-        HeadTail {
-            head,
-            tail: tail.to_owned(),
-        }
+        (s_prev_head, prev_head_tail.tail.as_str())
     } else {
-        todo!()
-        // insert_rec(suffix_index, &prev_head_tail.head, &prev_head_tail.tail)
+        (prev_head_tail.head.clone(), &prev_head_tail.tail[1..])
+    };
+
+    let (upper, str_to_head, tail) = match scan_rec(&tail_start_node, tail) {
+        ScanReturn::FullMatch {
+            upper,
+            t_rem_matched,
+            lower: _lower,
+        } => (upper, t_rem_matched, AStr::empty()),
+        ScanReturn::MaximalNonFullMatch {
+            max,
+            t_rem_matched,
+            t_unmatched,
+        } => (max, t_rem_matched, t_unmatched),
+    };
+
+    let head = if str_to_head.len() == 0 {
+        upper
+    } else {
+        insert_intermediate(&upper, str_to_head)
+    };
+
+    insert_tail(suffix_index, &head, tail);
+
+    HeadTail {
+        head,
+        tail: tail.to_owned(),
     }
 }
 
