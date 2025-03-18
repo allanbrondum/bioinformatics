@@ -30,8 +30,8 @@ struct Node<C: CharT> {
     suffix: Option<Rc<RefCell<Node<C>>>>,
 }
 
-impl<C: CharT> Node<C> {
-    fn root() -> Self {
+impl<C: CharT> Default for Node<C> {
+    fn default() -> Self {
         Self {
             parent: None,
             children: Default::default(),
@@ -39,7 +39,9 @@ impl<C: CharT> Node<C> {
             suffix: None,
         }
     }
+}
 
+impl<C: CharT> Node<C> {
     fn with_parent(parent: Rc<RefCell<Edge<C>>>) -> Self {
         Self {
             parent: Some(parent),
@@ -144,10 +146,8 @@ fn terminals_rec<C: CharT>(node: &Node<C>, result: &mut HashSet<usize>) {
 /// Builds suffix trie
 pub fn build_trie<C: CharT>(s: &AStr<C>) -> SuffixTrie<C> {
     let mut trie = SuffixTrie {
-        root: Rc::new(RefCell::new(Node::root())),
+        root: Rc::new(RefCell::new(Node::default())),
     };
-
-    trie.root.borrow_mut().suffix = Some(trie.root.clone());
 
     let mut head_tail = HeadTail {
         head: trie.root.clone(),
@@ -170,68 +170,117 @@ struct HeadTail<C: CharT> {
     tail: AString<C>,
 }
 
-/// Returns (head(suffix_index), tail(suffix_index))
 fn insert_suffix<C: CharT>(suffix_index: usize, prev_head_tail: HeadTail<C>) -> HeadTail<C> {
-    let prev_head_ref = prev_head_tail.head.borrow();
-    if let Some(parent) = prev_head_ref.parent.as_ref() {
-        let parent_ref = parent.borrow();
-        let s_parent_prev_head = parent_ref.source.borrow().suffix.clone().expect("suffix");
+    let mut prev_head_mut_guard = prev_head_tail.head.borrow_mut();
+    let mut prev_head_mut = prev_head_mut_guard.deref_mut();
+    if let Some(parent_edge) = prev_head_mut.parent.as_ref() {
+        let parent_edge_ref = parent_edge.borrow();
+        let parent_ref = parent_edge_ref.source.borrow();
 
-        let v_tail = parent_ref.chars.to_owned() + prev_head_tail.tail.as_str();
+        let (start_node, str_to_prev_head) = if parent_ref.parent.is_some() {
+            (
+                parent_ref.suffix.as_ref().expect("suffix"),
+                parent_edge_ref.chars.as_str(),
+            )
+        } else {
+            (&parent_edge_ref.source, &parent_edge_ref.chars[1..])
+        };
 
-        todo!()
-        // insert_rec(suffix_index, &s_parent_prev_head, &v_tail)
+        let ScanReturn::FullMatch {
+            upper,
+            t_rem_matched: rem_matched,
+            lower: _lower,
+        } = scan_rec(start_node, str_to_prev_head)
+        else {
+            panic!("should be full match");
+        };
+
+        let s_prev_head = if rem_matched.len() == 0 {
+            upper
+        } else {
+            insert_intermediate(&upper, rem_matched)
+        };
+
+        prev_head_mut.suffix = Some(s_prev_head.clone());
+
+        let (upper, str_to_head, tail) = match scan_rec(&s_prev_head, &prev_head_tail.tail) {
+            ScanReturn::FullMatch {
+                upper,
+                t_rem_matched,
+                lower: _lower,
+            } => (upper, t_rem_matched, AStr::empty()),
+            ScanReturn::MaximalNonFullMatch {
+                max,
+                t_rem_matched,
+                t_unmatched,
+            } => (max, t_rem_matched, t_unmatched),
+        };
+
+        let head = if str_to_head.len() == 0 {
+            upper
+        } else {
+            insert_intermediate(&upper, str_to_head)
+        };
+
+        insert_tail(suffix_index, &head, tail);
+
+        HeadTail {
+            head,
+            tail: tail.to_owned(),
+        }
     } else {
         todo!()
         // insert_rec(suffix_index, &prev_head_tail.head, &prev_head_tail.tail)
     }
 }
 
-/// Returns head(suffix_index)
-// fn insert_rec< C: CharT>(
-//     suffix_index: usize,
-//     node: &Rc<RefCell<Node<C>>>,
-//     s: & AStr<C>,
-// ) -> HeadTail< C> {
-//     let mut node_mut = node.borrow_mut();
-//     if let Some(ch) = s.first() {
-//         if let Some(edge) = &mut node_mut.children[ch.index()] {
-//             let mut edge_mut = edge.borrow_mut();
-//             let lcp_len = string::lcp(&s[1..], &edge_mut.chars[1..]).len() + 1;
-//
-//             if lcp_len == edge_mut.chars.len() {
-//                 insert_rec(suffix_index, &edge_mut.target, &s[edge_mut.chars.len()..])
-//             } else if lcp_len < edge_mut.chars.len() {
-//                 let new_node = Node::with_parent(node.clone());
-//                 let new_edge = Edge {
-//                     chars: edge_mut.chars[..lcp_len].to_owned(),
-//                     source: node.clone(),
-//                     target: Rc::new(RefCell::new(new_node)),
-//                 };
-//                 let  edge_remainder = Rc::new(RefCell::new(mem::replace(edge_mut.deref_mut(), new_edge)));
-//                 let mut edge_remainder_mut = edge_remainder.borrow_mut();
-//                 edge_remainder_mut.chars = edge_remainder_mut.chars[lcp_len..].to_owned();
-//                 edge_remainder_mut.source = edge_mut.target.clone();
-//                 edge_remainder_mut.target.borrow_mut().parent = Some(edge_mut.target.clone());
-//                 let rem_ch = edge_remainder_mut.chars[0];
-//                 edge_mut.target.borrow_mut().children[rem_ch.index()] = Some(edge_remainder);
-//
-//                 insert_rec(suffix_index, &edge_mut.target, &s[lcp_len..]);
-//             } else {
-//                 unreachable!()
-//             }
-//         } else {
-//             let mut new_node = Node::with_parent(node.clone());
-//             new_node.terminal = Some(Terminal { suffix_index });
-//             node_mut.children[ch.index()] = Some(Box::new(Edge {
-//                 chars: s.to_owned(),
-//                 target: Rc::new(RefCell::new(new_node)),
-//             }));
-//         }
-//     } else {
-//         node_mut.terminal = Some(Terminal { suffix_index });
-//     }
-// }
+/// Precondition: `t_rem` does not exists on edge from `node`
+fn insert_tail<C: CharT>(suffix_index: usize, node: &Rc<RefCell<Node<C>>>, t_rem: &AStr<C>) {
+    let mut node_mut = node.borrow_mut();
+    if t_rem.is_empty() {
+        node.borrow_mut().terminal = Some(Terminal { suffix_index });
+    } else {
+        let edge = Rc::new(RefCell::new(Edge {
+            chars: t_rem.to_owned(),
+            source: node.clone(),
+            target: Rc::new(RefCell::new(Node::default())),
+        }));
+        let mut new_node = Node::with_parent(edge.clone());
+        new_node.terminal = Some(Terminal { suffix_index });
+        edge.borrow_mut().target = Rc::new(RefCell::new(new_node));
+        node_mut.children[t_rem[0].index()] = Some(edge);
+    }
+}
+
+/// Precondition: `t_rem` exists on edge from `node`
+fn insert_intermediate<C: CharT>(
+    node: &Rc<RefCell<Node<C>>>,
+    t_rem: &AStr<C>,
+) -> Rc<RefCell<Node<C>>> {
+    assert!(!t_rem.is_empty());
+    let node_mut = node.borrow_mut();
+    let edge = node_mut.children[t_rem[0].index()]
+        .as_ref()
+        .expect("edge must exist");
+    let mut edge_mut = edge.borrow_mut();
+
+    let new_edge = Edge {
+        chars: edge_mut.chars[..t_rem.len()].to_owned(),
+        source: node.clone(),
+        target: Rc::new(RefCell::new(Node::with_parent(edge.clone()))),
+    };
+
+    let edge_remainder = Rc::new(RefCell::new(mem::replace(edge_mut.deref_mut(), new_edge)));
+    let mut edge_remainder_mut = edge_remainder.borrow_mut();
+    edge_remainder_mut.chars = edge_remainder_mut.chars[t_rem.len()..].to_owned();
+    edge_remainder_mut.source = edge_mut.target.clone();
+    edge_remainder_mut.target.borrow_mut().parent = Some(edge_remainder.clone());
+    let rem_ch = edge_remainder_mut.chars[0];
+    drop(edge_remainder_mut);
+    edge_mut.target.borrow_mut().children[rem_ch.index()] = Some(edge_remainder);
+
+    edge_mut.target.clone()
+}
 
 fn to_dot<C: CharT>(filepath: impl AsRef<Path>, trie: &SuffixTrie<C>) {
     let mut file = File::create(filepath).unwrap();

@@ -12,6 +12,7 @@ use std::fmt::{Display, Formatter};
 use std::mem;
 use std::ops::{Add, Deref, Index, Range, RangeFrom, RangeInclusive, RangeTo, RangeToInclusive};
 use std::str::FromStr;
+use smallvec::{SmallVec, ToSmallVec};
 
 #[derive(Debug, Eq, PartialEq, Hash)]
 pub struct AStr<C: CharT>([C]);
@@ -63,24 +64,27 @@ impl<C: CharT> AsRef<[C]> for AStr<C> {
     }
 }
 
+
+type AStringVec<C> = SmallVec<[C;5]>;
+
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
-pub struct AString<C: CharT>(Vec<C>);
+pub struct AString<C: CharT>(AStringVec<C>);
 
 impl<C: CharT> FromIterator<C> for AString<C> {
     fn from_iter<T: IntoIterator<Item = C>>(iter: T) -> Self {
-        Self(Vec::from_iter(iter))
+        Self(AStringVec::from_iter(iter))
     }
 }
 
 impl<C: CharT> Default for AString<C> {
     fn default() -> Self {
-        Self(Vec::default())
+        Self(AStringVec::default())
     }
 }
 
 impl<C: CharT> IntoIterator for AString<C> {
     type Item = C;
-    type IntoIter = <Vec<C> as IntoIterator>::IntoIter;
+    type IntoIter = <AStringVec<C> as IntoIterator>::IntoIter;
 
     fn into_iter(self) -> Self::IntoIter {
         self.0.into_iter()
@@ -124,6 +128,12 @@ impl<C: CharT> FromStr for AString<C> {
 
 impl<C: CharT> From<Vec<C>> for AString<C> {
     fn from(value: Vec<C>) -> Self {
+        Self(value.into())
+    }
+}
+
+impl<C: CharT> From<AStringVec<C>> for AString<C> {
+    fn from(value: AStringVec<C>) -> Self {
         Self(value)
     }
 }
@@ -176,7 +186,7 @@ impl<C: CharT> ToOwned for AStr<C> {
     type Owned = AString<C>;
 
     fn to_owned(&self) -> Self::Owned {
-        AString(self.as_slice().to_vec())
+        AString(self.as_slice().to_smallvec())
     }
 }
 
