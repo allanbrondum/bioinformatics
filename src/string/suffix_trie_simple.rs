@@ -119,10 +119,10 @@ pub fn build_trie<C: CharT>(s: &AStr<C>) -> SuffixTrie<C> {
     for i in 0..s.len() {
         match scan_rec_mut(&mut trie.root, &s[i..]) {
             ScanReturnMut::FullMatch { node } => {
-                insert_rec(i, node, AStr::empty() );
+                insert_rec(i, node, AStr::empty());
             }
             ScanReturnMut::MaximalNotFullMatch { node, t_rest } => {
-                insert_rec(i,node, t_rest, );
+                insert_rec(i, node, t_rest);
             }
         }
     }
@@ -134,7 +134,7 @@ pub fn build_trie<C: CharT>(s: &AStr<C>) -> SuffixTrie<C> {
     trie
 }
 
-fn insert_rec<C: CharT>(suffix: usize,  node: &mut Node<C>, s: &AStr<C>) {
+fn insert_rec<C: CharT>(suffix: usize, node: &mut Node<C>, s: &AStr<C>) {
     match s.split_first() {
         None => {
             assert!(node.terminal.is_none());
@@ -149,7 +149,7 @@ fn insert_rec<C: CharT>(suffix: usize,  node: &mut Node<C>, s: &AStr<C>) {
                     target: Node::new(),
                 })
             });
-            insert_rec(suffix,  &mut edge.target, AStr::from_slice(s_rest));
+            insert_rec(suffix, &mut edge.target, AStr::from_slice(s_rest));
         }
     }
 }

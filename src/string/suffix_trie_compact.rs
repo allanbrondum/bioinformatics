@@ -53,39 +53,38 @@ enum ScanReturn<'a, 'b, C: CharT> {
     },
     MaximalNonFullMatch {
         max: &'a Node<C>,
-        t_rest: &'b AStr<C>,
+        t_unmatched: &'b AStr<C>,
     },
 }
 
 fn scan_rec<'a, 'b, C: CharT>(node: &'a Node<C>, t: &'b AStr<C>) -> ScanReturn<'a, 'b, C> {
     if let Some(ch) = t.first() {
         if let Some(edge) = &node.children[ch.index()] {
-            if t.len() <= edge.chars.len() {
-                if t[1..] == edge.chars[1..t.len()] {
+            let lcp_len = string::lcp(&t[1..], &edge.chars[1..]).len() + 1;
+
+            if lcp_len == edge.chars.len() {
+                scan_rec(&edge.target, &t[edge.chars.len()..])
+            } else if lcp_len < edge.chars.len() {
+                if lcp_len == t.len() {
                     ScanReturn::FullMatch {
                         upper: node,
                         lower: &edge.target,
                     }
-                } else {
+                } else if lcp_len < t.len() {
                     ScanReturn::MaximalNonFullMatch {
-                        max: node,
-                        t_rest: t,
+                        max: node.clone(),
+                        t_unmatched: &t[lcp_len..],
                     }
+                } else {
+                    unreachable!()
                 }
             } else {
-                if t[1..edge.chars.len()] == edge.chars[1..] {
-                    scan_rec(&edge.target, &t[edge.chars.len()..])
-                } else {
-                    ScanReturn::MaximalNonFullMatch {
-                        max: node,
-                        t_rest: t,
-                    }
-                }
+                unreachable!()
             }
         } else {
             ScanReturn::MaximalNonFullMatch {
                 max: node,
-                t_rest: t,
+                t_unmatched: t,
             }
         }
     } else {
