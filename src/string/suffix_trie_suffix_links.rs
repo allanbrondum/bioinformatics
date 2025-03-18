@@ -173,11 +173,11 @@ struct HeadTail<C: CharT> {
 fn insert_suffix<C: CharT>(suffix_index: usize, prev_head_tail: HeadTail<C>) -> HeadTail<C> {
     let mut prev_head_mut_guard = prev_head_tail.head.borrow_mut();
     let mut prev_head_mut = prev_head_mut_guard.deref_mut();
-    let (tail_start_node, tail) = if let Some(parent_edge) = prev_head_mut.parent.as_ref() {
+    let (to_suffix_base_node, to_suffix_str) = if let Some(parent_edge) = prev_head_mut.parent.as_ref() {
         let parent_edge_ref = parent_edge.borrow();
         let parent_ref = parent_edge_ref.source.borrow();
 
-        let (start_node, str_to_prev_head) = if parent_ref.parent.is_some() {
+        let (to_s_prev_head_base_node, to_s_prev_head_str) = if parent_ref.parent.is_some() {
             (
                 parent_ref.suffix.as_ref().expect("suffix"),
                 parent_edge_ref.chars.as_str(),
@@ -190,7 +190,7 @@ fn insert_suffix<C: CharT>(suffix_index: usize, prev_head_tail: HeadTail<C>) -> 
             upper,
             t_rem_matched: rem_matched,
             lower: _lower,
-        } = scan_rec(start_node, str_to_prev_head)
+        } = scan_rec(to_s_prev_head_base_node, to_s_prev_head_str)
         else {
             panic!("should be full match");
         };
@@ -208,7 +208,7 @@ fn insert_suffix<C: CharT>(suffix_index: usize, prev_head_tail: HeadTail<C>) -> 
         (prev_head_tail.head.clone(), &prev_head_tail.tail[1..])
     };
 
-    let (upper, str_to_head, tail) = match scan_rec(&tail_start_node, tail) {
+    let (upper, to_head_str, tail) = match scan_rec(&to_suffix_base_node, to_suffix_str) {
         ScanReturn::FullMatch {
             upper,
             t_rem_matched,
@@ -221,10 +221,10 @@ fn insert_suffix<C: CharT>(suffix_index: usize, prev_head_tail: HeadTail<C>) -> 
         } => (max, t_rem_matched, t_unmatched),
     };
 
-    let head = if str_to_head.len() == 0 {
+    let head = if to_head_str.len() == 0 {
         upper
     } else {
-        insert_intermediate(&upper, str_to_head)
+        insert_intermediate(&upper, to_head_str)
     };
 
     insert_tail(suffix_index, &head, tail);
