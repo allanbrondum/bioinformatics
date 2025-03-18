@@ -123,13 +123,14 @@ fn insert_suffix<'a, C: CharT>(
     prev_head: &Rc<RefCell<Node<C>>>,
     prev_tail: &'a AStr<C>,
 ) -> (Rc<RefCell<Node<C>>>, &'a AStr<C>) {
-    let prev_head_ref = prev_head.borrow();
-    if let Some(parent) = prev_head_ref.parent.as_ref() {
-        let parent_ref = parent.borrow();
-        let suffix_ref = parent_ref.suffix.as_ref().expect("suffix").borrow();
-    } else {
-        insert_rec(suffix_index, prev_head, prev_tail)
-    }
+    todo!()
+    // let prev_head_ref = prev_head.borrow();
+    // if let Some(parent) = prev_head_ref.parent.as_ref() {
+    //     let parent_ref = parent.borrow();
+    //     let suffix_ref = parent_ref.suffix.as_ref().expect("suffix").borrow();
+    // } else {
+    //     insert_rec(suffix_index, prev_head, prev_tail)
+    // }
 }
 
 /// Returns head(suffix_index)
@@ -138,40 +139,41 @@ fn insert_rec<'a, C: CharT>(
     node: &Rc<RefCell<Node<C>>>,
     s: &'a AStr<C>,
 ) -> (Rc<RefCell<Node<C>>>, &'a AStr<C>) {
-    let mut node_mut = node.borrow_mut();
-    if let Some(ch) = s.first() {
-        if let Some(edge) = &mut node_mut.children[ch.index()] {
-            let lcp_len = string::lcp(&s[1..], &edge.chars[1..]).len() + 1;
-
-            if lcp_len == edge.chars.len() {
-                insert_rec(suffix_index, &edge.target, &s[edge.chars.len()..]);
-            } else if lcp_len < edge.chars.len() {
-                let new_node = Node::with_parent(node.clone());
-                let new_edge = Edge {
-                    chars: edge.chars[..lcp_len].to_owned(),
-                    target: Rc::new(RefCell::new(new_node)),
-                };
-                let mut edge_remainder = mem::replace(edge, Box::new(new_edge));
-                edge_remainder.chars = edge_remainder.chars[lcp_len..].to_owned();
-                edge_remainder.target.borrow_mut().parent = Some(edge.target.clone());
-                let rem_ch = edge_remainder.chars[0];
-                edge.target.borrow_mut().children[rem_ch.index()] = Some(edge_remainder);
-
-                insert_rec(suffix_index, &edge.target, &s[lcp_len..] );
-            } else {
-                unreachable!()
-            }
-        } else {
-            let mut new_node = Node::with_parent(node.clone());
-            new_node.terminal = Some(Terminal { suffix_index });
-            node_mut.children[ch.index()] = Some(Box::new(Edge {
-                chars: s.to_owned(),
-                target: Rc::new(RefCell::new(new_node)),
-            }));
-        }
-    } else {
-        node_mut.terminal = Some(Terminal { suffix_index });
-    }
+    todo!()
+    // let mut node_mut = node.borrow_mut();
+    // if let Some(ch) = s.first() {
+    //     if let Some(edge) = &mut node_mut.children[ch.index()] {
+    //         let lcp_len = string::lcp(&s[1..], &edge.chars[1..]).len() + 1;
+    //
+    //         if lcp_len == edge.chars.len() {
+    //             insert_rec(suffix_index, &edge.target, &s[edge.chars.len()..]);
+    //         } else if lcp_len < edge.chars.len() {
+    //             let new_node = Node::with_parent(node.clone());
+    //             let new_edge = Edge {
+    //                 chars: edge.chars[..lcp_len].to_owned(),
+    //                 target: Rc::new(RefCell::new(new_node)),
+    //             };
+    //             let mut edge_remainder = mem::replace(edge, Box::new(new_edge));
+    //             edge_remainder.chars = edge_remainder.chars[lcp_len..].to_owned();
+    //             edge_remainder.target.borrow_mut().parent = Some(edge.target.clone());
+    //             let rem_ch = edge_remainder.chars[0];
+    //             edge.target.borrow_mut().children[rem_ch.index()] = Some(edge_remainder);
+    //
+    //             insert_rec(suffix_index, &edge.target, &s[lcp_len..] );
+    //         } else {
+    //             unreachable!()
+    //         }
+    //     } else {
+    //         let mut new_node = Node::with_parent(node.clone());
+    //         new_node.terminal = Some(Terminal { suffix_index });
+    //         node_mut.children[ch.index()] = Some(Box::new(Edge {
+    //             chars: s.to_owned(),
+    //             target: Rc::new(RefCell::new(new_node)),
+    //         }));
+    //     }
+    // } else {
+    //     node_mut.terminal = Some(Terminal { suffix_index });
+    // }
 }
 
 fn to_dot<C: CharT>(filepath: impl AsRef<Path>, trie: &SuffixTrie<C>) {

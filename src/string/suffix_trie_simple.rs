@@ -41,23 +41,44 @@ struct Edge<C: CharT> {
     target: Node<C>,
 }
 
-/// Finds indexes of given string in the string represented in the trie
-pub fn indexes_substr<C: CharT>(trie: &SuffixTrie<C>, t: &AStr<C>) -> HashSet<usize> {
-    let mut result = HashSet::new();
-
-    indexes_substr_rec(&trie.root, t, &mut result);
-
-    result
-}
-
-fn indexes_substr_rec<C: CharT>(node: &Node<C>, t: &AStr<C>, result: &mut HashSet<usize>) {
+fn scan_rec<'a, 'b, C: CharT>(node: &'a Node<C>, t: &'b AStr<C>) -> (&'a Node<C>, &'b AStr<C>) {
     if let Some((ch, t_rest)) = t.split_first() {
         if let Some(edge) = &node.children[ch.index()] {
-            indexes_substr_rec(&edge.target, AStr::from_slice(t_rest), result);
+            scan_rec(&edge.target, AStr::from_slice(t_rest))
+        } else {
+            (node, t)
         }
     } else {
-        terminals_rec(node, result);
+        (node, t)
     }
+}
+
+fn scan_rec_mut<'a, 'b, C: CharT>(
+    node: &'a mut Node<C>,
+    t: &'b AStr<C>,
+) -> (&'a mut Node<C>, &'b AStr<C>) {
+    if let Some((ch, t_rest)) = t.split_first() {
+        if node.children[ch.index()].is_some() {
+            return scan_rec_mut(
+                &mut node.children[ch.index()].as_mut().unwrap().target,
+                AStr::from_slice(t_rest),
+            );
+        }
+    }
+
+    (node, t)
+}
+
+/// Finds indexes of given string in the string represented in the trie
+pub fn indexes_substr<C: CharT>(trie: &SuffixTrie<C>, t: &AStr<C>) -> HashSet<usize> {
+    let (node, t_rest) = scan_rec(&trie.root, t);
+
+    let mut result = HashSet::new();
+    if t_rest.len() == 0 {
+        terminals_rec(node, &mut result);
+    }
+
+    result
 }
 
 fn terminals_rec<C: CharT>(node: &Node<C>, result: &mut HashSet<usize>) {
@@ -74,7 +95,8 @@ pub fn build_trie<C: CharT>(s: &AStr<C>) -> SuffixTrie<C> {
     let mut trie = SuffixTrie { root: Node::new() };
 
     for i in 0..s.len() {
-        insert_rec(i, &s[i..], &mut trie.root);
+        let (node, t_rest) = scan_rec_mut(&mut trie.root, &s[i..]);
+        insert_rec(i, t_rest, node);
     }
 
     if GRAPH_DEBUG {
