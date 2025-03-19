@@ -6,13 +6,17 @@ use criterion::{Bencher, BenchmarkId, Criterion, Throughput, criterion_group, cr
 
 use crate::bench_util::Char;
 use proptest::strategy::{Strategy, ValueTree};
-use rosalind::string::{suffix_trie_simple, suffix_trie_suffix_links};
+use rosalind::string::{suffix_trie_simple, suffix_trie_suffix_links, suffix_trie_compact};
 use rosalind::string_model::{AStr, arb_astring};
 
-const STRING_LENGTHS: &[usize] = &[32, 256, 1_024];
+const STRING_LENGTHS: &[usize] = &[200, 5000, 20_000];
 
 fn bench_build_trie_simple(bencher: &mut Bencher<'_>, s: &AStr<Char>) {
     bencher.iter_with_large_drop(|| suffix_trie_simple::build_trie(s));
+}
+
+fn bench_build_trie_compact(bencher: &mut Bencher<'_>, s: &AStr<Char>) {
+    bencher.iter_with_large_drop(|| suffix_trie_compact::build_trie(s));
 }
 
 fn bench_build_trie_suffix_links(bencher: &mut Bencher<'_>, s: &AStr<Char>) {
@@ -21,6 +25,10 @@ fn bench_build_trie_suffix_links(bencher: &mut Bencher<'_>, s: &AStr<Char>) {
 
 fn bench_build_and_drop_trie_simple(bencher: &mut Bencher<'_>, s: &AStr<Char>) {
     bencher.iter(|| suffix_trie_simple::build_trie(s));
+}
+
+fn bench_build_and_drop_trie_compact(bencher: &mut Bencher<'_>, s: &AStr<Char>) {
+    bencher.iter(|| suffix_trie_compact::build_trie(s));
 }
 
 fn bench_build_and_drop_trie_suffix_links(bencher: &mut Bencher<'_>, s: &AStr<Char>) {
@@ -56,7 +64,6 @@ fn criterion_benches(criterion: &mut Criterion) {
                 |bencher, s| bench_build_trie_simple(bencher, s),
             )
             .throughput(Throughput::Elements(string_length as u64));
-
         build_trie_benches
             .bench_with_input(
                 BenchmarkId::new("build_and_drop_trie_simple", string_length),
@@ -64,7 +71,20 @@ fn criterion_benches(criterion: &mut Criterion) {
                 |bencher, s| bench_build_and_drop_trie_simple(bencher, s),
             )
             .throughput(Throughput::Elements(string_length as u64));
-
+        build_trie_benches
+            .bench_with_input(
+                BenchmarkId::new("build_trie_compact", string_length),
+                &s,
+                |bencher, s| bench_build_trie_compact(bencher, s),
+            )
+            .throughput(Throughput::Elements(string_length as u64));
+        build_trie_benches
+            .bench_with_input(
+                BenchmarkId::new("build_and_drop_trie_compact", string_length),
+                &s,
+                |bencher, s| bench_build_and_drop_trie_compact(bencher, s),
+            )
+            .throughput(Throughput::Elements(string_length as u64));
         build_trie_benches
             .bench_with_input(
                 BenchmarkId::new("build_trie_suffix_links", string_length),
@@ -72,7 +92,6 @@ fn criterion_benches(criterion: &mut Criterion) {
                 |bencher, s| bench_build_trie_suffix_links(bencher, s),
             )
             .throughput(Throughput::Elements(string_length as u64));
-
         build_trie_benches
             .bench_with_input(
                 BenchmarkId::new("build_and_drop_trie_suffix_links", string_length),

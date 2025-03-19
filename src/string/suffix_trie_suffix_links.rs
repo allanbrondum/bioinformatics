@@ -16,7 +16,7 @@ use std::path::Path;
 use std::rc::Rc;
 use std::{mem, ptr};
 
-const GRAPH_DEBUG: bool = true;
+const GRAPH_DEBUG: bool = false;
 
 #[derive(Debug)]
 pub struct SuffixTrie<'s, C: CharT> {
