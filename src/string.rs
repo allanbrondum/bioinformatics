@@ -146,7 +146,7 @@ mod test {
     }
 
     #[test]
-    fn test_replace_All() {
+    fn test_replace_all() {
         assert_eq!(
             replace_all(ascii("abcd").to_owned(), ascii("ijk"), ascii("lmn")),
             ascii("abcd").to_owned()

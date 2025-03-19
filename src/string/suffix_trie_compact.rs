@@ -3,7 +3,6 @@
 use crate::alphabet_model::CharT;
 use crate::string_model::{AStr, AString};
 use generic_array::GenericArray;
-use itertools::Itertools;
 
 use crate::string;
 use std::collections::HashSet;
@@ -72,7 +71,7 @@ fn scan_rec<'a, 'b, C: CharT>(node: &'a Node<C>, t: &'b AStr<C>) -> ScanReturn<'
                     }
                 } else if lcp_len < t.len() {
                     ScanReturn::MaximalNonFullMatch {
-                        max: node.clone(),
+                        max: node,
                         t_unmatched: &t[lcp_len..],
                     }
                 } else {
@@ -139,7 +138,7 @@ fn insert_rec<C: CharT>(suffix_index: usize, s: &AStr<C>, node: &mut Node<C>) {
             if lcp_len == edge.chars.len() {
                 insert_rec(suffix_index, &s[edge.chars.len()..], &mut edge.target);
             } else if lcp_len < edge.chars.len() {
-                let mut new_node = Node::new();
+                let new_node = Node::new();
                 let new_edge = Edge {
                     chars: edge.chars[..lcp_len].to_owned(),
                     target: new_node,
@@ -191,10 +190,9 @@ fn to_dot_rec<C: CharT>(write: &mut impl Write, node: &Node<C>) {
         .unwrap();
         writeln!(
             write,
-            "    \"{}\" -> \"{}\" [label=\"{}\" dir=none];",
+            "    \"{}\" -> \"{}\" [label=\"$\" dir=none];",
             node_id(node),
             ptr::from_ref(terminal) as usize,
-            '$'
         )
         .unwrap();
     }

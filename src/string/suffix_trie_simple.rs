@@ -180,10 +180,9 @@ fn to_dot_rec<C: CharT>(write: &mut impl Write, node: &Node<C>) {
         .unwrap();
         writeln!(
             write,
-            "    \"{}\" -> \"{}\" [label=\"{}\" dir=none];",
+            "    \"{}\" -> \"{}\" [label=\"$\" dir=none];",
             ptr::from_ref(node) as usize,
             ptr::from_ref(terminal) as usize,
-            '$'
         )
         .unwrap();
     }

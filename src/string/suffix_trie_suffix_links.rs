@@ -1,7 +1,7 @@
 //! McCreight algorithm
 
 use crate::alphabet_model::CharT;
-use crate::string_model::{AStr, AString};
+use crate::string_model::AStr;
 use generic_array::GenericArray;
 
 use crate::string;
@@ -177,7 +177,7 @@ fn terminals_rec<'s, C: CharT>(node: &Node<'s, C>, result: &mut HashSet<usize>) 
 
 /// Builds suffix trie
 pub fn build_trie<'s, C: CharT>(s: &'s AStr<C>) -> SuffixTrie<'s, C> {
-    let mut trie = SuffixTrie {
+    let trie = SuffixTrie {
         root: Rc::new(RefCell::new(Node::default())),
     };
 
@@ -235,7 +235,7 @@ fn insert_suffix<C: CharT>(suffix_index: usize, prev_head_tail: HeadTail<C>) -> 
         drop(parent_ref);
         drop(parent_edge_ref);
 
-        let (s_prev_head, is_head) = if rem_matched.len() == 0 {
+        let (s_prev_head, is_head) = if rem_matched.is_empty() {
             (upper, false)
         } else {
             (insert_intermediate(&upper, &rem_matched), true)
@@ -268,7 +268,7 @@ fn insert_suffix<C: CharT>(suffix_index: usize, prev_head_tail: HeadTail<C>) -> 
             } => (max, t_rem_matched, t_unmatched),
         };
 
-        let head = if to_head_str.len() == 0 {
+        let head = if to_head_str.is_empty() {
             upper
         } else {
             insert_intermediate(&upper, to_head_str)
@@ -359,10 +359,9 @@ fn to_dot_rec<C: CharT>(write: &mut impl Write, node: &Node<C>) {
         .unwrap();
         writeln!(
             write,
-            "    \"{}\" -> \"{}\" [label=\"{}\" dir=none];",
+            "    \"{}\" -> \"{}\" [label=\"$\" dir=none];",
             node_id(node),
             ptr::from_ref(terminal) as usize,
-            '$'
         )
         .unwrap();
     }
