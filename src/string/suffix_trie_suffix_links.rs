@@ -6,6 +6,7 @@ use generic_array::GenericArray;
 
 use crate::string;
 use std::cell::RefCell;
+use std::cmp::Ordering;
 use std::collections::HashSet;
 use std::fmt::Display;
 use std::fs::File;
@@ -84,26 +85,26 @@ fn scan_rec<'s, C: CharT>(node: &Rc<RefCell<Node<'s, C>>>, t: &'s AStr<C>) -> Sc
             let edge_ref = edge.borrow();
             let lcp_len = string::lcp(&t[1..], &edge_ref.chars[1..]).len() + 1;
 
-            if lcp_len == edge_ref.chars.len() {
-                scan_rec(&edge_ref.target, &t[edge_ref.chars.len()..])
-            } else if lcp_len < edge_ref.chars.len() {
-                if lcp_len == t.len() {
-                    ScanReturn::FullMatch {
+            match lcp_len.cmp(&edge_ref.chars.len()) {
+                Ordering::Equal => scan_rec(&edge_ref.target, &t[edge_ref.chars.len()..]),
+                Ordering::Less => match lcp_len.cmp(&t.len()) {
+                    Ordering::Equal => ScanReturn::FullMatch {
                         upper: node.clone(),
                         t_rem_matched: t,
                         lower: edge_ref.target.clone(),
-                    }
-                } else if lcp_len < t.len() {
-                    ScanReturn::MaximalNonFullMatch {
+                    },
+                    Ordering::Less => ScanReturn::MaximalNonFullMatch {
                         max: node.clone(),
                         t_rem_matched: &t[..lcp_len],
                         t_unmatched: &t[lcp_len..],
+                    },
+                    Ordering::Greater => {
+                        unreachable!()
                     }
-                } else {
+                },
+                Ordering::Greater => {
                     unreachable!()
                 }
-            } else {
-                unreachable!()
             }
         } else {
             ScanReturn::MaximalNonFullMatch {
