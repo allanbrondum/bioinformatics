@@ -69,6 +69,18 @@ type AStringVec<C> = SmallVec<[C; 5]>;
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub struct AString<C: CharT>(AStringVec<C>);
 
+impl<'a, C:CharT> PartialEq<&'a AStr<C>> for AString<C>{
+    fn eq(&self, other: &&'a AStr<C>) -> bool {
+        self.as_str().eq(other)
+    }
+}
+
+impl<'a, C:CharT> PartialEq<AString<C>> for &'a AStr<C>{
+    fn eq(&self, other: &AString<C>) -> bool {
+        (*self).eq(other.as_str())
+    }
+}
+
 impl<C: CharT> FromIterator<C> for AString<C> {
     fn from_iter<T: IntoIterator<Item = C>>(iter: T) -> Self {
         Self(AStringVec::from_iter(iter))

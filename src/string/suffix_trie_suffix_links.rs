@@ -1,20 +1,21 @@
 //! McCreight algorithm
 
-use crate::alphabet_model::CharT;
-use crate::string_model::AStr;
-use generic_array::GenericArray;
+use crate::alphabet_model::{CharT, WithSeparator};
+use crate::string_model::{AStr, AString};
+use generic_array::{ArrayLength, GenericArray};
 
 use crate::string;
+use generic_array::typenum::{Add1, B1, Unsigned};
 use std::cell::RefCell;
 use std::cmp::Ordering;
 use std::collections::HashSet;
-use std::fmt::Display;
+use std::fmt::{Debug, Display};
 use std::fs::File;
 use std::io::Write;
-use std::ops::DerefMut;
+use std::ops::{Add, DerefMut};
 use std::path::Path;
 use std::rc::Rc;
-use std::{mem, ptr};
+use std::{iter, mem, ptr};
 
 const GRAPH_DEBUG: bool = false;
 
@@ -398,6 +399,30 @@ fn to_dot_rec<C: CharT>(write: &mut impl Write, node: &Node<C>) {
     }
 }
 
+pub fn lcs_trie_with_separator<C: CharT>(s: &AStr<C>, t: &AStr<C>) -> AString<C>
+where
+    C::AlphabetSize: Unsigned + Add<B1>,
+    Add1<C::AlphabetSize>: Debug + ArrayLength,
+{
+    let separated: AString<_> = s
+        .iter()
+        .copied()
+        .map(WithSeparator::Char)
+        .chain(iter::once(WithSeparator::Separator))
+        .chain(t.iter().copied().map(WithSeparator::Char))
+        .collect();
+
+    let trie = build_trie(&separated);
+
+    todo!()
+}
+
+pub fn lcs_trie<'a, C: CharT>(s: &AStr<C>, t: &'a AStr<C>) -> &'a AStr<C> {
+    let trie = build_trie(s);
+
+    todo!()
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
@@ -479,5 +504,31 @@ mod test {
             let indexes = indexes_substr(&trie, &t);
             prop_assert_eq!(indexes, HashSet::from_iter(expected.into_iter()));
         }
+    }
+
+    #[test]
+    fn test_lcs_trie() {
+        use crate::string_model::test_util::Char::*;
+
+        let s = AStr::from_slice(&[B, A, B, A, A, B, A, B, A, A]);
+        let t = AStr::from_slice(&[B, B, A, A, B, A, A, A, A, B]);
+
+        assert_eq!(
+            lcs_trie(s, t),
+            AStr::from_slice(&[B, A, A, B, A])
+        );
+    }
+
+    #[test]
+    fn test_lcs_trie_with_separator() {
+        use crate::string_model::test_util::Char::*;
+
+        let s = AStr::from_slice(&[B, A, B, A, A, B, A, B, A, A]);
+        let t = AStr::from_slice(&[B, B, A, A, B, A, A, A, A, B]);
+
+        assert_eq!(
+            lcs_trie_with_separator(s, t),
+            AStr::from_slice(&[B, A, A, B, A])
+        );
     }
 }

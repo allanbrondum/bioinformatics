@@ -1,5 +1,8 @@
 use generic_array::ArrayLength;
-use std::fmt::{Debug, Display};
+
+use generic_array::typenum::{Add1, B1, Unsigned};
+use std::fmt::{Debug, Display, Formatter, Write};
+use std::ops::Add;
 
 pub trait CharT: Debug + Display + Copy + Eq + PartialEq + 'static {
     type AlphabetSize: ArrayLength + Debug;
@@ -9,6 +12,52 @@ pub trait CharT: Debug + Display + Copy + Eq + PartialEq + 'static {
     fn from_char(ch: char) -> Option<Self>;
 
     fn to_char(self) -> char;
+}
+
+const SEPARATOR: char = '#';
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+pub enum WithSeparator<C: CharT> {
+    Char(C),
+    Separator,
+}
+
+impl<C: CharT> Display for WithSeparator<C> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            WithSeparator::Char(ch) => Display::fmt(&ch, f),
+            WithSeparator::Separator => f.write_char(SEPARATOR),
+        }
+    }
+}
+
+impl<C: CharT> CharT for WithSeparator<C>
+where
+    C::AlphabetSize: Unsigned + Add<B1>,
+    Add1<C::AlphabetSize>: Debug + ArrayLength,
+{
+    type AlphabetSize = Add1<C::AlphabetSize>;
+
+    fn index(self) -> usize {
+        match self {
+            WithSeparator::Char(ch) => ch.index(),
+            WithSeparator::Separator => C::AlphabetSize::to_usize(),
+        }
+    }
+
+    fn from_char(ch: char) -> Option<Self> {
+        if ch == SEPARATOR {
+            Some(Self::Separator)
+        } else {
+            C::from_char(ch).map(Self::Char)
+        }
+    }
+
+    fn to_char(self) -> char {
+        match self {
+            WithSeparator::Char(c) => c.to_char(),
+            WithSeparator::Separator => SEPARATOR,
+        }
+    }
 }
 
 // macro_rules! replace_expr {

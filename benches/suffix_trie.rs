@@ -6,14 +6,11 @@ use criterion::{Bencher, BenchmarkId, Criterion, Throughput, criterion_group, cr
 
 use crate::bench_util::Char;
 use proptest::strategy::{Strategy, ValueTree};
-use rosalind::string::{suffix_trie_simple, suffix_trie_suffix_links, suffix_trie_compact};
+use rosalind::string::{suffix_trie_compact, suffix_trie_simple, suffix_trie_suffix_links};
 use rosalind::string_model::{AStr, arb_astring};
 
-const STRING_LENGTHS: &[usize] = &[200, 5000, 20_000];
+const STRING_LENGTHS: &[usize] = &[200, 5000, 100_000];
 
-fn bench_build_trie_simple(bencher: &mut Bencher<'_>, s: &AStr<Char>) {
-    bencher.iter_with_large_drop(|| suffix_trie_simple::build_trie(s));
-}
 
 fn bench_build_trie_compact(bencher: &mut Bencher<'_>, s: &AStr<Char>) {
     bencher.iter_with_large_drop(|| suffix_trie_compact::build_trie(s));
@@ -23,9 +20,6 @@ fn bench_build_trie_suffix_links(bencher: &mut Bencher<'_>, s: &AStr<Char>) {
     bencher.iter_with_large_drop(|| suffix_trie_suffix_links::build_trie(s));
 }
 
-fn bench_build_and_drop_trie_simple(bencher: &mut Bencher<'_>, s: &AStr<Char>) {
-    bencher.iter(|| suffix_trie_simple::build_trie(s));
-}
 
 fn bench_build_and_drop_trie_compact(bencher: &mut Bencher<'_>, s: &AStr<Char>) {
     bencher.iter(|| suffix_trie_compact::build_trie(s));
@@ -35,18 +29,18 @@ fn bench_build_and_drop_trie_suffix_links(bencher: &mut Bencher<'_>, s: &AStr<Ch
     bencher.iter(|| suffix_trie_suffix_links::build_trie(s));
 }
 
-fn bench_indexes_substr(bencher: &mut Bencher<'_>, trie: suffix_trie_simple::SuffixTrie<Char>) {
-    // bencher.iter_batched(
-    //     || map.clone(),
-    //     |mut map| {
-    //         // trigger expiration of all items in the map
-    //         map.insert(map.len(), ());
-    //         assert_eq!(map.len(), 1);
-    //         map
-    //     },
-    //     BatchSize::SmallInput,
-    // );
-}
+// fn bench_indexes_substr(bencher: &mut Bencher<'_>, trie: suffix_trie_simple::SuffixTrie<Char>) {
+// bencher.iter_batched(
+//     || map.clone(),
+//     |mut map| {
+//         // trigger expiration of all items in the map
+//         map.insert(map.len(), ());
+//         assert_eq!(map.len(), 1);
+//         map
+//     },
+//     BatchSize::SmallInput,
+// );
+// }
 
 fn criterion_benches(criterion: &mut Criterion) {
     let mut build_trie_benches = criterion.benchmark_group("build_trie");
@@ -57,20 +51,20 @@ fn criterion_benches(criterion: &mut Criterion) {
             .unwrap()
             .current();
 
-        build_trie_benches
-            .bench_with_input(
-                BenchmarkId::new("build_trie_simple", string_length),
-                &s,
-                |bencher, s| bench_build_trie_simple(bencher, s),
-            )
-            .throughput(Throughput::Elements(string_length as u64));
-        build_trie_benches
-            .bench_with_input(
-                BenchmarkId::new("build_and_drop_trie_simple", string_length),
-                &s,
-                |bencher, s| bench_build_and_drop_trie_simple(bencher, s),
-            )
-            .throughput(Throughput::Elements(string_length as u64));
+        // build_trie_benches
+        //     .bench_with_input(
+        //         BenchmarkId::new("build_trie_simple", string_length),
+        //         &s,
+        //         |bencher, s| bench_build_trie_simple(bencher, s),
+        //     )
+        //     .throughput(Throughput::Elements(string_length as u64));
+        // build_trie_benches
+        //     .bench_with_input(
+        //         BenchmarkId::new("build_and_drop_trie_simple", string_length),
+        //         &s,
+        //         |bencher, s| bench_build_and_drop_trie_simple(bencher, s),
+        //     )
+        //     .throughput(Throughput::Elements(string_length as u64));
         build_trie_benches
             .bench_with_input(
                 BenchmarkId::new("build_trie_compact", string_length),
