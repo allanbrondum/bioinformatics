@@ -7,12 +7,12 @@ use ::proptest::strategy::Strategy;
 use ::proptest::{arbitrary, collection};
 use itertools::Itertools;
 use proptest::arbitrary::Arbitrary;
+use smallvec::{SmallVec, ToSmallVec};
 use std::borrow::Borrow;
 use std::fmt::{Display, Formatter};
 use std::mem;
 use std::ops::{Add, Deref, Index, Range, RangeFrom, RangeInclusive, RangeTo, RangeToInclusive};
 use std::str::FromStr;
-use smallvec::{SmallVec, ToSmallVec};
 
 #[derive(Debug, Eq, PartialEq, Hash)]
 pub struct AStr<C: CharT>([C]);
@@ -64,8 +64,7 @@ impl<C: CharT> AsRef<[C]> for AStr<C> {
     }
 }
 
-
-type AStringVec<C> = SmallVec<[C;5]>;
+type AStringVec<C> = SmallVec<[C; 5]>;
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub struct AString<C: CharT>(AStringVec<C>);

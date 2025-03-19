@@ -121,7 +121,10 @@ fn scan_rec<'s, C: CharT>(node: &Rc<RefCell<Node<'s, C>>>, t: &'s AStr<C>) -> Sc
     }
 }
 
-fn fast_scan_rec<'s, C: CharT>(node: &Rc<RefCell<Node<'s, C>>>, t: &'s AStr<C>) -> ScanReturn<'s, C> {
+fn fast_scan_rec<'s, C: CharT>(
+    node: &Rc<RefCell<Node<'s, C>>>,
+    t: &'s AStr<C>,
+) -> ScanReturn<'s, C> {
     let node_ref = node.borrow();
     if let Some(ch) = t.first() {
         if let Some(edge) = &node_ref.children[ch.index()] {
@@ -150,7 +153,6 @@ fn fast_scan_rec<'s, C: CharT>(node: &Rc<RefCell<Node<'s, C>>>, t: &'s AStr<C>) 
         }
     }
 }
-
 
 /// Finds indexes of given string in the string represented in the trie
 pub fn indexes_substr<'s, C: CharT>(trie: &SuffixTrie<'s, C>, t: &'s AStr<C>) -> HashSet<usize> {
@@ -208,7 +210,7 @@ struct HeadTail<'s, C: CharT> {
 
 fn insert_suffix<C: CharT>(suffix_index: usize, prev_head_tail: HeadTail<C>) -> HeadTail<C> {
     let parent_edge = prev_head_tail.head.borrow().parent.clone();
-    let (to_suffix_base_node, to_suffix_str) = if let Some(parent_edge) = parent_edge {
+    let (to_suffix_base_node, to_suffix_str, is_head) = if let Some(parent_edge) = parent_edge {
         let parent_edge_ref = parent_edge.borrow();
         let parent_ref = parent_edge_ref.source.borrow();
 
@@ -233,37 +235,46 @@ fn insert_suffix<C: CharT>(suffix_index: usize, prev_head_tail: HeadTail<C>) -> 
         drop(parent_ref);
         drop(parent_edge_ref);
 
-        let s_prev_head = if rem_matched.len() == 0 {
-            upper
+        let (s_prev_head, is_head) = if rem_matched.len() == 0 {
+            (upper, false)
         } else {
-            // todo
-            insert_intermediate(&upper, &rem_matched)
+            (insert_intermediate(&upper, &rem_matched), true)
         };
 
         prev_head_tail.head.borrow_mut().suffix = Some(s_prev_head.clone());
 
-        (s_prev_head, prev_head_tail.tail)
+        (s_prev_head, prev_head_tail.tail, is_head)
     } else {
-        (prev_head_tail.head.clone(), &prev_head_tail.tail[1..])
+        (
+            prev_head_tail.head.clone(),
+            &prev_head_tail.tail[1..],
+            false,
+        )
     };
 
-    let (upper, to_head_str, tail) = match scan_rec(&to_suffix_base_node, to_suffix_str) {
-        ScanReturn::FullMatch {
-            upper,
-            t_rem_matched,
-            lower: _lower,
-        } => (upper, t_rem_matched, AStr::empty()),
-        ScanReturn::MaximalNonFullMatch {
-            max,
-            t_rem_matched,
-            t_unmatched,
-        } => (max, t_rem_matched, t_unmatched),
-    };
-
-    let head = if to_head_str.len() == 0 {
-        upper
+    let (head, tail) = if is_head {
+        (to_suffix_base_node, to_suffix_str)
     } else {
-        insert_intermediate(&upper, to_head_str)
+        let (upper, to_head_str, tail) = match scan_rec(&to_suffix_base_node, to_suffix_str) {
+            ScanReturn::FullMatch {
+                upper,
+                t_rem_matched,
+                lower: _lower,
+            } => (upper, t_rem_matched, AStr::empty()),
+            ScanReturn::MaximalNonFullMatch {
+                max,
+                t_rem_matched,
+                t_unmatched,
+            } => (max, t_rem_matched, t_unmatched),
+        };
+
+        let head = if to_head_str.len() == 0 {
+            upper
+        } else {
+            insert_intermediate(&upper, to_head_str)
+        };
+
+        (head, tail)
     };
 
     insert_tail(suffix_index, &head, tail);
