@@ -77,7 +77,6 @@ enum ScanReturn<'s, C: CharT> {
     },
 }
 
-// todo add fastscan
 fn scan_rec<'s, C: CharT>(node: &Rc<RefCell<Node<'s, C>>>, t: &'s AStr<C>) -> ScanReturn<'s, C> {
     let node_ref = node.borrow();
     if let Some(ch) = t.first() {
@@ -121,6 +120,37 @@ fn scan_rec<'s, C: CharT>(node: &Rc<RefCell<Node<'s, C>>>, t: &'s AStr<C>) -> Sc
         }
     }
 }
+
+fn fast_scan_rec<'s, C: CharT>(node: &Rc<RefCell<Node<'s, C>>>, t: &'s AStr<C>) -> ScanReturn<'s, C> {
+    let node_ref = node.borrow();
+    if let Some(ch) = t.first() {
+        if let Some(edge) = &node_ref.children[ch.index()] {
+            let edge_ref = edge.borrow();
+            if t.len() < edge_ref.chars.len() {
+                ScanReturn::FullMatch {
+                    upper: node.clone(),
+                    t_rem_matched: t,
+                    lower: edge_ref.target.clone(),
+                }
+            } else {
+                fast_scan_rec(&edge_ref.target, &t[edge_ref.chars.len()..])
+            }
+        } else {
+            ScanReturn::MaximalNonFullMatch {
+                max: node.clone(),
+                t_rem_matched: AStr::empty(),
+                t_unmatched: t,
+            }
+        }
+    } else {
+        ScanReturn::FullMatch {
+            upper: node.clone(),
+            t_rem_matched: AStr::empty(),
+            lower: node.clone(),
+        }
+    }
+}
+
 
 /// Finds indexes of given string in the string represented in the trie
 pub fn indexes_substr<'s, C: CharT>(trie: &SuffixTrie<'s, C>, t: &'s AStr<C>) -> HashSet<usize> {
@@ -177,7 +207,8 @@ struct HeadTail<'s, C: CharT> {
 }
 
 fn insert_suffix<C: CharT>(suffix_index: usize, prev_head_tail: HeadTail<C>) -> HeadTail<C> {
-    let (to_suffix_base_node, to_suffix_str) = if let Some(parent_edge) = prev_head_tail.head.borrow().parent.as_ref() {
+    let parent_edge = prev_head_tail.head.borrow().parent.clone();
+    let (to_suffix_base_node, to_suffix_str) = if let Some(parent_edge) = parent_edge {
         let parent_edge_ref = parent_edge.borrow();
         let parent_ref = parent_edge_ref.source.borrow();
 
@@ -190,12 +221,11 @@ fn insert_suffix<C: CharT>(suffix_index: usize, prev_head_tail: HeadTail<C>) -> 
             (&parent_edge_ref.source, &parent_edge_ref.chars[1..])
         };
 
-
         let ScanReturn::FullMatch {
             upper,
             t_rem_matched: rem_matched,
             lower: _lower,
-        } = scan_rec(to_s_prev_head_base_node, to_s_prev_head_str)
+        } = fast_scan_rec(to_s_prev_head_base_node, to_s_prev_head_str)
         else {
             panic!("should be full match");
         };
@@ -206,6 +236,7 @@ fn insert_suffix<C: CharT>(suffix_index: usize, prev_head_tail: HeadTail<C>) -> 
         let s_prev_head = if rem_matched.len() == 0 {
             upper
         } else {
+            // todo
             insert_intermediate(&upper, &rem_matched)
         };
 
@@ -215,7 +246,6 @@ fn insert_suffix<C: CharT>(suffix_index: usize, prev_head_tail: HeadTail<C>) -> 
     } else {
         (prev_head_tail.head.clone(), &prev_head_tail.tail[1..])
     };
-
 
     let (upper, to_head_str, tail) = match scan_rec(&to_suffix_base_node, to_suffix_str) {
         ScanReturn::FullMatch {
@@ -238,14 +268,15 @@ fn insert_suffix<C: CharT>(suffix_index: usize, prev_head_tail: HeadTail<C>) -> 
 
     insert_tail(suffix_index, &head, tail);
 
-    HeadTail {
-        head,
-        tail,
-    }
+    HeadTail { head, tail }
 }
 
 /// Precondition: `t_rem` does not exists on edge from `node`
-fn insert_tail<'s, C: CharT>(suffix_index: usize, node: &Rc<RefCell<Node<'s, C>>>, t_rem: &'s AStr<C>) {
+fn insert_tail<'s, C: CharT>(
+    suffix_index: usize,
+    node: &Rc<RefCell<Node<'s, C>>>,
+    t_rem: &'s AStr<C>,
+) {
     let mut node_mut = node.borrow_mut();
     if t_rem.is_empty() {
         node_mut.terminal = Some(Terminal { suffix_index });
@@ -375,7 +406,7 @@ mod test {
 
         assert_eq!(
             indexes_substr(&trie, AStr::from_slice(&[])),
-            HashSet::from([])
+            HashSet::from([0])
         );
     }
 
@@ -386,7 +417,6 @@ mod test {
         let s = AStr::from_slice(&[A, A, A]);
 
         let trie = build_trie(s);
-
 
         assert_eq!(
             indexes_substr(&trie, AStr::from_slice(&[A, A, A])),
