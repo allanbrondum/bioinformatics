@@ -18,19 +18,19 @@ use std::{mem, ptr};
 const GRAPH_DEBUG: bool = true;
 
 #[derive(Debug)]
-pub struct SuffixTrie<C: CharT> {
-    root: Rc<RefCell<Node<C>>>,
+pub struct SuffixTrie<'s, C: CharT> {
+    root: Rc<RefCell<Node<'s, C>>>,
 }
 
 #[derive(Debug)]
-struct Node<C: CharT> {
-    parent: Option<Rc<RefCell<Edge<C>>>>,
-    children: GenericArray<Option<Rc<RefCell<Edge<C>>>>, C::AlphabetSize>,
+struct Node<'s, C: CharT> {
+    parent: Option<Rc<RefCell<Edge<'s, C>>>>,
+    children: GenericArray<Option<Rc<RefCell<Edge<'s, C>>>>, C::AlphabetSize>,
     terminal: Option<Terminal>,
-    suffix: Option<Rc<RefCell<Node<C>>>>,
+    suffix: Option<Rc<RefCell<Node<'s, C>>>>,
 }
 
-impl<C: CharT> Default for Node<C> {
+impl<'s, C: CharT> Default for Node<'s, C> {
     fn default() -> Self {
         Self {
             parent: None,
@@ -41,8 +41,8 @@ impl<C: CharT> Default for Node<C> {
     }
 }
 
-impl<C: CharT> Node<C> {
-    fn with_parent(parent: Rc<RefCell<Edge<C>>>) -> Self {
+impl<'s, C: CharT> Node<'s, C> {
+    fn with_parent(parent: Rc<RefCell<Edge<'s, C>>>) -> Self {
         Self {
             parent: Some(parent),
             children: Default::default(),
@@ -58,27 +58,27 @@ struct Terminal {
 }
 
 #[derive(Debug)]
-struct Edge<C: CharT> {
-    chars: AString<C>,
-    source: Rc<RefCell<Node<C>>>,
-    target: Rc<RefCell<Node<C>>>,
+struct Edge<'s, C: CharT> {
+    chars: &'s AStr<C>,
+    source: Rc<RefCell<Node<'s, C>>>,
+    target: Rc<RefCell<Node<'s, C>>>,
 }
 
-enum ScanReturn<'b, C: CharT> {
+enum ScanReturn<'s, C: CharT> {
     FullMatch {
-        upper: Rc<RefCell<Node<C>>>,
-        t_rem_matched: &'b AStr<C>,
-        lower: Rc<RefCell<Node<C>>>,
+        upper: Rc<RefCell<Node<'s, C>>>,
+        t_rem_matched: &'s AStr<C>,
+        lower: Rc<RefCell<Node<'s, C>>>,
     },
     MaximalNonFullMatch {
-        max: Rc<RefCell<Node<C>>>,
-        t_rem_matched: &'b AStr<C>,
-        t_unmatched: &'b AStr<C>,
+        max: Rc<RefCell<Node<'s, C>>>,
+        t_rem_matched: &'s AStr<C>,
+        t_unmatched: &'s AStr<C>,
     },
 }
 
 // todo add fastscan
-fn scan_rec<'b, C: CharT>(node: &Rc<RefCell<Node<C>>>, t: &'b AStr<C>) -> ScanReturn<'b, C> {
+fn scan_rec<'s, C: CharT>(node: &Rc<RefCell<Node<'s, C>>>, t: &'s AStr<C>) -> ScanReturn<'s, C> {
     let node_ref = node.borrow();
     if let Some(ch) = t.first() {
         if let Some(edge) = &node_ref.children[ch.index()] {
@@ -123,7 +123,7 @@ fn scan_rec<'b, C: CharT>(node: &Rc<RefCell<Node<C>>>, t: &'b AStr<C>) -> ScanRe
 }
 
 /// Finds indexes of given string in the string represented in the trie
-pub fn indexes_substr<C: CharT>(trie: &SuffixTrie<C>, t: &AStr<C>) -> HashSet<usize> {
+pub fn indexes_substr<'s, C: CharT>(trie: &SuffixTrie<'s, C>, t: &'s AStr<C>) -> HashSet<usize> {
     let mut result = HashSet::new();
 
     let scan_ret = scan_rec(&trie.root, t);
@@ -134,7 +134,7 @@ pub fn indexes_substr<C: CharT>(trie: &SuffixTrie<C>, t: &AStr<C>) -> HashSet<us
     result
 }
 
-fn terminals_rec<C: CharT>(node: &Node<C>, result: &mut HashSet<usize>) {
+fn terminals_rec<'s, C: CharT>(node: &Node<'s, C>, result: &mut HashSet<usize>) {
     if let Some(terminal) = &node.terminal {
         result.insert(terminal.suffix_index);
     }
@@ -144,18 +144,24 @@ fn terminals_rec<C: CharT>(node: &Node<C>, result: &mut HashSet<usize>) {
 }
 
 /// Builds suffix trie
-pub fn build_trie<C: CharT>(s: &AStr<C>) -> SuffixTrie<C> {
+pub fn build_trie<'s, C: CharT>(s: &'s AStr<C>) -> SuffixTrie<'s, C> {
     let mut trie = SuffixTrie {
         root: Rc::new(RefCell::new(Node::default())),
     };
 
+    insert_tail(0, &trie.root, s);
+
     let mut head_tail = HeadTail {
         head: trie.root.clone(),
-        tail: s.to_owned(),
+        tail: s,
     };
 
-    for i in 0..s.len() {
+    for i in 1..s.len() {
         head_tail = insert_suffix(i, head_tail);
+
+        if GRAPH_DEBUG {
+            to_dot(format!("target/trie_suffix_link_{}.dot", i), &trie);
+        }
     }
 
     if GRAPH_DEBUG {
@@ -165,26 +171,25 @@ pub fn build_trie<C: CharT>(s: &AStr<C>) -> SuffixTrie<C> {
     trie
 }
 
-struct HeadTail<C: CharT> {
-    head: Rc<RefCell<Node<C>>>,
-    tail: AString<C>,
+struct HeadTail<'s, C: CharT> {
+    head: Rc<RefCell<Node<'s, C>>>,
+    tail: &'s AStr<C>,
 }
 
 fn insert_suffix<C: CharT>(suffix_index: usize, prev_head_tail: HeadTail<C>) -> HeadTail<C> {
-    let mut prev_head_mut_guard = prev_head_tail.head.borrow_mut();
-    let mut prev_head_mut = prev_head_mut_guard.deref_mut();
-    let (to_suffix_base_node, to_suffix_str) = if let Some(parent_edge) = prev_head_mut.parent.as_ref() {
+    let (to_suffix_base_node, to_suffix_str) = if let Some(parent_edge) = prev_head_tail.head.borrow().parent.as_ref() {
         let parent_edge_ref = parent_edge.borrow();
         let parent_ref = parent_edge_ref.source.borrow();
 
         let (to_s_prev_head_base_node, to_s_prev_head_str) = if parent_ref.parent.is_some() {
             (
                 parent_ref.suffix.as_ref().expect("suffix"),
-                parent_edge_ref.chars.as_str(),
+                parent_edge_ref.chars,
             )
         } else {
             (&parent_edge_ref.source, &parent_edge_ref.chars[1..])
         };
+
 
         let ScanReturn::FullMatch {
             upper,
@@ -194,19 +199,23 @@ fn insert_suffix<C: CharT>(suffix_index: usize, prev_head_tail: HeadTail<C>) -> 
         else {
             panic!("should be full match");
         };
+        let rem_matched = rem_matched.to_owned();
+        drop(parent_ref);
+        drop(parent_edge_ref);
 
         let s_prev_head = if rem_matched.len() == 0 {
             upper
         } else {
-            insert_intermediate(&upper, rem_matched)
+            insert_intermediate(&upper, &rem_matched)
         };
 
-        prev_head_mut.suffix = Some(s_prev_head.clone());
+        prev_head_tail.head.borrow_mut().suffix = Some(s_prev_head.clone());
 
-        (s_prev_head, prev_head_tail.tail.as_str())
+        (s_prev_head, prev_head_tail.tail)
     } else {
         (prev_head_tail.head.clone(), &prev_head_tail.tail[1..])
     };
+
 
     let (upper, to_head_str, tail) = match scan_rec(&to_suffix_base_node, to_suffix_str) {
         ScanReturn::FullMatch {
@@ -231,18 +240,18 @@ fn insert_suffix<C: CharT>(suffix_index: usize, prev_head_tail: HeadTail<C>) -> 
 
     HeadTail {
         head,
-        tail: tail.to_owned(),
+        tail,
     }
 }
 
 /// Precondition: `t_rem` does not exists on edge from `node`
-fn insert_tail<C: CharT>(suffix_index: usize, node: &Rc<RefCell<Node<C>>>, t_rem: &AStr<C>) {
+fn insert_tail<'s, C: CharT>(suffix_index: usize, node: &Rc<RefCell<Node<'s, C>>>, t_rem: &'s AStr<C>) {
     let mut node_mut = node.borrow_mut();
     if t_rem.is_empty() {
-        node.borrow_mut().terminal = Some(Terminal { suffix_index });
+        node_mut.terminal = Some(Terminal { suffix_index });
     } else {
         let edge = Rc::new(RefCell::new(Edge {
-            chars: t_rem.to_owned(),
+            chars: t_rem,
             source: node.clone(),
             target: Rc::new(RefCell::new(Node::default())),
         }));
@@ -254,10 +263,10 @@ fn insert_tail<C: CharT>(suffix_index: usize, node: &Rc<RefCell<Node<C>>>, t_rem
 }
 
 /// Precondition: `t_rem` exists on edge from `node`
-fn insert_intermediate<C: CharT>(
-    node: &Rc<RefCell<Node<C>>>,
+fn insert_intermediate<'s, C: CharT>(
+    node: &Rc<RefCell<Node<'s, C>>>,
     t_rem: &AStr<C>,
-) -> Rc<RefCell<Node<C>>> {
+) -> Rc<RefCell<Node<'s, C>>> {
     assert!(!t_rem.is_empty());
     let node_mut = node.borrow_mut();
     let edge = node_mut.children[t_rem[0].index()]
@@ -266,14 +275,14 @@ fn insert_intermediate<C: CharT>(
     let mut edge_mut = edge.borrow_mut();
 
     let new_edge = Edge {
-        chars: edge_mut.chars[..t_rem.len()].to_owned(),
+        chars: &edge_mut.chars[..t_rem.len()],
         source: node.clone(),
         target: Rc::new(RefCell::new(Node::with_parent(edge.clone()))),
     };
 
     let edge_remainder = Rc::new(RefCell::new(mem::replace(edge_mut.deref_mut(), new_edge)));
     let mut edge_remainder_mut = edge_remainder.borrow_mut();
-    edge_remainder_mut.chars = edge_remainder_mut.chars[t_rem.len()..].to_owned();
+    edge_remainder_mut.chars = &edge_remainder_mut.chars[t_rem.len()..];
     edge_remainder_mut.source = edge_mut.target.clone();
     edge_remainder_mut.target.borrow_mut().parent = Some(edge_remainder.clone());
     let rem_ch = edge_remainder_mut.chars[0];
@@ -367,6 +376,29 @@ mod test {
         assert_eq!(
             indexes_substr(&trie, AStr::from_slice(&[])),
             HashSet::from([])
+        );
+    }
+
+    #[test]
+    fn test_build_trie_and_find_substr_repetition() {
+        use crate::string_model::test_util::Char::*;
+
+        let s = AStr::from_slice(&[A, A, A]);
+
+        let trie = build_trie(s);
+
+
+        assert_eq!(
+            indexes_substr(&trie, AStr::from_slice(&[A, A, A])),
+            HashSet::from([0])
+        );
+        assert_eq!(
+            indexes_substr(&trie, AStr::from_slice(&[A, A])),
+            HashSet::from([0, 1])
+        );
+        assert_eq!(
+            indexes_substr(&trie, AStr::from_slice(&[A])),
+            HashSet::from([0, 1, 2])
         );
     }
 
