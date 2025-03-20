@@ -6,7 +6,8 @@ use generic_array::GenericArray;
 
 use crate::string;
 use std::cmp::Ordering;
-use std::collections::HashSet;
+
+use hashbrown::HashSet;
 use std::fmt::Display;
 use std::fs::File;
 use std::io::Write;
@@ -48,11 +49,14 @@ struct Edge<'s, C: CharT> {
 
 enum ScanReturn<'a, 's, C: CharT> {
     FullMatch {
+        #[allow(unused)]
         upper: &'a Node<'s, C>,
         lower: &'a Node<'s, C>,
     },
     MaximalNonFullMatch {
+        #[allow(unused)]
         max: &'a Node<'s, C>,
+        #[allow(unused)]
         t_unmatched: &'s AStr<C>,
     },
 }

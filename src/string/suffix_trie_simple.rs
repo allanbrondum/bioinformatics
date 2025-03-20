@@ -2,7 +2,7 @@ use crate::alphabet_model::CharT;
 use crate::string_model::AStr;
 use generic_array::GenericArray;
 
-use std::collections::HashSet;
+use hashbrown::HashSet;
 use std::fs::File;
 use std::io::Write;
 use std::path::Path;
@@ -46,7 +46,9 @@ enum ScanReturn<'a, 'b, C: CharT> {
         node: &'a Node<C>,
     },
     MaximalNotFullMatch {
+        #[allow(unused)]
         node: &'a Node<C>,
+        #[allow(unused)]
         t_rest: &'b AStr<C>,
     },
 }
@@ -202,7 +204,6 @@ fn to_dot_rec<C: CharT>(write: &mut impl Write, node: &Node<C>) {
 #[cfg(test)]
 mod test {
     use super::*;
-    use std::collections::HashSet;
 
     use crate::string;
     use crate::string_model::arb_astring;

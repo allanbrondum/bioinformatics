@@ -6,7 +6,7 @@ use criterion::{Bencher, BenchmarkId, Criterion, Throughput, criterion_group, cr
 
 use crate::bench_util::Char;
 use proptest::strategy::{Strategy, ValueTree};
-use rosalind::string::{suffix_trie_compact, suffix_trie_simple, suffix_trie_suffix_links};
+use rosalind::string::{suffix_trie_compact, suffix_trie_suffix_links};
 use rosalind::string_model::{AStr, arb_astring};
 
 const STRING_LENGTHS: &[usize] = &[200, 5000, 100_000];
@@ -40,7 +40,7 @@ fn bench_build_and_drop_trie_suffix_links(bencher: &mut Bencher<'_>, s: &AStr<Ch
 // );
 // }
 
-fn criterion_benches(criterion: &mut Criterion) {
+fn build_trie_benches(criterion: &mut Criterion) {
     let mut build_trie_benches = criterion.benchmark_group("build_trie");
     for &string_length in STRING_LENGTHS {
         let mut runner = proptest::test_runner::TestRunner::default();
@@ -49,20 +49,6 @@ fn criterion_benches(criterion: &mut Criterion) {
             .unwrap()
             .current();
 
-        // build_trie_benches
-        //     .bench_with_input(
-        //         BenchmarkId::new("build_trie_simple", string_length),
-        //         &s,
-        //         |bencher, s| bench_build_trie_simple(bencher, s),
-        //     )
-        //     .throughput(Throughput::Elements(string_length as u64));
-        // build_trie_benches
-        //     .bench_with_input(
-        //         BenchmarkId::new("build_and_drop_trie_simple", string_length),
-        //         &s,
-        //         |bencher, s| bench_build_and_drop_trie_simple(bencher, s),
-        //     )
-        //     .throughput(Throughput::Elements(string_length as u64));
         build_trie_benches
             .bench_with_input(
                 BenchmarkId::new("build_trie_compact", string_length),
@@ -115,5 +101,5 @@ fn criterion_benches(criterion: &mut Criterion) {
     // set_expire_all_benches.finish();
 }
 
-criterion_group!(benches, criterion_benches);
+criterion_group!(benches, build_trie_benches);
 criterion_main!(benches);

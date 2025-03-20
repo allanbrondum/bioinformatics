@@ -10,14 +10,14 @@ use petgraph::visit::{
 };
 use std::cmp::Ordering;
 use std::collections::BinaryHeap;
-use std::fmt::{Display, Formatter};
+use std::fmt::{Debug, Display, Formatter};
 use std::fs::File;
 use std::io::Write;
 use std::path::Path;
 
 const GRAPH_DEBUG: bool = false;
 
-pub fn scs<C: CharT>(
+pub fn scs<C: CharT + Debug>(
     strs: impl IntoIterator<Item = AString<C>> + Clone,
     min_overlap: usize,
 ) -> Vec<AString<C>> {
@@ -133,7 +133,7 @@ struct Edge {
 
 impl Display for Edge {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        self.overlap.fmt(f)
+        Display::fmt(&self.overlap, f)
     }
 }
 

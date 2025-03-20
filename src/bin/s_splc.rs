@@ -1,5 +1,5 @@
 use rosalind::polymers::{DnaNt, translate_rna};
-use rosalind::string::replace_all;
+
 use rosalind::string_model::AStr;
 use rosalind::util::fasta_polymers_file;
 

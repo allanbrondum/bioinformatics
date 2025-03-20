@@ -67,7 +67,7 @@ pub fn lcp<'a, C: CharT>(a: &'a AStr<C>, b: &AStr<C>) -> &'a AStr<C> {
     &a[0..i]
 }
 
-pub fn lcs<'a, C: CharT>(a: &'a AStr<C>, b: &AStr<C>) -> &'a AStr<C> {
+pub fn lcs_simple<'a, C: CharT>(a: &'a AStr<C>, b: &AStr<C>) -> &'a AStr<C> {
     let mut substr: &[C] = &[];
     for i in 0..a.len() {
         if a.len() - i <= substr.len() {
@@ -117,15 +117,15 @@ pub fn indexes_regex(s: &str, regex: &Regex) -> impl Iterator<Item = usize> {
 #[cfg(test)]
 mod test {
     use crate::ascii::ascii;
-    use crate::string::{find, indexes, lcp, lcs, overlap, replace_all};
+    use crate::string::{find, indexes, lcp, lcs_simple, overlap, replace_all};
 
     #[test]
     fn test_lcs() {
         assert_eq!(
-            lcs(ascii("abcdefghijk"), ascii("uioefghijlm")),
+            lcs_simple(ascii("abcdefghijk"), ascii("uioefghijlm")),
             ascii("efghij")
         );
-        assert_eq!(lcs(ascii("abcd"), ascii("abcd")), ascii("abcd"));
+        assert_eq!(lcs_simple(ascii("abcd"), ascii("abcd")), ascii("abcd"));
     }
 
     #[test]

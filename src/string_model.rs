@@ -16,9 +16,9 @@ use std::ops::{Add, Deref, Index, Range, RangeFrom, RangeInclusive, RangeTo, Ran
 use std::str::FromStr;
 
 #[derive(Debug, Eq, PartialEq, Hash)]
-pub struct AStr<C: CharT>([C]);
+pub struct AStr<C>([C]);
 
-impl<'a, C: CharT> IntoIterator for &'a AStr<C> {
+impl<'a, C> IntoIterator for &'a AStr<C> {
     type Item = &'a C;
     type IntoIter = <&'a [C] as IntoIterator>::IntoIter;
 
@@ -27,13 +27,13 @@ impl<'a, C: CharT> IntoIterator for &'a AStr<C> {
     }
 }
 
-impl<C: CharT> Display for AStr<C> {
+impl<C: Display> Display for AStr<C> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.0.iter().format_with("", |ch, f| f(ch)))
     }
 }
 
-impl<C: CharT> AStr<C> {
+impl<C> AStr<C> {
     pub fn from_slice(slice: &[C]) -> &Self {
         unsafe { mem::transmute(slice) }
     }
@@ -51,7 +51,7 @@ impl<C: CharT> AStr<C> {
     }
 }
 
-impl<C: CharT> Deref for AStr<C> {
+impl<C> Deref for AStr<C> {
     type Target = [C];
 
     fn deref(&self) -> &Self::Target {
@@ -59,7 +59,7 @@ impl<C: CharT> Deref for AStr<C> {
     }
 }
 
-impl<C: CharT> AsRef<[C]> for AStr<C> {
+impl<C> AsRef<[C]> for AStr<C> {
     fn as_ref(&self) -> &[C] {
         &self.0
     }
@@ -68,33 +68,33 @@ impl<C: CharT> AsRef<[C]> for AStr<C> {
 type AStringVec<C> = SmallVec<[C; 5]>;
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
-pub struct AString<C: CharT>(AStringVec<C>);
+pub struct AString<C>(AStringVec<C>);
 
-impl<'a, C: CharT> PartialEq<&'a AStr<C>> for AString<C> {
+impl<'a, C: PartialEq> PartialEq<&'a AStr<C>> for AString<C> {
     fn eq(&self, other: &&'a AStr<C>) -> bool {
         self.as_str().eq(other)
     }
 }
 
-impl<'a, C: CharT> PartialEq<AString<C>> for &'a AStr<C> {
+impl<'a, C: PartialEq> PartialEq<AString<C>> for &'a AStr<C> {
     fn eq(&self, other: &AString<C>) -> bool {
         (*self).eq(other.as_str())
     }
 }
 
-impl<C: CharT> FromIterator<C> for AString<C> {
+impl<C> FromIterator<C> for AString<C> {
     fn from_iter<T: IntoIterator<Item = C>>(iter: T) -> Self {
         Self(AStringVec::from_iter(iter))
     }
 }
 
-impl<C: CharT> Default for AString<C> {
+impl<C> Default for AString<C> {
     fn default() -> Self {
         Self(AStringVec::default())
     }
 }
 
-impl<C: CharT> IntoIterator for AString<C> {
+impl<C> IntoIterator for AString<C> {
     type Item = C;
     type IntoIter = <AStringVec<C> as IntoIterator>::IntoIter;
 
@@ -103,7 +103,7 @@ impl<C: CharT> IntoIterator for AString<C> {
     }
 }
 
-impl<'a, C: CharT> IntoIterator for &'a AString<C> {
+impl<'a, C> IntoIterator for &'a AString<C> {
     type Item = &'a C;
     type IntoIter = <&'a Vec<C> as IntoIterator>::IntoIter;
 
@@ -112,7 +112,7 @@ impl<'a, C: CharT> IntoIterator for &'a AString<C> {
     }
 }
 
-impl<C: CharT> AString<C> {
+impl<C: Copy> AString<C> {
     pub fn extend_from_slice(&mut self, slice: &[C]) {
         self.0.extend_from_slice(slice);
     }
@@ -120,7 +120,9 @@ impl<C: CharT> AString<C> {
     pub fn push_str(&mut self, str: &AStr<C>) {
         self.0.extend_from_slice(str.as_slice());
     }
+}
 
+impl<C> AString<C> {
     pub fn as_str(&self) -> &AStr<C> {
         AStr::from_slice(self.0.as_slice())
     }
@@ -138,19 +140,19 @@ impl<C: CharT> FromStr for AString<C> {
     }
 }
 
-impl<C: CharT> From<Vec<C>> for AString<C> {
+impl<C> From<Vec<C>> for AString<C> {
     fn from(value: Vec<C>) -> Self {
         Self(value.into())
     }
 }
 
-impl<C: CharT> From<AStringVec<C>> for AString<C> {
+impl<C> From<AStringVec<C>> for AString<C> {
     fn from(value: AStringVec<C>) -> Self {
         Self(value)
     }
 }
 
-impl<C: CharT> Add<&AStr<C>> for AString<C> {
+impl<C: Copy> Add<&AStr<C>> for AString<C> {
     type Output = Self;
 
     fn add(mut self, rhs: &AStr<C>) -> Self::Output {
@@ -159,7 +161,7 @@ impl<C: CharT> Add<&AStr<C>> for AString<C> {
     }
 }
 
-impl<C: CharT> Add<&[C]> for AString<C> {
+impl<C: Copy> Add<&[C]> for AString<C> {
     type Output = Self;
 
     fn add(mut self, rhs: &[C]) -> Self::Output {
@@ -168,13 +170,13 @@ impl<C: CharT> Add<&[C]> for AString<C> {
     }
 }
 
-impl<C: CharT> Display for AString<C> {
+impl<C: Display> Display for AString<C> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.0.iter().format_with("", |ch, f| f(ch)))
     }
 }
 
-impl<C: CharT> Deref for AString<C> {
+impl<C> Deref for AString<C> {
     type Target = AStr<C>;
 
     fn deref(&self) -> &Self::Target {
@@ -182,19 +184,19 @@ impl<C: CharT> Deref for AString<C> {
     }
 }
 
-impl<C: CharT> AsRef<AStr<C>> for AString<C> {
+impl<C> AsRef<AStr<C>> for AString<C> {
     fn as_ref(&self) -> &AStr<C> {
         AStr::from_slice(self.0.as_slice())
     }
 }
 
-impl<C: CharT> Borrow<AStr<C>> for AString<C> {
+impl<C> Borrow<AStr<C>> for AString<C> {
     fn borrow(&self) -> &AStr<C> {
         AStr::from_slice(self.0.as_slice())
     }
 }
 
-impl<C: CharT> ToOwned for AStr<C> {
+impl<C: Copy> ToOwned for AStr<C> {
     type Owned = AString<C>;
 
     fn to_owned(&self) -> Self::Owned {
@@ -202,7 +204,7 @@ impl<C: CharT> ToOwned for AStr<C> {
     }
 }
 
-impl<C: CharT> Index<usize> for AStr<C> {
+impl<C> Index<usize> for AStr<C> {
     type Output = C;
 
     fn index(&self, index: usize) -> &Self::Output {
@@ -210,7 +212,7 @@ impl<C: CharT> Index<usize> for AStr<C> {
     }
 }
 
-impl<C: CharT> Index<Range<usize>> for AStr<C> {
+impl<C> Index<Range<usize>> for AStr<C> {
     type Output = AStr<C>;
 
     fn index(&self, index: Range<usize>) -> &Self::Output {
@@ -218,7 +220,7 @@ impl<C: CharT> Index<Range<usize>> for AStr<C> {
     }
 }
 
-impl<C: CharT> Index<RangeFrom<usize>> for AStr<C> {
+impl<C> Index<RangeFrom<usize>> for AStr<C> {
     type Output = AStr<C>;
 
     fn index(&self, index: RangeFrom<usize>) -> &Self::Output {
@@ -226,7 +228,7 @@ impl<C: CharT> Index<RangeFrom<usize>> for AStr<C> {
     }
 }
 
-impl<C: CharT> Index<RangeTo<usize>> for AStr<C> {
+impl<C> Index<RangeTo<usize>> for AStr<C> {
     type Output = AStr<C>;
 
     fn index(&self, index: RangeTo<usize>) -> &Self::Output {
@@ -234,7 +236,7 @@ impl<C: CharT> Index<RangeTo<usize>> for AStr<C> {
     }
 }
 
-impl<C: CharT> Index<RangeToInclusive<usize>> for AStr<C> {
+impl<C> Index<RangeToInclusive<usize>> for AStr<C> {
     type Output = AStr<C>;
 
     fn index(&self, index: RangeToInclusive<usize>) -> &Self::Output {
@@ -242,7 +244,7 @@ impl<C: CharT> Index<RangeToInclusive<usize>> for AStr<C> {
     }
 }
 
-impl<C: CharT> Index<RangeInclusive<usize>> for AStr<C> {
+impl<C> Index<RangeInclusive<usize>> for AStr<C> {
     type Output = AStr<C>;
 
     fn index(&self, index: RangeInclusive<usize>) -> &Self::Output {

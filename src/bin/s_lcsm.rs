@@ -13,7 +13,7 @@ fn main() {
 
     let mut lcs = strs[0].polymer.as_str();
     for str in strs.iter().skip(1) {
-        lcs = string::lcs(lcs, &str.polymer);
+        lcs = string::lcs_simple(lcs, &str.polymer);
     }
 
     println!("{}", lcs);

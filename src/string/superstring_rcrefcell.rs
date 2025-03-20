@@ -5,6 +5,7 @@ use itertools::Itertools;
 use std::cell::RefCell;
 use std::cmp::Ordering;
 use std::collections::BinaryHeap;
+use std::fmt::Debug;
 use std::fs::File;
 use std::io::Write;
 use std::path::Path;
@@ -12,7 +13,7 @@ use std::rc::Rc;
 
 const GRAPH_DEBUG: bool = false;
 
-pub fn scs<C: CharT>(
+pub fn scs<C: CharT + Debug>(
     strs: impl IntoIterator<Item = AString<C>> + Clone,
     min_overlap: usize,
 ) -> Vec<AString<C>> {

@@ -4,7 +4,7 @@ use generic_array::typenum::{Add1, B1, Unsigned};
 use std::fmt::{Debug, Display, Formatter, Write};
 use std::ops::Add;
 
-pub trait CharT: Debug + Display + Copy + Eq + PartialEq + 'static {
+pub trait CharT: Display + Copy + Eq + PartialEq + 'static {
     type AlphabetSize: ArrayLength + Debug;
 
     fn index(self) -> usize;
@@ -16,12 +16,12 @@ pub trait CharT: Debug + Display + Copy + Eq + PartialEq + 'static {
 
 const SEPARATOR: char = '#';
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
-pub enum WithSeparator<C: CharT> {
+pub enum WithSeparator<C> {
     Char(C),
     Separator,
 }
 
-impl<C: CharT> Display for WithSeparator<C> {
+impl<C: Display> Display for WithSeparator<C> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
             WithSeparator::Char(ch) => Display::fmt(&ch, f),
