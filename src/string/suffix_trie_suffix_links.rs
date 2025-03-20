@@ -66,17 +66,16 @@ struct Edge<'s, C: CharT> {
     target: Rc<RefCell<Node<'s, C>>>,
 }
 
-enum ScanReturn<'s, C: CharT> {
-    FullMatch {
-        upper: Rc<RefCell<Node<'s, C>>>,
-        t_rem_matched: &'s AStr<C>,
-        lower: Rc<RefCell<Node<'s, C>>>,
-    },
-    MaximalNonFullMatch {
-        max: Rc<RefCell<Node<'s, C>>>,
-        t_rem_matched: &'s AStr<C>,
-        t_unmatched: &'s AStr<C>,
-    },
+struct ScanReturn<'s, C: CharT> {
+    upper: Rc<RefCell<Node<'s, C>>>,
+    lower: Rc<RefCell<Node<'s, C>>>,
+    t_rem_matched: &'s AStr<C>,
+    matched: ScanMatch<'s, C>,
+}
+
+enum ScanMatch<'s, C: CharT> {
+    FullMatch,
+    MaximalNonFullMatch { t_unmatched: &'s AStr<C> },
 }
 
 fn scan_rec<'s, C: CharT>(node: &Rc<RefCell<Node<'s, C>>>, t: &'s AStr<C>) -> ScanReturn<'s, C> {
@@ -89,15 +88,19 @@ fn scan_rec<'s, C: CharT>(node: &Rc<RefCell<Node<'s, C>>>, t: &'s AStr<C>) -> Sc
             match lcp_len.cmp(&edge_ref.chars.len()) {
                 Ordering::Equal => scan_rec(&edge_ref.target, &t[edge_ref.chars.len()..]),
                 Ordering::Less => match lcp_len.cmp(&t.len()) {
-                    Ordering::Equal => ScanReturn::FullMatch {
+                    Ordering::Equal => ScanReturn {
                         upper: node.clone(),
-                        t_rem_matched: t,
                         lower: edge_ref.target.clone(),
+                        t_rem_matched: t,
+                        matched: ScanMatch::FullMatch,
                     },
-                    Ordering::Less => ScanReturn::MaximalNonFullMatch {
-                        max: node.clone(),
+                    Ordering::Less => ScanReturn {
+                        upper: node.clone(),
+                        lower: edge_ref.target.clone(),
                         t_rem_matched: &t[..lcp_len],
-                        t_unmatched: &t[lcp_len..],
+                        matched: ScanMatch::MaximalNonFullMatch {
+                            t_unmatched: &t[lcp_len..],
+                        },
                     },
                     Ordering::Greater => {
                         unreachable!()
@@ -108,17 +111,19 @@ fn scan_rec<'s, C: CharT>(node: &Rc<RefCell<Node<'s, C>>>, t: &'s AStr<C>) -> Sc
                 }
             }
         } else {
-            ScanReturn::MaximalNonFullMatch {
-                max: node.clone(),
+            ScanReturn {
+                upper: node.clone(),
+                lower: node.clone(),
                 t_rem_matched: AStr::empty(),
-                t_unmatched: t,
+                matched: ScanMatch::MaximalNonFullMatch { t_unmatched: t },
             }
         }
     } else {
-        ScanReturn::FullMatch {
+        ScanReturn {
             upper: node.clone(),
             t_rem_matched: AStr::empty(),
             lower: node.clone(),
+            matched: ScanMatch::FullMatch,
         }
     }
 }
@@ -132,26 +137,29 @@ fn fast_scan_rec<'s, C: CharT>(
         if let Some(edge) = &node_ref.children[ch.index()] {
             let edge_ref = edge.borrow();
             if t.len() < edge_ref.chars.len() {
-                ScanReturn::FullMatch {
+                ScanReturn {
                     upper: node.clone(),
                     t_rem_matched: t,
                     lower: edge_ref.target.clone(),
+                    matched: ScanMatch::FullMatch,
                 }
             } else {
                 fast_scan_rec(&edge_ref.target, &t[edge_ref.chars.len()..])
             }
         } else {
-            ScanReturn::MaximalNonFullMatch {
-                max: node.clone(),
+            ScanReturn {
+                upper: node.clone(),
+                lower: node.clone(),
                 t_rem_matched: AStr::empty(),
-                t_unmatched: t,
+                matched: ScanMatch::MaximalNonFullMatch { t_unmatched: t },
             }
         }
     } else {
-        ScanReturn::FullMatch {
+        ScanReturn {
             upper: node.clone(),
             t_rem_matched: AStr::empty(),
             lower: node.clone(),
+            matched: ScanMatch::FullMatch,
         }
     }
 }
@@ -161,8 +169,13 @@ pub fn indexes_substr<'s, C: CharT>(trie: &SuffixTrie<'s, C>, t: &'s AStr<C>) ->
     let mut result = HashSet::new();
 
     let scan_ret = scan_rec(&trie.root, t);
-    if let ScanReturn::FullMatch { lower, .. } = scan_ret {
-        terminals_rec(&lower.borrow(), |suffix| {
+    if let ScanReturn {
+        lower,
+        matched: ScanMatch::FullMatch,
+        ..
+    } = scan_ret
+    {
+        terminals(&lower.borrow(), |suffix| {
             result.insert(suffix);
         });
     }
@@ -176,6 +189,16 @@ pub enum MaximalSubstrMatch {
     Partial { index: usize, length: usize },
 }
 
+impl MaximalSubstrMatch {
+    fn full(index: usize) -> Self {
+        Self::Full { index }
+    }
+
+    fn partial(index: usize, length: usize) -> Self {
+        Self::Partial { index, length }
+    }
+}
+
 /// Finds indexes of given string in the string represented in the trie
 pub fn indexes_substr_maximal<'s, C: CharT>(
     trie: &SuffixTrie<'s, C>,
@@ -184,21 +207,25 @@ pub fn indexes_substr_maximal<'s, C: CharT>(
     let mut result = HashSet::new();
 
     match scan_rec(&trie.root, t) {
-        ScanReturn::FullMatch {
+        ScanReturn {
             lower,
+            matched: ScanMatch::FullMatch,
             ..
         } => {
-            terminals_rec(&lower.borrow(), |suffix| {
-                result.insert(MaximalSubstrMatch::Full {index: suffix});
+            terminals(&lower.borrow(), |suffix| {
+                result.insert(MaximalSubstrMatch::full(suffix));
             });
         }
-        ScanReturn::MaximalNonFullMatch {
-            max,
-            t_rem_matched,
-            t_unmatched,
+        ScanReturn {
+            lower,
+            matched: ScanMatch::MaximalNonFullMatch { t_unmatched },
+            ..
         } => {
-            terminals_rec(&lower.borrow(), |suffix| {
-                result.insert(MaximalSubstrMatch::Full {index: suffix});
+            terminals(&lower.borrow(), |suffix| {
+                result.insert(MaximalSubstrMatch::partial(
+                    suffix,
+                    t.len() - t_unmatched.len(),
+                ));
             });
         }
     }
@@ -206,12 +233,16 @@ pub fn indexes_substr_maximal<'s, C: CharT>(
     result
 }
 
-fn terminals_rec<'s, C: CharT>(node: &Node<'s, C>, mut callback: impl FnMut(usize)) {
+fn terminals<'s, C: CharT>(node: &Node<'s, C>, mut callback: impl FnMut(usize)) {
+    terminals_rec(node, &mut callback)
+}
+
+fn terminals_rec<'s, C: CharT>(node: &Node<'s, C>, mut callback: &mut impl FnMut(usize)) {
     if let Some(terminal) = &node.terminal {
         callback(terminal.suffix_index);
     }
     for edge in node.children.iter().filter_map(|edge| edge.as_ref()) {
-        terminals_rec(&edge.borrow().target.borrow(), &mut callback);
+        terminals_rec(&edge.borrow().target.borrow(), callback);
     }
 }
 
@@ -263,10 +294,11 @@ fn insert_suffix<C: CharT>(suffix_index: usize, prev_head_tail: HeadTail<C>) -> 
             (&parent_edge_ref.source, &parent_edge_ref.chars[1..])
         };
 
-        let ScanReturn::FullMatch {
+        let ScanReturn {
             upper,
             t_rem_matched: rem_matched,
-            lower: _lower,
+            matched: ScanMatch::FullMatch,
+            ..
         } = fast_scan_rec(to_s_prev_head_base_node, to_s_prev_head_str)
         else {
             panic!("should be full match");
@@ -296,16 +328,18 @@ fn insert_suffix<C: CharT>(suffix_index: usize, prev_head_tail: HeadTail<C>) -> 
         (to_suffix_base_node, to_suffix_str)
     } else {
         let (upper, to_head_str, tail) = match scan_rec(&to_suffix_base_node, to_suffix_str) {
-            ScanReturn::FullMatch {
+            ScanReturn {
                 upper,
                 t_rem_matched,
-                lower: _lower,
+                matched: ScanMatch::FullMatch,
+                ..
             } => (upper, t_rem_matched, AStr::empty()),
-            ScanReturn::MaximalNonFullMatch {
-                max,
+            ScanReturn {
+                upper,
                 t_rem_matched,
-                t_unmatched,
-            } => (max, t_rem_matched, t_unmatched),
+                matched: ScanMatch::MaximalNonFullMatch { t_unmatched },
+                ..
+            } => (upper, t_rem_matched, t_unmatched),
         };
 
         let head = if to_head_str.is_empty() {
@@ -538,6 +572,33 @@ mod test {
         assert_eq!(
             indexes_substr(&trie, AStr::from_slice(&[B, A, A])),
             HashSet::from([1, 6])
+        );
+    }
+
+    #[test]
+    fn test_find_maximal_substr() {
+        use crate::string_model::test_util::Char::*;
+
+        let s = AStr::from_slice(&[A, B, A, A, B, A, B, A, A]);
+
+        let trie = build_trie(s);
+
+
+        assert_eq!(
+            indexes_substr_maximal(&trie, AStr::from_slice(&[A, B, A])),
+            HashSet::from([
+                MaximalSubstrMatch::full(0),
+                MaximalSubstrMatch::full(3),
+                MaximalSubstrMatch::full(5)
+            ])
+        );
+        assert_eq!(
+            indexes_substr_maximal(&trie, AStr::from_slice(&[B, A, A])),
+            HashSet::from([MaximalSubstrMatch::full(1), MaximalSubstrMatch::full(6)])
+        );
+        assert_eq!(
+            indexes_substr_maximal(&trie, AStr::from_slice(&[A, A, A])),
+            HashSet::from([MaximalSubstrMatch::partial(2, 2), MaximalSubstrMatch::partial(7, 2)])
         );
     }
 
