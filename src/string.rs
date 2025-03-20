@@ -67,8 +67,6 @@ pub fn lcp<'a, C: CharT>(a: &'a AStr<C>, b: &AStr<C>) -> &'a AStr<C> {
     &a[0..i]
 }
 
-// todo perf + reimpl using suffix trie
-
 pub fn lcs<'a, C: CharT>(a: &'a AStr<C>, b: &AStr<C>) -> &'a AStr<C> {
     let mut substr: &[C] = &[];
     for i in 0..a.len() {

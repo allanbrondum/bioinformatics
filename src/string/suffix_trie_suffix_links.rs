@@ -162,18 +162,40 @@ pub fn indexes_substr<'s, C: CharT>(trie: &SuffixTrie<'s, C>, t: &'s AStr<C>) ->
 
     let scan_ret = scan_rec(&trie.root, t);
     if let ScanReturn::FullMatch { lower, .. } = scan_ret {
-        terminals_rec(&lower.borrow(), &mut result);
+        terminals_rec(&lower.borrow(), |suffix| {result.insert(suffix);});
     }
 
     result
 }
 
-fn terminals_rec<'s, C: CharT>(node: &Node<'s, C>, result: &mut HashSet<usize>) {
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub enum MaximalSubstrMatch {
+    Full { index:usize},
+    Partial { index:usize, length:usize},
+}
+
+/// Finds indexes of given string in the string represented in the trie
+pub fn indexes_substr_maximal<'s, C: CharT>(trie: &SuffixTrie<'s, C>, t: &'s AStr<C>) -> HashSet<MaximalSubstrMatch> {
+    let mut result = HashSet::new();
+
+    match scan_rec(&trie.root, t) {
+        ScanReturn::FullMatch { upper, t_rem_matched, lower } => {
+            // terminals_rec(&lower.borrow(), &mut result);
+        }
+        ScanReturn::MaximalNonFullMatch { max, t_rem_matched, t_unmatched } => {}
+    }
+
+
+    result
+}
+
+
+fn terminals_rec<'s, C: CharT>(node: &Node<'s, C>, mut callback: impl FnMut(usize)) {
     if let Some(terminal) = &node.terminal {
-        result.insert(terminal.suffix_index);
+        callback(terminal.suffix_index);
     }
     for edge in node.children.iter().filter_map(|edge| edge.as_ref()) {
-        terminals_rec(&edge.borrow().target.borrow(), result);
+        terminals_rec(&edge.borrow().target.borrow(), &mut callback);
     }
 }
 
@@ -419,6 +441,18 @@ where
 
 pub fn lcs_trie<'a, C: CharT>(s: &AStr<C>, t: &'a AStr<C>) -> &'a AStr<C> {
     let trie = build_trie(s);
+
+    let mut substr: &[C] = &[];
+    for i in 0..t.len() {
+        // if a.len() - i <= substr.len() {
+        //     break;
+        // }
+
+        // indexes_substr(&trie, &t[i..])
+
+
+    }
+
 
     todo!()
 }
