@@ -162,7 +162,9 @@ pub fn indexes_substr<'s, C: CharT>(trie: &SuffixTrie<'s, C>, t: &'s AStr<C>) ->
 
     let scan_ret = scan_rec(&trie.root, t);
     if let ScanReturn::FullMatch { lower, .. } = scan_ret {
-        terminals_rec(&lower.borrow(), |suffix| {result.insert(suffix);});
+        terminals_rec(&lower.borrow(), |suffix| {
+            result.insert(suffix);
+        });
     }
 
     result
@@ -170,25 +172,39 @@ pub fn indexes_substr<'s, C: CharT>(trie: &SuffixTrie<'s, C>, t: &'s AStr<C>) ->
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub enum MaximalSubstrMatch {
-    Full { index:usize},
-    Partial { index:usize, length:usize},
+    Full { index: usize },
+    Partial { index: usize, length: usize },
 }
 
 /// Finds indexes of given string in the string represented in the trie
-pub fn indexes_substr_maximal<'s, C: CharT>(trie: &SuffixTrie<'s, C>, t: &'s AStr<C>) -> HashSet<MaximalSubstrMatch> {
+pub fn indexes_substr_maximal<'s, C: CharT>(
+    trie: &SuffixTrie<'s, C>,
+    t: &'s AStr<C>,
+) -> HashSet<MaximalSubstrMatch> {
     let mut result = HashSet::new();
 
     match scan_rec(&trie.root, t) {
-        ScanReturn::FullMatch { upper, t_rem_matched, lower } => {
-            // terminals_rec(&lower.borrow(), &mut result);
+        ScanReturn::FullMatch {
+            lower,
+            ..
+        } => {
+            terminals_rec(&lower.borrow(), |suffix| {
+                result.insert(MaximalSubstrMatch::Full {index: suffix});
+            });
         }
-        ScanReturn::MaximalNonFullMatch { max, t_rem_matched, t_unmatched } => {}
+        ScanReturn::MaximalNonFullMatch {
+            max,
+            t_rem_matched,
+            t_unmatched,
+        } => {
+            terminals_rec(&lower.borrow(), |suffix| {
+                result.insert(MaximalSubstrMatch::Full {index: suffix});
+            });
+        }
     }
-
 
     result
 }
-
 
 fn terminals_rec<'s, C: CharT>(node: &Node<'s, C>, mut callback: impl FnMut(usize)) {
     if let Some(terminal) = &node.terminal {
@@ -449,10 +465,7 @@ pub fn lcs_trie<'a, C: CharT>(s: &AStr<C>, t: &'a AStr<C>) -> &'a AStr<C> {
         // }
 
         // indexes_substr(&trie, &t[i..])
-
-
     }
-
 
     todo!()
 }
