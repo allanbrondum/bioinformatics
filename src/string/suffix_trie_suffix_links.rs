@@ -184,18 +184,24 @@ pub fn indexes_substr<'s, C: CharT>(trie: &SuffixTrie<'s, C>, t: &'s AStr<C>) ->
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
-pub enum MaximalSubstrMatch {
-    Full { index: usize },
-    Partial { index: usize, length: usize },
+pub struct MaximalSubstrMatch {
+    index: usize, length: usize,
+    matched: Matched,
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub enum Matched {
+    Full,
+    Partial,
 }
 
 impl MaximalSubstrMatch {
-    fn full(index: usize) -> Self {
-        Self::Full { index }
+    fn full(index: usize, length: usize) -> Self {
+        Self { index, length , matched: Matched::Full}
     }
 
     fn partial(index: usize, length: usize) -> Self {
-        Self::Partial { index, length }
+        Self { index, length , matched: Matched::Partial}
     }
 }
 
@@ -213,7 +219,7 @@ pub fn indexes_substr_maximal<'s, C: CharT>(
             ..
         } => {
             terminals(&lower.borrow(), |suffix| {
-                result.insert(MaximalSubstrMatch::full(suffix));
+                result.insert(MaximalSubstrMatch::full(suffix, t.len()));
             });
         }
         ScanReturn {
@@ -498,7 +504,12 @@ pub fn lcs_trie<'a, C: CharT>(s: &AStr<C>, t: &'a AStr<C>) -> &'a AStr<C> {
         //     break;
         // }
 
-        // indexes_substr(&trie, &t[i..])
+        if let Some(m) = indexes_substr_maximal(&trie, &t[i..]).into_iter().next() {
+
+            // if  > substr.len() {
+            //     substr = &a[i..i + k + 1];
+            // }
+        }
     }
 
     todo!()
@@ -587,14 +598,14 @@ mod test {
         assert_eq!(
             indexes_substr_maximal(&trie, AStr::from_slice(&[A, B, A])),
             HashSet::from([
-                MaximalSubstrMatch::full(0),
-                MaximalSubstrMatch::full(3),
-                MaximalSubstrMatch::full(5)
+                MaximalSubstrMatch::full(0, 3),
+                MaximalSubstrMatch::full(3, 3),
+                MaximalSubstrMatch::full(5, 3)
             ])
         );
         assert_eq!(
             indexes_substr_maximal(&trie, AStr::from_slice(&[B, A, A])),
-            HashSet::from([MaximalSubstrMatch::full(1), MaximalSubstrMatch::full(6)])
+            HashSet::from([MaximalSubstrMatch::full(1, 3), MaximalSubstrMatch::full(6, 3)])
         );
         assert_eq!(
             indexes_substr_maximal(&trie, AStr::from_slice(&[A, A, A])),
