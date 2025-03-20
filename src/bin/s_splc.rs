@@ -9,7 +9,7 @@ fn main() {
     let mut rna = polymers.remove(0).polymer;
 
     for polymer in &polymers {
-        rna = replace_all(rna, &polymer.polymer, AStr::from_slice(&[]));
+        rna = rna.replace(&polymer.polymer, AStr::from_slice(&[]));
     }
 
     let protein = translate_rna(rna.into_iter().map(DnaNt::transcribe));

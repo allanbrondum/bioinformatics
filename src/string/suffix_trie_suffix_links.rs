@@ -185,7 +185,8 @@ pub fn indexes_substr<'s, C: CharT>(trie: &SuffixTrie<'s, C>, t: &'s AStr<C>) ->
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct MaximalSubstrMatch {
-    index: usize, length: usize,
+    index: usize,
+    length: usize,
     matched: Matched,
 }
 
@@ -197,11 +198,19 @@ pub enum Matched {
 
 impl MaximalSubstrMatch {
     fn full(index: usize, length: usize) -> Self {
-        Self { index, length , matched: Matched::Full}
+        Self {
+            index,
+            length,
+            matched: Matched::Full,
+        }
     }
 
     fn partial(index: usize, length: usize) -> Self {
-        Self { index, length , matched: Matched::Partial}
+        Self {
+            index,
+            length,
+            matched: Matched::Partial,
+        }
     }
 }
 
@@ -498,21 +507,20 @@ where
 pub fn lcs_trie<'a, C: CharT>(s: &AStr<C>, t: &'a AStr<C>) -> &'a AStr<C> {
     let trie = build_trie(s);
 
-    let mut substr: &[C] = &[];
+    let mut substr: &AStr<C> = AStr::empty();
     for i in 0..t.len() {
-        // if a.len() - i <= substr.len() {
-        //     break;
-        // }
+        if t.len() - i <= substr.len() {
+            break;
+        }
 
         if let Some(m) = indexes_substr_maximal(&trie, &t[i..]).into_iter().next() {
-
-            // if  > substr.len() {
-            //     substr = &a[i..i + k + 1];
-            // }
+            if m.length > substr.len() {
+                substr = &t[i..i + m.length];
+            }
         }
     }
 
-    todo!()
+    substr
 }
 
 #[cfg(test)]
@@ -524,7 +532,7 @@ mod test {
     use crate::string_model::test_util::Char;
 
     use proptest::prelude::ProptestConfig;
-    use proptest::{prop_assert_eq, proptest};
+    use proptest::{prop_assert, prop_assert_eq, proptest};
 
     #[test]
     fn test_build_trie_and_find_substr_empty() {
@@ -594,7 +602,6 @@ mod test {
 
         let trie = build_trie(s);
 
-
         assert_eq!(
             indexes_substr_maximal(&trie, AStr::from_slice(&[A, B, A])),
             HashSet::from([
@@ -605,11 +612,17 @@ mod test {
         );
         assert_eq!(
             indexes_substr_maximal(&trie, AStr::from_slice(&[B, A, A])),
-            HashSet::from([MaximalSubstrMatch::full(1, 3), MaximalSubstrMatch::full(6, 3)])
+            HashSet::from([
+                MaximalSubstrMatch::full(1, 3),
+                MaximalSubstrMatch::full(6, 3)
+            ])
         );
         assert_eq!(
             indexes_substr_maximal(&trie, AStr::from_slice(&[A, A, A])),
-            HashSet::from([MaximalSubstrMatch::partial(2, 2), MaximalSubstrMatch::partial(7, 2)])
+            HashSet::from([
+                MaximalSubstrMatch::partial(2, 2),
+                MaximalSubstrMatch::partial(7, 2)
+            ])
         );
     }
 
@@ -635,6 +648,19 @@ mod test {
         assert_eq!(lcs_trie(s, t), AStr::from_slice(&[B, A, A, B, A]));
     }
 
+    proptest! {
+        #![proptest_config(ProptestConfig::with_cases(2000))]
+
+        #[test]
+        fn prop_test_lcs_trie(s in arb_astring::<Char>(0..20), t in arb_astring::<Char>(0..20)) {
+            let expected = string::lcs(&s, &t);
+            let lcs = lcs_trie(&s, &t);
+            prop_assert_eq!(lcs.len(), expected.len());
+            prop_assert!(s.contains(lcs));
+            prop_assert!(t.contains(lcs));
+        }
+    }
+
     #[test]
     fn test_lcs_trie_with_separator() {
         use crate::string_model::test_util::Char::*;
@@ -648,3 +674,4 @@ mod test {
         );
     }
 }
+

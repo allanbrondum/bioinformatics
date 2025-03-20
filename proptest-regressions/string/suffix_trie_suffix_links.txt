@@ -5,3 +5,5 @@
 # It is recommended to check this file in to source control so that
 # everyone who runs the test benefits from these saved cases.
 cc c43877b9dccc2aed2e372750729df6a9f04e406cb673a28308115ca17c8b2f7e # shrinks to s = [A, A], t = [A, A, A]
+cc 84998133bec3700b68b655c021fc6637ee853b44a48a442e9a376d93b4320596 # shrinks to s = AString([B, A, B, A, A]), t = AString([A, B, A, A, B, A, B, A])
+cc 46cba2cc3e970c888b29193e18b9fc8f579a37c5213be3beb4bda654d5ad4dd9 # shrinks to s = AString([]), t = AString([])

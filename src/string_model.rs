@@ -2,6 +2,7 @@
 pub mod test_util;
 
 use crate::alphabet_model::CharT;
+use crate::string;
 use ::proptest::collection::SizeRange;
 use ::proptest::strategy::Strategy;
 use ::proptest::{arbitrary, collection};
@@ -246,6 +247,31 @@ impl<C: CharT> Index<RangeInclusive<usize>> for AStr<C> {
 
     fn index(&self, index: RangeInclusive<usize>) -> &Self::Output {
         AStr::from_slice(&self.as_slice()[index])
+    }
+}
+
+impl<C: CharT> AStr<C> {
+    pub fn contains(&self, t: &AStr<C>) -> bool {
+        if t.is_empty() {
+            return true;
+        }
+        self.find(t).is_some()
+    }
+
+    pub fn find(&self, t: &AStr<C>) -> Option<usize> {
+        string::find(self, t)
+    }
+
+    pub fn indexes(&self, t: &AStr<C>) -> Vec<usize> {
+        string::indexes(self, t)
+    }
+
+    pub fn replace(&self, t: &AStr<C>, u: &AStr<C>) -> AString<C> {
+        string::replace_all(self, t, u)
+    }
+
+    pub fn lcp(&self, t: &AStr<C>) -> &AStr<C> {
+        string::lcp(self, t)
     }
 }
 

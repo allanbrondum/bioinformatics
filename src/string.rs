@@ -35,7 +35,7 @@ pub fn find<C: CharT>(s: &AStr<C>, t: &AStr<C>) -> Option<usize> {
     None
 }
 
-pub fn replace_all<C: CharT>(s: AString<C>, t: &AStr<C>, u: &AStr<C>) -> AString<C> {
+pub fn replace_all<C: CharT>(s: &AStr<C>, t: &AStr<C>, u: &AStr<C>) -> AString<C> {
     let mut res = AString::default();
 
     let mut i = 0;
@@ -146,11 +146,11 @@ mod test {
     #[test]
     fn test_replace_all() {
         assert_eq!(
-            replace_all(ascii("abcd").to_owned(), ascii("ijk"), ascii("lmn")),
+            replace_all(ascii("abcd"), ascii("ijk"), ascii("lmn")),
             ascii("abcd").to_owned()
         );
         assert_eq!(
-            replace_all(ascii("abcdabcd").to_owned(), ascii("bc"), ascii("lmn")),
+            replace_all(ascii("abcdabcd"), ascii("bc"), ascii("lmn")),
             ascii("almndalmnd").to_owned()
         );
     }
