@@ -11,7 +11,6 @@ use rosalind::string_model::{AStr, arb_astring};
 
 const STRING_LENGTHS: &[usize] = &[200, 5000, 100_000];
 
-
 fn bench_build_trie_compact(bencher: &mut Bencher<'_>, s: &AStr<Char>) {
     bencher.iter_with_large_drop(|| suffix_trie_compact::build_trie(s));
 }
@@ -19,7 +18,6 @@ fn bench_build_trie_compact(bencher: &mut Bencher<'_>, s: &AStr<Char>) {
 fn bench_build_trie_suffix_links(bencher: &mut Bencher<'_>, s: &AStr<Char>) {
     bencher.iter_with_large_drop(|| suffix_trie_suffix_links::build_trie(s));
 }
-
 
 fn bench_build_and_drop_trie_compact(bencher: &mut Bencher<'_>, s: &AStr<Char>) {
     bencher.iter(|| suffix_trie_compact::build_trie(s));

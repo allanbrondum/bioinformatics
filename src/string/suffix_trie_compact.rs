@@ -1,7 +1,7 @@
 //! McCreight algorithm
 
 use crate::alphabet_model::CharT;
-use crate::string_model::{AStr, AString};
+use crate::string_model::AStr;
 use generic_array::GenericArray;
 
 use crate::string;
@@ -16,17 +16,17 @@ use std::{mem, ptr};
 const GRAPH_DEBUG: bool = false;
 
 #[derive(Debug)]
-pub struct SuffixTrie<C: CharT> {
-    root: Node<C>,
+pub struct SuffixTrie<'s, C: CharT> {
+    root: Node<'s, C>,
 }
 
 #[derive(Debug)]
-struct Node<C: CharT> {
-    children: GenericArray<Option<Box<Edge<C>>>, C::AlphabetSize>,
+struct Node<'s, C: CharT> {
+    children: GenericArray<Option<Box<Edge<'s, C>>>, C::AlphabetSize>,
     terminal: Option<Terminal>,
 }
 
-impl<C: CharT> Node<C> {
+impl<'s, C: CharT> Node<'s, C> {
     fn new() -> Self {
         Self {
             children: Default::default(),
@@ -41,23 +41,23 @@ struct Terminal {
 }
 
 #[derive(Debug)]
-struct Edge<C: CharT> {
-    chars: AString<C>,
-    target: Node<C>,
+struct Edge<'s, C: CharT> {
+    chars: &'s AStr<C>,
+    target: Node<'s, C>,
 }
 
-enum ScanReturn<'a, 'b, C: CharT> {
+enum ScanReturn<'a, 's, C: CharT> {
     FullMatch {
-        upper: &'a Node<C>,
-        lower: &'a Node<C>,
+        upper: &'a Node<'s, C>,
+        lower: &'a Node<'s, C>,
     },
     MaximalNonFullMatch {
-        max: &'a Node<C>,
-        t_unmatched: &'b AStr<C>,
+        max: &'a Node<'s, C>,
+        t_unmatched: &'s AStr<C>,
     },
 }
 
-fn scan_rec<'a, 'b, C: CharT>(node: &'a Node<C>, t: &'b AStr<C>) -> ScanReturn<'a, 'b, C> {
+fn scan_rec<'a, 's, C: CharT>(node: &'a Node<'s, C>, t: &'s AStr<C>) -> ScanReturn<'a, 's, C> {
     if let Some(ch) = t.first() {
         if let Some(edge) = &node.children[ch.index()] {
             let lcp_len = string::lcp(&t[1..], &edge.chars[1..]).len() + 1;
@@ -96,7 +96,7 @@ fn scan_rec<'a, 'b, C: CharT>(node: &'a Node<C>, t: &'b AStr<C>) -> ScanReturn<'
 }
 
 /// Finds indexes of given string in the string represented in the trie
-pub fn indexes_substr<C: CharT>(trie: &SuffixTrie<C>, t: &AStr<C>) -> HashSet<usize> {
+pub fn indexes_substr<'s, C: CharT>(trie: &SuffixTrie<'s, C>, t: &'s AStr<C>) -> HashSet<usize> {
     let mut result = HashSet::new();
 
     let scan_ret = scan_rec(&trie.root, t);
@@ -107,7 +107,7 @@ pub fn indexes_substr<C: CharT>(trie: &SuffixTrie<C>, t: &AStr<C>) -> HashSet<us
     result
 }
 
-fn terminals_rec<C: CharT>(node: &Node<C>, result: &mut HashSet<usize>) {
+fn terminals_rec<'s, C: CharT>(node: &Node<'s, C>, result: &mut HashSet<usize>) {
     if let Some(terminal) = &node.terminal {
         result.insert(terminal.suffix_index);
     }
@@ -117,7 +117,7 @@ fn terminals_rec<C: CharT>(node: &Node<C>, result: &mut HashSet<usize>) {
 }
 
 /// Builds suffix trie
-pub fn build_trie<C: CharT>(s: &AStr<C>) -> SuffixTrie<C> {
+pub fn build_trie<'s, C: CharT>(s: &'s AStr<C>) -> SuffixTrie<'s, C> {
     let mut trie = SuffixTrie { root: Node::new() };
 
     for i in 0..s.len() {
@@ -131,7 +131,7 @@ pub fn build_trie<C: CharT>(s: &AStr<C>) -> SuffixTrie<C> {
     trie
 }
 
-fn insert_rec<C: CharT>(suffix_index: usize, s: &AStr<C>, node: &mut Node<C>) {
+fn insert_rec<'s, C: CharT>(suffix_index: usize, s: &'s AStr<C>, node: &mut Node<'s, C>) {
     if let Some(ch) = s.first() {
         if let Some(edge) = &mut node.children[ch.index()] {
             let lcp_len = string::lcp(&s[1..], &edge.chars[1..]).len() + 1;
@@ -143,11 +143,11 @@ fn insert_rec<C: CharT>(suffix_index: usize, s: &AStr<C>, node: &mut Node<C>) {
                 Ordering::Less => {
                     let new_node = Node::new();
                     let new_edge = Edge {
-                        chars: edge.chars[..lcp_len].to_owned(),
+                        chars: &edge.chars[..lcp_len],
                         target: new_node,
                     };
                     let mut edge_remainder = mem::replace(edge, Box::new(new_edge));
-                    edge_remainder.chars = edge_remainder.chars[lcp_len..].to_owned();
+                    edge_remainder.chars = &edge_remainder.chars[lcp_len..];
                     let rem_ch = edge_remainder.chars[0];
                     edge.target.children[rem_ch.index()] = Some(edge_remainder);
 
@@ -161,7 +161,7 @@ fn insert_rec<C: CharT>(suffix_index: usize, s: &AStr<C>, node: &mut Node<C>) {
             let mut new_node = Node::new();
             new_node.terminal = Some(Terminal { suffix_index });
             node.children[ch.index()] = Some(Box::new(Edge {
-                chars: s.to_owned(),
+                chars: s,
                 target: new_node,
             }));
         }
@@ -170,7 +170,7 @@ fn insert_rec<C: CharT>(suffix_index: usize, s: &AStr<C>, node: &mut Node<C>) {
     }
 }
 
-fn to_dot<C: CharT>(filepath: impl AsRef<Path>, trie: &SuffixTrie<C>) {
+fn to_dot<'s, C: CharT>(filepath: impl AsRef<Path>, trie: &SuffixTrie<'s, C>) {
     let mut file = File::create(filepath).unwrap();
     writeln!(file, "digraph G {{").unwrap();
 
@@ -179,11 +179,11 @@ fn to_dot<C: CharT>(filepath: impl AsRef<Path>, trie: &SuffixTrie<C>) {
     writeln!(file, "}}").unwrap();
 }
 
-fn node_id<C: CharT>(node: &Node<C>) -> impl Display {
+fn node_id<'s, C: CharT>(node: &Node<'s, C>) -> impl Display {
     ptr::from_ref(node) as usize
 }
 
-fn to_dot_rec<C: CharT>(write: &mut impl Write, node: &Node<C>) {
+fn to_dot_rec<'s, C: CharT>(write: &mut impl Write, node: &Node<'s, C>) {
     writeln!(write, "    {} [label=\"\" shape=point];", node_id(node)).unwrap();
     if let Some(terminal) = &node.terminal {
         writeln!(

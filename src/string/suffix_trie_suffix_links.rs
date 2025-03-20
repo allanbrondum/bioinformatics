@@ -513,10 +513,7 @@ mod test {
         let s = AStr::from_slice(&[B, A, B, A, A, B, A, B, A, A]);
         let t = AStr::from_slice(&[B, B, A, A, B, A, A, A, A, B]);
 
-        assert_eq!(
-            lcs_trie(s, t),
-            AStr::from_slice(&[B, A, A, B, A])
-        );
+        assert_eq!(lcs_trie(s, t), AStr::from_slice(&[B, A, A, B, A]));
     }
 
     #[test]
