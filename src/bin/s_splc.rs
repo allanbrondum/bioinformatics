@@ -1,7 +1,7 @@
-use rosalind::polymers::{DnaNt, translate_rna};
+use bioinformatics::polymers::{DnaNt, translate_rna};
 
-use rosalind::string_model::AStr;
-use rosalind::util::fasta_polymers_file;
+use bioinformatics::string_model::AStr;
+use bioinformatics::util::fasta_polymers_file;
 
 fn main() {
     let mut polymers: Vec<_> = fasta_polymers_file::<DnaNt>("src/bin/s_splc_data.txt").collect();

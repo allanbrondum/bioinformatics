@@ -1,15 +1,13 @@
 use crate::alphabet_model::{CharT, WithSeparator};
-use crate::string::suffix_trie_suffix_links::{
-    Node, NodeId, build_trie, node_id_rc, single_terminal, terminals,
-};
+use crate::string::suffix_trie_suffix_links::{Node, NodeId, build_trie, node_id_rc, terminals};
 use crate::string_model::{AStr, AString};
+
 use generic_array::ArrayLength;
-use generic_array::typenum::{Add1, B1, Unsigned};
-use hashbrown::{HashMap, HashSet};
+use hashbrown::HashMap;
 use std::cell::RefCell;
-use std::fmt::Debug;
+
 use std::iter;
-use std::ops::Add;
+
 use std::rc::Rc;
 
 pub fn lcs_trie_with_separator<'s, C: CharT>(s: &'s AStr<C>, t: &AStr<C>) -> &'s AStr<C>
@@ -65,6 +63,14 @@ fn lcs_trie_with_separator_rec<'s, C: CharT, N: ArrayLength>(
     {
         return;
     }
+
+    if node_depth > deepest_path.depth {
+        *deepest_path = PathDepth {
+            depth: node_depth,
+            lower: node.clone(),
+        };
+    }
+
     for child_edge in node
         .borrow()
         .children
@@ -72,20 +78,11 @@ fn lcs_trie_with_separator_rec<'s, C: CharT, N: ArrayLength>(
         .filter_map(|child| child.as_ref())
     {
         let child_edge_ref = child_edge.borrow();
-        let separator_index_opt = child_edge_ref
+        if !child_edge_ref
             .chars
-            .iter()
-            .copied()
-            .position(|ch| matches!(ch, WithSeparator::Separator));
-        let depth = node_depth + separator_index_opt.unwrap_or(child_edge_ref.chars.len());
-        if depth > deepest_path.depth {
-            *deepest_path = PathDepth {
-                depth,
-                lower: child_edge_ref.target.clone(),
-            };
-        }
-
-        if separator_index_opt.is_none() {
+            .as_slice()
+            .contains(&WithSeparator::Separator)
+        {
             lcs_trie_with_separator_rec(
                 &child_edge_ref.target,
                 node_depth + child_edge_ref.chars.len(),

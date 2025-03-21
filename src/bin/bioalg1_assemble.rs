@@ -1,7 +1,7 @@
+use bioinformatics::polymers::DnaNt;
+use bioinformatics::string::scs;
+use bioinformatics::util::fasta_polymers_file;
 use itertools::Itertools;
-use rosalind::polymers::DnaNt;
-use rosalind::string::scs;
-use rosalind::util::fasta_polymers_file;
 use std::fs::File;
 use std::io::Write;
 use std::time::Instant;

@@ -1,6 +1,6 @@
+use bioinformatics::polymers::DnaNt;
+use bioinformatics::string_model::AString;
 use rand::Rng;
-use rosalind::polymers::DnaNt;
-use rosalind::string_model::AString;
 use std::fs::File;
 use std::io::Write;
 

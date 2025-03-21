@@ -1,6 +1,6 @@
+use bioinformatics::probability::binomial;
+use bioinformatics::util::words;
 use itertools::Itertools;
-use rosalind::probability::binomial;
-use rosalind::util::words;
 use std::str::FromStr;
 
 fn main() {

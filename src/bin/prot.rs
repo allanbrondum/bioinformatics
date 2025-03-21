@@ -1,6 +1,6 @@
-use rosalind::polymers::{RnaNt, translate_rna};
-use rosalind::string_model::AString;
-use rosalind::util::chars_file;
+use bioinformatics::polymers::{RnaNt, translate_rna};
+use bioinformatics::string_model::AString;
+use bioinformatics::util::chars_file;
 
 fn main() {
     let codons: AString<_> = translate_rna(chars_file::<RnaNt>("src/bin/prot_data.txt"))

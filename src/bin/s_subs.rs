@@ -1,6 +1,6 @@
+use bioinformatics::string::indexes_str;
+use bioinformatics::util::lines_file;
 use itertools::Itertools;
-use rosalind::string::indexes_str;
-use rosalind::util::lines_file;
 
 fn main() {
     let [s, t]: [String; 2] = lines_file("src/bin/s_subs_data.txt")

@@ -1,5 +1,5 @@
+use bioinformatics::util::{lines, words};
 use itertools::Itertools;
-use rosalind::util::{lines, words};
 use std::str::FromStr;
 
 fn main() {

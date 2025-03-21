@@ -1,5 +1,5 @@
-use rosalind::polymers::DnaNt;
-use rosalind::util::chars_file;
+use bioinformatics::polymers::DnaNt;
+use bioinformatics::util::chars_file;
 use std::collections::HashMap;
 
 fn main() {

@@ -5,9 +5,9 @@ mod bench_util;
 use criterion::{Bencher, BenchmarkId, Criterion, Throughput, criterion_group, criterion_main};
 
 use crate::bench_util::Char;
+use bioinformatics::string::{suffix_trie_compact, suffix_trie_suffix_links};
+use bioinformatics::string_model::{AStr, arb_astring};
 use proptest::strategy::{Strategy, ValueTree};
-use rosalind::string::{suffix_trie_compact, suffix_trie_suffix_links};
-use rosalind::string_model::{AStr, arb_astring};
 
 const STRING_LENGTHS: &[usize] = &[200, 5000, 100_000];
 

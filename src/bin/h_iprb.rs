@@ -1,5 +1,5 @@
+use bioinformatics::util::words;
 use itertools::Itertools;
-use rosalind::util::words;
 
 fn main() {
     let data = include_str!("h_iprb_data.txt");

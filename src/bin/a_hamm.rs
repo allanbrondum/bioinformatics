@@ -1,5 +1,5 @@
+use bioinformatics::util::lines_file;
 use itertools::Itertools;
-use rosalind::util::lines_file;
 
 fn main() {
     let [line1, line2] = lines_file("src/bin/a_hamm_data.txt")

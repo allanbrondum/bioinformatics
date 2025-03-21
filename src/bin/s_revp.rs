@@ -1,5 +1,5 @@
-use rosalind::polymers::DnaNt;
-use rosalind::util::fasta_polymers_file;
+use bioinformatics::polymers::DnaNt;
+use bioinformatics::util::fasta_polymers_file;
 
 fn main() {
     let dna = fasta_polymers_file::<DnaNt>("src/bin/s_revp_data.txt")

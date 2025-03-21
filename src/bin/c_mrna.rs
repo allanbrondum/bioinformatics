@@ -1,5 +1,5 @@
-use rosalind::polymers::{Codon, ProteinAa, all_codons, to_codon};
-use rosalind::util::chars;
+use bioinformatics::polymers::{Codon, ProteinAa, all_codons, to_codon};
+use bioinformatics::util::chars;
 use std::collections::HashMap;
 use std::iter;
 

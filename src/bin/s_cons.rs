@@ -1,7 +1,7 @@
+use bioinformatics::polymers::DnaNt;
+use bioinformatics::string_model::AString;
+use bioinformatics::util::fasta_polymers_file;
 use itertools::Itertools;
-use rosalind::polymers::DnaNt;
-use rosalind::string_model::AString;
-use rosalind::util::fasta_polymers_file;
 
 fn main() {
     let dnas = fasta_polymers_file::<DnaNt>("src/bin/s_cons_data.txt")

@@ -1,7 +1,7 @@
+use bioinformatics::polymers::DnaNt;
+use bioinformatics::string_model::AStr;
+use bioinformatics::util::{FastaEntry, fasta_polymers_file};
 use itertools::Itertools;
-use rosalind::polymers::DnaNt;
-use rosalind::string_model::AStr;
-use rosalind::util::{FastaEntry, fasta_polymers_file};
 
 fn main() {
     let entries = fasta_polymers_file("src/bin/s_gc_data.txt")
