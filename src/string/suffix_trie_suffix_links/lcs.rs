@@ -27,34 +27,36 @@ where
         .chain(t.iter().copied().map(WithSeparator::Char))
         .collect();
 
-    let start = Instant::now();
+    // let start = Instant::now();
     let trie = build_trie(&separated);
-    println!("build trie elapsed {:?}", start.elapsed());
+    // println!("build trie elapsed {:?}", start.elapsed());
 
-    let start = Instant::now();
-    trie_stats(&trie);
-    println!("stats elapsed {:?}", start.elapsed());
+    if false {
+        let start = Instant::now();
+        trie_stats(&trie);
+        println!("stats elapsed {:?}", start.elapsed());
+    }
 
-    let start = Instant::now();
+    // let start = Instant::now();
     let mut node_marks = HashMap::new();
     mark_nodes_rec(&trie.root, s.len(), &mut node_marks);
-    println!("mark nodes elapsed {:?}", start.elapsed());
+    // println!("mark nodes elapsed {:?}", start.elapsed());
 
-    let start = Instant::now();
+    // let start = Instant::now();
     // let mut deepest_path = PathDepth {
     //     depth: 0,
     //     lower: trie.root.clone(),
     // };
     // lcs_trie_with_separator_rec(&trie.root, 0, &node_marks, &mut deepest_path);
     let deepest_path = lcs_trie_with_separator_queue(&trie.root, &node_marks);
-    println!("scan for lcs elapsed {:?}", start.elapsed());
+    // println!("scan for lcs elapsed {:?}", start.elapsed());
 
-    let start = Instant::now();
+    // let start = Instant::now();
     let mut min_suffix = usize::MAX;
     terminals(&deepest_path.lower.borrow(), |suffix| {
         min_suffix = min_suffix.min(suffix)
     });
-    println!("terminals elapsed {:?}", start.elapsed());
+    // println!("terminals elapsed {:?}", start.elapsed());
     &s[min_suffix..min_suffix + deepest_path.depth]
 }
 
@@ -215,15 +217,17 @@ fn mark_ancestors<'s, C, N: ArrayLength>(
 }
 
 pub fn lcs_single_trie<'a, C: CharT>(s: &AStr<C>, t: &'a AStr<C>) -> &'a AStr<C> {
-    let start = Instant::now();
+    // let start = Instant::now();
     let trie = build_trie(s);
-    println!("build trie elapsed {:?}", start.elapsed());
+    // println!("build trie elapsed {:?}", start.elapsed());
 
-    let start = Instant::now();
-    trie_stats(&trie);
-    println!("stats elapsed {:?}", start.elapsed());
+    if false {
+        let start = Instant::now();
+        trie_stats(&trie);
+        println!("stats elapsed {:?}", start.elapsed());
+    }
 
-    let start = Instant::now();
+    // let start = Instant::now();
     let mut substr: &AStr<C> = AStr::empty();
     for i in 0..t.len() {
         if t.len() - i <= substr.len() {
@@ -235,7 +239,7 @@ pub fn lcs_single_trie<'a, C: CharT>(s: &AStr<C>, t: &'a AStr<C>) -> &'a AStr<C>
             substr = &t[i..i + m.length];
         }
     }
-    println!("probe elapsed {:?}", start.elapsed());
+    // println!("probe elapsed {:?}", start.elapsed());
 
     substr
 }
