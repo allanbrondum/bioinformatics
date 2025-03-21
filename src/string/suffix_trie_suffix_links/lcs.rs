@@ -1,5 +1,7 @@
 use crate::alphabet_model::{CharT, WithSeparator};
-use crate::string::suffix_trie_suffix_links::{Node, NodeId, build_trie, node_id_rc};
+use crate::string::suffix_trie_suffix_links::{
+    Node, NodeId, build_trie, node_id_rc, single_terminal, terminals,
+};
 use crate::string_model::{AStr, AString};
 use generic_array::ArrayLength;
 use generic_array::typenum::{Add1, B1, Unsigned};
@@ -27,16 +29,31 @@ where
     let mut node_marks = HashMap::new();
     mark_nodes_rec(&trie.root, &mut node_marks);
 
-    let mut lcs_res = AStr::empty();
-    lcs_trie_with_separator_rec(&trie.root, &node_marks, &mut lcs_res);
+    let mut deepest_path = PathDepth {
+        depth: 0,
+        lower: trie.root.clone(),
+    };
+    lcs_trie_with_separator_rec(&trie.root, 0, &node_marks, &mut deepest_path);
 
-    lcs_res
+    let mut min_suffix = usize::MAX;
+    terminals(&deepest_path.lower.borrow(), |suffix| {
+        println!("suffix: {}", suffix);
+        min_suffix = min_suffix.min(suffix)
+    });
+    println!("min_suffix: {} depth: {}", min_suffix, deepest_path.depth);
+    &s[min_suffix..min_suffix + deepest_path.depth]
 }
 
-fn lcs_trie_with_separator_rec<'s, C: CharT>(
-    node: &Rc<RefCell<Node<'s, WithSeparator<C>, <WithSeparator<C> as CharT>::AlphabetSize>>>,
+struct PathDepth<'s, C, N: ArrayLength> {
+    depth: usize,
+    lower: Rc<RefCell<Node<'s, C, N>>>,
+}
+
+fn lcs_trie_with_separator_rec<'s, C: CharT, N: ArrayLength>(
+    node: &Rc<RefCell<Node<'s, WithSeparator<C>, N>>>,
+    node_depth: usize,
     node_marks: &HashMap<NodeId, Marks>,
-    lcs_res: &mut &AStr<C>,
+    deepest_path: &mut PathDepth<'s, WithSeparator<C>, N>,
 ) where
     WithSeparator<C>: CharT,
 {
@@ -54,7 +71,28 @@ fn lcs_trie_with_separator_rec<'s, C: CharT>(
         .iter()
         .filter_map(|child| child.as_ref())
     {
-        lcs_trie_with_separator_rec(&child_edge.borrow().target, node_marks, lcs_res);
+        let child_edge_ref = child_edge.borrow();
+        let separator_index_opt = child_edge_ref
+            .chars
+            .iter()
+            .copied()
+            .position(|ch| matches!(ch, WithSeparator::Separator));
+        let depth = node_depth + separator_index_opt.unwrap_or(child_edge_ref.chars.len());
+        if depth > deepest_path.depth {
+            *deepest_path = PathDepth {
+                depth,
+                lower: child_edge_ref.target.clone(),
+            };
+        }
+
+        if separator_index_opt.is_none() {
+            lcs_trie_with_separator_rec(
+                &child_edge_ref.target,
+                node_depth + child_edge_ref.chars.len(),
+                node_marks,
+                deepest_path,
+            );
+        }
     }
 }
 
