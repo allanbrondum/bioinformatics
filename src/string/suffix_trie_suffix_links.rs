@@ -554,7 +554,8 @@ fn to_dot_rec<C: CharT>(write: &mut impl Write, node: &Node<C, C::AlphabetSize>)
 }
 
 pub fn trie_stats<'s, C: CharT>(trie: &SuffixTrie<'s, C>) {
-    let mut edge_len_hist = Histogram::<u64>::new_with_bounds(1, trie.s.len() as u64, 2).unwrap();
+    let mut edge_len_hist =
+        Histogram::<u64>::new_with_bounds(1, trie.s.len().max(2) as u64, 2).unwrap();
     let mut node_branch_depth_hist = Histogram::<u64>::new(2).unwrap();
 
     struct ToVisit<'s, C, N: ArrayLength> {
@@ -565,11 +566,12 @@ pub fn trie_stats<'s, C: CharT>(trie: &SuffixTrie<'s, C>) {
     let mut to_visit = VecDeque::new();
     to_visit.push_front(ToVisit {
         node: trie.root.clone(),
-        branch_depth:0
+        branch_depth: 0,
     });
 
     while let Some(node) = to_visit.pop_front() {
-        for child_edge in node.node
+        for child_edge in node
+            .node
             .borrow()
             .children
             .iter()
@@ -584,13 +586,17 @@ pub fn trie_stats<'s, C: CharT>(trie: &SuffixTrie<'s, C>) {
                 .unwrap();
 
             to_visit.push_back(ToVisit {
-                node:child_edge_ref.target.clone(),
+                node: child_edge_ref.target.clone(),
                 branch_depth: node.branch_depth + 1,
             });
         }
     }
 
-    println!("nodes: {}, edges: {}", node_branch_depth_hist.len(), edge_len_hist.len());
+    println!(
+        "nodes: {}, edges: {}",
+        node_branch_depth_hist.len(),
+        edge_len_hist.len()
+    );
 
     println!(
         "edge length: mean={}, max= {}, q0.05={}, q0.25={},  q0.50={} q0.75={} q0.95={}",

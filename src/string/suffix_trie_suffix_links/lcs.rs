@@ -1,5 +1,7 @@
 use crate::alphabet_model::{CharT, WithSeparator};
-use crate::string::suffix_trie_suffix_links::{Node, NodeId, build_trie, node_id_rc, terminals, trie_stats};
+use crate::string::suffix_trie_suffix_links::{
+    Node, NodeId, build_trie, node_id_rc, terminals, trie_stats,
+};
 use crate::string_model::{AStr, AString};
 
 use generic_array::ArrayLength;
@@ -8,10 +10,10 @@ use std::cell::RefCell;
 use std::collections::VecDeque;
 use std::iter;
 
+use hashbrown::HashMap;
 use proptest::strategy::Strategy;
 use std::rc::Rc;
 use std::time::Instant;
-use hashbrown::HashMap;
 
 pub fn lcs_joined_trie<'s, C: CharT>(s: &'s AStr<C>, t: &AStr<C>) -> &'s AStr<C>
 where
@@ -35,7 +37,7 @@ where
 
     let start = Instant::now();
     let mut node_marks = HashMap::new();
-    mark_nodes_rec(&trie.root, &mut node_marks);
+    mark_nodes_rec(&trie.root, s.len(), &mut node_marks);
     println!("mark nodes elapsed {:?}", start.elapsed());
 
     let start = Instant::now();
@@ -84,10 +86,10 @@ fn lcs_trie_with_separator_rec<'s, C, N: ArrayLength>(
     {
         let child_edge_ref = child_edge.borrow();
         if node_marks
-                .get(&node_id_rc(&child_edge_ref.target))
-                .copied()
-                .unwrap_or_default()
-                .both()
+            .get(&node_id_rc(&child_edge_ref.target))
+            .copied()
+            .unwrap_or_default()
+            .both()
         {
             lcs_trie_with_separator_rec(
                 &child_edge_ref.target,
@@ -112,7 +114,10 @@ where
     }
 
     let mut to_visit = VecDeque::new();
-    to_visit.push_front(ToVisit { node: root.clone(), depth: 0 });
+    to_visit.push_front(ToVisit {
+        node: root.clone(),
+        depth: 0,
+    });
 
     let mut deepest_path = PathDepth {
         depth: 0,
@@ -135,11 +140,11 @@ where
             .filter_map(|child| child.as_ref())
         {
             let child_edge_ref = child_edge.borrow();
-            if  node_marks
-                    .get(&node_id_rc(&child_edge_ref.target))
-                    .copied()
-                    .unwrap_or_default()
-                    .both()
+            if node_marks
+                .get(&node_id_rc(&child_edge_ref.target))
+                .copied()
+                .unwrap_or_default()
+                .both()
             {
                 to_visit.push_back(ToVisit {
                     node: child_edge_ref.target.clone(),
@@ -166,9 +171,9 @@ impl Marks {
 
 fn mark_nodes_rec<'s, C: PartialEq, N: ArrayLength>(
     node: &Rc<RefCell<Node<'s, WithSeparator<C>, N>>>,
+    separator_index: usize,
     node_marks: &mut HashMap<NodeId, Marks>,
 ) {
-    let mut has_separator_edge = false;
     for child_edge in node
         .borrow()
         .children
@@ -176,27 +181,25 @@ fn mark_nodes_rec<'s, C: PartialEq, N: ArrayLength>(
         .filter_map(|child| child.as_ref())
     {
         let child_edge_ref = child_edge.borrow();
-        if child_edge_ref.chars.contains(&WithSeparator::Separator) {
-            has_separator_edge = true;
-        } else {
-            mark_nodes_rec(&child_edge_ref.target, node_marks);
+        mark_nodes_rec(&child_edge_ref.target, separator_index, node_marks);
+    }
+
+    if let Some(terminal) = node.borrow().terminal.as_ref() {
+        if terminal.suffix_index < separator_index {
+            mark_ancestors(node, &mut |node_id| {
+                let mark = node_marks.entry(node_id).or_default();
+                let changed = !mark.start_before_separator;
+                mark.start_before_separator = true;
+                changed
+            });
+        } else if terminal.suffix_index > separator_index {
+            mark_ancestors(node, &mut |node_id| {
+                let mark = node_marks.entry(node_id).or_default();
+                let changed = !mark.start_after_separator;
+                mark.start_after_separator = true;
+                changed
+            });
         }
-    }
-    if node.borrow().terminal.is_some() {
-        mark_ancestors(node, &mut |node_id| {
-            let mark = node_marks.entry(node_id).or_default();
-            let changed = !mark.start_after_separator;
-            mark.start_after_separator = true;
-            changed
-        });
-    }
-    if has_separator_edge {
-        mark_ancestors(node, &mut |node_id| {
-            let mark = node_marks.entry(node_id).or_default();
-            let changed = !mark.start_before_separator;
-            mark.start_before_separator = true;
-            changed
-        });
     }
 }
 
