@@ -3,7 +3,7 @@
 pub mod lcs;
 
 use crate::alphabet_model::CharT;
-use crate::string_model::AStr;
+use crate::string_model::{AStr, AString};
 use generic_array::{ArrayLength, GenericArray};
 
 use crate::string;

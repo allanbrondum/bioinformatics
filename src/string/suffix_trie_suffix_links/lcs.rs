@@ -1,5 +1,5 @@
 use crate::alphabet_model::{CharT, WithSeparator};
-use crate::string::suffix_trie_suffix_links::{Node, NodeId, build_trie, node_id_rc, terminals};
+use crate::string::suffix_trie_suffix_links::{build_trie, node_id_rc, terminals, Node, NodeId};
 use crate::string_model::{AStr, AString};
 
 use generic_array::ArrayLength;
@@ -8,7 +8,9 @@ use std::cell::RefCell;
 
 use std::iter;
 
+use proptest::strategy::Strategy;
 use std::rc::Rc;
+use std::time::Instant;
 
 pub fn lcs_joined_trie<'s, C: CharT>(s: &'s AStr<C>, t: &AStr<C>) -> &'s AStr<C>
 where
@@ -22,23 +24,29 @@ where
         .chain(t.iter().copied().map(WithSeparator::Char))
         .collect();
 
+    let start = Instant::now();
     let trie = build_trie(&separated);
+    println!("build trie elapsed {:?}", start.elapsed());
 
+    let start = Instant::now();
     let mut node_marks = HashMap::new();
     mark_nodes_rec(&trie.root, &mut node_marks);
+    println!("mark nodes elapsed {:?}", start.elapsed());
 
+    let start = Instant::now();
     let mut deepest_path = PathDepth {
         depth: 0,
         lower: trie.root.clone(),
     };
     lcs_trie_with_separator_rec(&trie.root, 0, &node_marks, &mut deepest_path);
+    println!("scan for lcs elapsed {:?}", start.elapsed());
 
+    let start = Instant::now();
     let mut min_suffix = usize::MAX;
     terminals(&deepest_path.lower.borrow(), |suffix| {
-        println!("suffix: {}", suffix);
         min_suffix = min_suffix.min(suffix)
     });
-    println!("min_suffix: {} depth: {}", min_suffix, deepest_path.depth);
+    println!("terminals elapsed {:?}", start.elapsed());
     &s[min_suffix..min_suffix + deepest_path.depth]
 }
 
@@ -63,6 +71,7 @@ fn lcs_trie_with_separator_rec<'s, C: CharT, N: ArrayLength>(
     {
         return;
     }
+
 
     if node_depth > deepest_path.depth {
         *deepest_path = PathDepth {
@@ -91,6 +100,8 @@ fn lcs_trie_with_separator_rec<'s, C: CharT, N: ArrayLength>(
             );
         }
     }
+
+
 }
 
 #[derive(Default, Copy, Clone)]
@@ -123,14 +134,6 @@ fn mark_nodes_rec<'s, C: PartialEq, N: ArrayLength>(
             mark_nodes_rec(&child_edge_ref.target, node_marks);
         }
     }
-    if has_separator_edge {
-        mark_ancestors(node, &mut |node_id| {
-            let mark = node_marks.entry(node_id).or_default();
-            let changed = !mark.start_before_separator;
-            mark.start_before_separator = true;
-            changed
-        });
-    }
     if node.borrow().terminal.is_some() {
         mark_ancestors(node, &mut |node_id| {
             let mark = node_marks.entry(node_id).or_default();
@@ -139,6 +142,15 @@ fn mark_nodes_rec<'s, C: PartialEq, N: ArrayLength>(
             changed
         });
     }
+    if has_separator_edge {
+        mark_ancestors(node, &mut |node_id| {
+            let mark = node_marks.entry(node_id).or_default();
+            let changed = !mark.start_before_separator;
+            mark.start_before_separator = true;
+            changed
+        });
+    }
+
 }
 
 fn mark_ancestors<'s, C, N: ArrayLength>(
@@ -153,8 +165,11 @@ fn mark_ancestors<'s, C, N: ArrayLength>(
 }
 
 pub fn lcs_single_trie<'a, C: CharT>(s: &AStr<C>, t: &'a AStr<C>) -> &'a AStr<C> {
+    let start = Instant::now();
     let trie = build_trie(s);
+    println!("build trie elapsed {:?}", start.elapsed());
 
+    let start = Instant::now();
     let mut substr: &AStr<C> = AStr::empty();
     for i in 0..t.len() {
         if t.len() - i <= substr.len() {
@@ -166,6 +181,7 @@ pub fn lcs_single_trie<'a, C: CharT>(s: &AStr<C>, t: &'a AStr<C>) -> &'a AStr<C>
             substr = &t[i..i + m.length];
         }
     }
+    println!("probe elapsed {:?}", start.elapsed());
 
     substr
 }
@@ -179,6 +195,7 @@ mod test {
     use crate::string_model::test_util::Char;
 
     use proptest::prelude::ProptestConfig;
+    use proptest::strategy::ValueTree;
     use proptest::{prop_assert, prop_assert_eq, proptest};
 
     #[test]
@@ -211,10 +228,7 @@ mod test {
         let s = AStr::from_slice(&[B, A, B, A, A, B, A, B, A, A]);
         let t = AStr::from_slice(&[B, B, A, A, B, A, A, A, A, B]);
 
-        assert_eq!(
-            lcs_joined_trie(s, t),
-            AStr::from_slice(&[B, A, A, B, A])
-        );
+        assert_eq!(lcs_joined_trie(s, t), AStr::from_slice(&[B, A, A, B, A]));
     }
 
     proptest! {
@@ -228,5 +242,39 @@ mod test {
             prop_assert!(s.contains(lcs));
             prop_assert!(t.contains(lcs));
         }
+    }
+
+    #[test]
+    fn test_lcs_joined_trie_perf() {
+        use crate::string_model::test_util::Char::*;
+
+        let mut runner = proptest::test_runner::TestRunner::default();
+        let s = arb_astring::<Char>(10_000)
+            .new_tree(&mut runner)
+            .unwrap()
+            .current();
+        let t = arb_astring::<Char>(10_000)
+            .new_tree(&mut runner)
+            .unwrap()
+            .current();
+
+        let _ = lcs_joined_trie(&s, &t);
+    }
+
+    #[test]
+    fn test_lcs_single_trie_perf() {
+        use crate::string_model::test_util::Char::*;
+
+        let mut runner = proptest::test_runner::TestRunner::default();
+        let s = arb_astring::<Char>(10_000)
+            .new_tree(&mut runner)
+            .unwrap()
+            .current();
+        let t = arb_astring::<Char>(10_000)
+            .new_tree(&mut runner)
+            .unwrap()
+            .current();
+
+        let _ = lcs_single_trie(&s, &t);
     }
 }
