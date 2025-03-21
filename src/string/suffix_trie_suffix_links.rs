@@ -9,8 +9,10 @@ use generic_array::{ArrayLength, GenericArray};
 use crate::string;
 
 use hashbrown::HashSet;
+use hdrhistogram::Histogram;
 use std::cell::RefCell;
 use std::cmp::Ordering;
+use std::collections::VecDeque;
 use std::fmt::{Debug, Display, Formatter};
 use std::fs::File;
 use std::hash::Hash;
@@ -25,6 +27,7 @@ const GRAPH_DEBUG: bool = false;
 #[derive(Debug)]
 pub struct SuffixTrie<'s, C: CharT> {
     root: Rc<RefCell<Node<'s, C, C::AlphabetSize>>>,
+    s: &'s AStr<C>,
 }
 
 #[derive(Debug)]
@@ -312,6 +315,7 @@ fn single_terminal_rec<'s, C, N: ArrayLength>(node: &Node<'s, C, N>) -> usize {
 pub fn build_trie<'s, C: CharT>(s: &'s AStr<C>) -> SuffixTrie<'s, C> {
     let trie = SuffixTrie {
         root: Rc::new(RefCell::new(Node::default())),
+        s,
     };
 
     insert_tail(0, &trie.root, s);
@@ -547,6 +551,68 @@ fn to_dot_rec<C: CharT>(write: &mut impl Write, node: &Node<C, C::AlphabetSize>)
         .unwrap();
         to_dot_rec(write, &edge_ref.target.borrow());
     }
+}
+
+pub fn trie_stats<'s, C: CharT>(trie: &SuffixTrie<'s, C>) {
+    let mut edge_len_hist = Histogram::<u64>::new_with_bounds(1, trie.s.len() as u64, 2).unwrap();
+    let mut node_branch_depth_hist = Histogram::<u64>::new(2).unwrap();
+
+    struct ToVisit<'s, C, N: ArrayLength> {
+        node: Rc<RefCell<Node<'s, C, N>>>,
+        branch_depth: usize,
+    }
+
+    let mut to_visit = VecDeque::new();
+    to_visit.push_front(ToVisit {
+        node: trie.root.clone(),
+        branch_depth:0
+    });
+
+    while let Some(node) = to_visit.pop_front() {
+        for child_edge in node.node
+            .borrow()
+            .children
+            .iter()
+            .filter_map(|child| child.as_ref())
+        {
+            let child_edge_ref = child_edge.borrow();
+            edge_len_hist
+                .record(child_edge_ref.chars.len() as u64)
+                .unwrap();
+            node_branch_depth_hist
+                .record(node.branch_depth as u64)
+                .unwrap();
+
+            to_visit.push_back(ToVisit {
+                node:child_edge_ref.target.clone(),
+                branch_depth: node.branch_depth + 1,
+            });
+        }
+    }
+
+    println!("nodes: {}, edges: {}", node_branch_depth_hist.len(), edge_len_hist.len());
+
+    println!(
+        "edge length: mean={}, max= {}, q0.05={}, q0.25={},  q0.50={} q0.75={} q0.95={}",
+        edge_len_hist.mean(),
+        edge_len_hist.max(),
+        edge_len_hist.value_at_quantile(0.05),
+        edge_len_hist.value_at_quantile(0.25),
+        edge_len_hist.value_at_quantile(0.50),
+        edge_len_hist.value_at_quantile(0.75),
+        edge_len_hist.value_at_quantile(0.95)
+    );
+
+    println!(
+        "node branch depth: mean={}, max= {}, q0.05={}, q0.25={},  q0.50={} q0.75={} q0.95={}",
+        node_branch_depth_hist.mean(),
+        node_branch_depth_hist.max(),
+        node_branch_depth_hist.value_at_quantile(0.05),
+        node_branch_depth_hist.value_at_quantile(0.25),
+        node_branch_depth_hist.value_at_quantile(0.50),
+        node_branch_depth_hist.value_at_quantile(0.75),
+        node_branch_depth_hist.value_at_quantile(0.95)
+    );
 }
 
 #[cfg(test)]

@@ -1,16 +1,17 @@
 use crate::alphabet_model::{CharT, WithSeparator};
-use crate::string::suffix_trie_suffix_links::{build_trie, node_id_rc, terminals, Node, NodeId};
+use crate::string::suffix_trie_suffix_links::{Node, NodeId, build_trie, node_id_rc, terminals, trie_stats};
 use crate::string_model::{AStr, AString};
 
 use generic_array::ArrayLength;
-use hashbrown::HashMap;
-use std::cell::RefCell;
 
+use std::cell::RefCell;
+use std::collections::VecDeque;
 use std::iter;
 
 use proptest::strategy::Strategy;
 use std::rc::Rc;
 use std::time::Instant;
+use hashbrown::HashMap;
 
 pub fn lcs_joined_trie<'s, C: CharT>(s: &'s AStr<C>, t: &AStr<C>) -> &'s AStr<C>
 where
@@ -29,16 +30,21 @@ where
     println!("build trie elapsed {:?}", start.elapsed());
 
     let start = Instant::now();
+    trie_stats(&trie);
+    println!("stats elapsed {:?}", start.elapsed());
+
+    let start = Instant::now();
     let mut node_marks = HashMap::new();
     mark_nodes_rec(&trie.root, &mut node_marks);
     println!("mark nodes elapsed {:?}", start.elapsed());
 
     let start = Instant::now();
-    let mut deepest_path = PathDepth {
-        depth: 0,
-        lower: trie.root.clone(),
-    };
-    lcs_trie_with_separator_rec(&trie.root, 0, &node_marks, &mut deepest_path);
+    // let mut deepest_path = PathDepth {
+    //     depth: 0,
+    //     lower: trie.root.clone(),
+    // };
+    // lcs_trie_with_separator_rec(&trie.root, 0, &node_marks, &mut deepest_path);
+    let deepest_path = lcs_trie_with_separator_queue(&trie.root, &node_marks);
     println!("scan for lcs elapsed {:?}", start.elapsed());
 
     let start = Instant::now();
@@ -55,7 +61,7 @@ struct PathDepth<'s, C, N: ArrayLength> {
     lower: Rc<RefCell<Node<'s, C, N>>>,
 }
 
-fn lcs_trie_with_separator_rec<'s, C: CharT, N: ArrayLength>(
+fn lcs_trie_with_separator_rec<'s, C, N: ArrayLength>(
     node: &Rc<RefCell<Node<'s, WithSeparator<C>, N>>>,
     node_depth: usize,
     node_marks: &HashMap<NodeId, Marks>,
@@ -63,16 +69,6 @@ fn lcs_trie_with_separator_rec<'s, C: CharT, N: ArrayLength>(
 ) where
     WithSeparator<C>: CharT,
 {
-    if !node_marks
-        .get(&node_id_rc(node))
-        .copied()
-        .unwrap_or_default()
-        .both()
-    {
-        return;
-    }
-
-
     if node_depth > deepest_path.depth {
         *deepest_path = PathDepth {
             depth: node_depth,
@@ -87,10 +83,11 @@ fn lcs_trie_with_separator_rec<'s, C: CharT, N: ArrayLength>(
         .filter_map(|child| child.as_ref())
     {
         let child_edge_ref = child_edge.borrow();
-        if !child_edge_ref
-            .chars
-            .as_slice()
-            .contains(&WithSeparator::Separator)
+        if node_marks
+                .get(&node_id_rc(&child_edge_ref.target))
+                .copied()
+                .unwrap_or_default()
+                .both()
         {
             lcs_trie_with_separator_rec(
                 &child_edge_ref.target,
@@ -100,8 +97,59 @@ fn lcs_trie_with_separator_rec<'s, C: CharT, N: ArrayLength>(
             );
         }
     }
+}
 
+fn lcs_trie_with_separator_queue<'s, C, N: ArrayLength>(
+    root: &Rc<RefCell<Node<'s, WithSeparator<C>, N>>>,
+    node_marks: &HashMap<NodeId, Marks>,
+) -> PathDepth<'s, WithSeparator<C>, N>
+where
+    WithSeparator<C>: CharT,
+{
+    struct ToVisit<'s, C, N: ArrayLength> {
+        node: Rc<RefCell<Node<'s, WithSeparator<C>, N>>>,
+        depth: usize,
+    }
 
+    let mut to_visit = VecDeque::new();
+    to_visit.push_front(ToVisit { node: root.clone(), depth: 0 });
+
+    let mut deepest_path = PathDepth {
+        depth: 0,
+        lower: root.clone(),
+    };
+
+    while let Some(node) = to_visit.pop_front() {
+        if node.depth > deepest_path.depth {
+            deepest_path = PathDepth {
+                depth: node.depth,
+                lower: node.node.clone(),
+            };
+        }
+
+        for child_edge in node
+            .node
+            .borrow()
+            .children
+            .iter()
+            .filter_map(|child| child.as_ref())
+        {
+            let child_edge_ref = child_edge.borrow();
+            if  node_marks
+                    .get(&node_id_rc(&child_edge_ref.target))
+                    .copied()
+                    .unwrap_or_default()
+                    .both()
+            {
+                to_visit.push_back(ToVisit {
+                    node: child_edge_ref.target.clone(),
+                    depth: node.depth + child_edge_ref.chars.len(),
+                });
+            }
+        }
+    }
+
+    deepest_path
 }
 
 #[derive(Default, Copy, Clone)]
@@ -150,7 +198,6 @@ fn mark_nodes_rec<'s, C: PartialEq, N: ArrayLength>(
             changed
         });
     }
-
 }
 
 fn mark_ancestors<'s, C, N: ArrayLength>(
@@ -168,6 +215,10 @@ pub fn lcs_single_trie<'a, C: CharT>(s: &AStr<C>, t: &'a AStr<C>) -> &'a AStr<C>
     let start = Instant::now();
     let trie = build_trie(s);
     println!("build trie elapsed {:?}", start.elapsed());
+
+    let start = Instant::now();
+    trie_stats(&trie);
+    println!("stats elapsed {:?}", start.elapsed());
 
     let start = Instant::now();
     let mut substr: &AStr<C> = AStr::empty();
