@@ -10,7 +10,7 @@ use std::iter;
 
 use std::rc::Rc;
 
-pub fn lcs_trie_with_separator<'s, C: CharT>(s: &'s AStr<C>, t: &AStr<C>) -> &'s AStr<C>
+pub fn lcs_joined_trie<'s, C: CharT>(s: &'s AStr<C>, t: &AStr<C>) -> &'s AStr<C>
 where
     WithSeparator<C>: CharT,
 {
@@ -152,7 +152,7 @@ fn mark_ancestors<'s, C, N: ArrayLength>(
     }
 }
 
-pub fn lcs_trie<'a, C: CharT>(s: &AStr<C>, t: &'a AStr<C>) -> &'a AStr<C> {
+pub fn lcs_single_trie<'a, C: CharT>(s: &AStr<C>, t: &'a AStr<C>) -> &'a AStr<C> {
     let trie = build_trie(s);
 
     let mut substr: &AStr<C> = AStr::empty();
@@ -182,22 +182,22 @@ mod test {
     use proptest::{prop_assert, prop_assert_eq, proptest};
 
     #[test]
-    fn test_lcs_trie() {
+    fn test_lcs_single_trie() {
         use crate::string_model::test_util::Char::*;
 
         let s = AStr::from_slice(&[B, A, B, A, A, B, A, B, A, A]);
         let t = AStr::from_slice(&[B, B, A, A, B, A, A, A, A, B]);
 
-        assert_eq!(lcs_trie(s, t), AStr::from_slice(&[B, A, A, B, A]));
+        assert_eq!(lcs_single_trie(s, t), AStr::from_slice(&[B, A, A, B, A]));
     }
 
     proptest! {
         #![proptest_config(ProptestConfig::with_cases(2000))]
 
         #[test]
-        fn prop_test_lcs_trie(s in arb_astring::<Char>(0..20), t in arb_astring::<Char>(0..20)) {
+        fn prop_test_lcs_single_trie(s in arb_astring::<Char>(0..20), t in arb_astring::<Char>(0..20)) {
             let expected = string::lcs_simple(&s, &t);
-            let lcs = lcs_trie(&s, &t);
+            let lcs = lcs_single_trie(&s, &t);
             prop_assert_eq!(lcs.len(), expected.len());
             prop_assert!(s.contains(lcs));
             prop_assert!(t.contains(lcs));
@@ -205,15 +205,28 @@ mod test {
     }
 
     #[test]
-    fn test_lcs_trie_with_separator() {
+    fn test_lcs_joined_trie() {
         use crate::string_model::test_util::Char::*;
 
         let s = AStr::from_slice(&[B, A, B, A, A, B, A, B, A, A]);
         let t = AStr::from_slice(&[B, B, A, A, B, A, A, A, A, B]);
 
         assert_eq!(
-            lcs_trie_with_separator(s, t),
+            lcs_joined_trie(s, t),
             AStr::from_slice(&[B, A, A, B, A])
         );
+    }
+
+    proptest! {
+        #![proptest_config(ProptestConfig::with_cases(2000))]
+
+        #[test]
+        fn prop_test_lcs_joined_trie(s in arb_astring::<Char>(0..20), t in arb_astring::<Char>(0..20)) {
+            let expected = string::lcs_simple(&s, &t);
+            let lcs = lcs_joined_trie(&s, &t);
+            prop_assert_eq!(lcs.len(), expected.len());
+            prop_assert!(s.contains(lcs));
+            prop_assert!(t.contains(lcs));
+        }
     }
 }
