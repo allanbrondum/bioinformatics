@@ -253,9 +253,14 @@ pub fn build_trie_with_allocator<'arena, 's, C: CharT + Copy>(
     let mut head_length = Histogram::<u64>::new(2).unwrap();
 
     for i in 1..s.len() {
-        head_length
-            .record((s.len() - i - head_tail.tail.len() + 1) as u64)
-            .unwrap();
+        // head_length
+        //     .record((s.len() - i - head_tail.tail.len() + 1) as u64)
+        //     .unwrap();
+        // let mut head_tail = HeadTail {
+        //     head: trie.root,
+        //     tail: &s[i..],
+        // };
+
         head_tail = insert_suffix(i, head_tail, alloc);
     }
 

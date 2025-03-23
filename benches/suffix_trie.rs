@@ -8,7 +8,9 @@ use std::mem;
 
 use crate::bench_util::Char;
 use bioinformatics::string;
-use bioinformatics::string::{suffix_trie_compact, suffix_trie_suffix_links, suffix_trie_suffix_links_arena_refs};
+use bioinformatics::string::{
+    suffix_trie_compact, suffix_trie_suffix_links, suffix_trie_suffix_links_arena_refs,
+};
 use bioinformatics::string_model::{AStr, arb_astring};
 use proptest::strategy::{Strategy, ValueTree};
 
