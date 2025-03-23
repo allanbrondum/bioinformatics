@@ -8,7 +8,7 @@ use std::mem;
 
 use crate::bench_util::Char;
 use bioinformatics::string;
-use bioinformatics::string::{suffix_trie_compact, suffix_trie_suffix_links};
+use bioinformatics::string::{suffix_trie_compact, suffix_trie_suffix_links, suffix_trie_suffix_links_arena_refs};
 use bioinformatics::string_model::{AStr, arb_astring};
 use proptest::strategy::{Strategy, ValueTree};
 
@@ -27,6 +27,14 @@ fn bench_build_trie_suffix_links_bumpalo(bencher: &mut Bencher<'_>, s: &AStr<Cha
         let alloc = Bump::new();
         let trie = suffix_trie_suffix_links::build_trie_with_allocator(s, &alloc);
         mem::forget(trie);
+        alloc
+    });
+}
+
+fn bench_build_trie_suffix_links_arena_refs(bencher: &mut Bencher<'_>, s: &AStr<Char>) {
+    bencher.iter_with_large_drop(|| {
+        let alloc = Bump::new();
+        let _trie = suffix_trie_suffix_links_arena_refs::build_trie_with_allocator(s, &alloc);
         alloc
     });
 }
@@ -99,6 +107,13 @@ fn build_trie_benches(criterion: &mut Criterion) {
                 BenchmarkId::new("build_trie_suffix_links_bumpalo", string_length),
                 &s,
                 |bencher, s| bench_build_trie_suffix_links_bumpalo(bencher, s),
+            )
+            .throughput(Throughput::Elements(string_length as u64));
+        build_trie_benches
+            .bench_with_input(
+                BenchmarkId::new("build_trie_suffix_links_arena_refs", string_length),
+                &s,
+                |bencher, s| bench_build_trie_suffix_links_arena_refs(bencher, s),
             )
             .throughput(Throughput::Elements(string_length as u64));
         // build_trie_benches
