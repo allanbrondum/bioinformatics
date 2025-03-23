@@ -1,13 +1,12 @@
 //! McCreight algorithm
 
-
-
 use crate::alphabet_model::CharT;
 use crate::string_model::{AStr, AString};
 use generic_array::{ArrayLength, GenericArray};
 
 use crate::string;
 
+use crate::util::alloc::{ReferencingAllocator, StdAllocator};
 use crate::util::print_histogram;
 use hashbrown::HashSet;
 use hdrhistogram::Histogram;
@@ -27,20 +26,20 @@ use std::{alloc, mem, ptr};
 const GRAPH_DEBUG: bool = false;
 
 #[derive(Debug)]
-pub struct SuffixTrie<'s, C: CharT, A: Allocator> {
-    pub(crate) root: Rc<RefCell<Node<'s, C, C::AlphabetSize, A>>, A>,
+pub struct SuffixTrie<'s, C: CharT, A: ReferencingAllocator> {
+    pub(crate) root: A::Ref<RefCell<Node<'s, C, C::AlphabetSize, A>>>,
     s: &'s AStr<C>,
 }
 
 #[derive(Debug)]
-pub(crate) struct Node<'s, C, N: ArrayLength, A: Allocator> {
-    pub(crate) parent: Option<Rc<RefCell<Edge<'s, C, N, A>>, A>>,
-    pub(crate) children: GenericArray<Option<Rc<RefCell<Edge<'s, C, N, A>>, A>>, N>,
+pub(crate) struct Node<'s, C, N: ArrayLength, A: ReferencingAllocator> {
+    pub(crate) parent: Option<A::Ref<RefCell<Edge<'s, C, N, A>>>>,
+    pub(crate) children: GenericArray<Option<A::Ref<RefCell<Edge<'s, C, N, A>>>>, N>,
     pub(crate) terminal: Option<Terminal>,
-    suffix: Option<Rc<RefCell<Node<'s, C, N, A>>, A>>,
+    suffix: Option<A::Ref<RefCell<Node<'s, C, N, A>>>>,
 }
 
-impl<'s, C, N: ArrayLength, A: Allocator> Default for Node<'s, C, N, A> {
+impl<'s, C, N: ArrayLength, A: ReferencingAllocator> Default for Node<'s, C, N, A> {
     fn default() -> Self {
         Self {
             parent: None,
@@ -51,8 +50,8 @@ impl<'s, C, N: ArrayLength, A: Allocator> Default for Node<'s, C, N, A> {
     }
 }
 
-impl<'s, C, N: ArrayLength, A: Allocator> Node<'s, C, N, A> {
-    fn with_parent(parent: Rc<RefCell<Edge<'s, C, N, A>>, A>) -> Self {
+impl<'s, C, N: ArrayLength, A: ReferencingAllocator> Node<'s, C, N, A> {
+    fn with_parent(parent: A::Ref<RefCell<Edge<'s, C, N, A>>>) -> Self {
         Self {
             parent: Some(parent),
             children: Default::default(),
@@ -68,15 +67,15 @@ struct Terminal {
 }
 
 #[derive(Debug)]
-struct Edge<'s, C, N: ArrayLength, A: Allocator> {
+struct Edge<'s, C, N: ArrayLength, A: ReferencingAllocator> {
     pub(crate) chars: &'s AStr<C>,
-    pub(crate) source: Rc<RefCell<Node<'s, C, N, A>>, A>,
-    pub(crate) target: Rc<RefCell<Node<'s, C, N, A>>, A>,
+    pub(crate) source: A::Ref<RefCell<Node<'s, C, N, A>>>,
+    pub(crate) target: A::Ref<RefCell<Node<'s, C, N, A>>>,
 }
 
-struct ScanReturn<'s, C, N: ArrayLength, A: Allocator> {
-    upper: Rc<RefCell<Node<'s, C, N, A>>, A>,
-    lower: Rc<RefCell<Node<'s, C, N, A>>, A>,
+struct ScanReturn<'s, C, N: ArrayLength, A: ReferencingAllocator> {
+    upper: A::Ref<RefCell<Node<'s, C, N, A>>>,
+    lower: A::Ref<RefCell<Node<'s, C, N, A>>>,
     t_rem_matched: &'s AStr<C>,
     matched: ScanMatch<'s, C>,
 }
@@ -86,8 +85,8 @@ enum ScanMatch<'s, C> {
     MaximalNonFullMatch { t_unmatched: &'s AStr<C> },
 }
 
-fn scan_rec<'s, C: CharT, A: Allocator + Copy>(
-    node: &Rc<RefCell<Node<'s, C, C::AlphabetSize, A>>, A>,
+fn scan_rec<'s, C: CharT, A: ReferencingAllocator + Copy>(
+    node: &A::Ref<RefCell<Node<'s, C, C::AlphabetSize, A>>>,
     t: &'s AStr<C>,
 ) -> ScanReturn<'s, C, C::AlphabetSize, A> {
     let node_ref = node.borrow();
@@ -100,14 +99,14 @@ fn scan_rec<'s, C: CharT, A: Allocator + Copy>(
                 Ordering::Equal => scan_rec(&edge_ref.target, &t[edge_ref.chars.len()..]),
                 Ordering::Less => match lcp_len.cmp(&t.len()) {
                     Ordering::Equal => ScanReturn {
-                        upper: node.clone(),
-                        lower: edge_ref.target.clone(),
+                        upper: A::Ref::clone(&node),
+                        lower: A::Ref::clone(&edge_ref.target),
                         t_rem_matched: t,
                         matched: ScanMatch::FullMatch,
                     },
                     Ordering::Less => ScanReturn {
-                        upper: node.clone(),
-                        lower: edge_ref.target.clone(),
+                        upper: A::Ref::clone(&node),
+                        lower: A::Ref::clone(&edge_ref.target),
                         t_rem_matched: &t[..lcp_len],
                         matched: ScanMatch::MaximalNonFullMatch {
                             t_unmatched: &t[lcp_len..],
@@ -123,24 +122,24 @@ fn scan_rec<'s, C: CharT, A: Allocator + Copy>(
             }
         } else {
             ScanReturn {
-                upper: node.clone(),
-                lower: node.clone(),
+                upper: A::Ref::clone(&node),
+                lower: A::Ref::clone(&node),
                 t_rem_matched: AStr::empty(),
                 matched: ScanMatch::MaximalNonFullMatch { t_unmatched: t },
             }
         }
     } else {
         ScanReturn {
-            upper: node.clone(),
+            upper: A::Ref::clone(&node),
             t_rem_matched: AStr::empty(),
-            lower: node.clone(),
+            lower: A::Ref::clone(&node),
             matched: ScanMatch::FullMatch,
         }
     }
 }
 
-fn fast_scan_rec<'s, C: CharT, A: Allocator + Copy>(
-    node: &Rc<RefCell<Node<'s, C, C::AlphabetSize, A>>, A>,
+fn fast_scan_rec<'s, C: CharT, A: ReferencingAllocator + Copy>(
+    node: &A::Ref<RefCell<Node<'s, C, C::AlphabetSize, A>>>,
     t: &'s AStr<C>,
 ) -> ScanReturn<'s, C, C::AlphabetSize, A> {
     let node_ref = node.borrow();
@@ -149,9 +148,9 @@ fn fast_scan_rec<'s, C: CharT, A: Allocator + Copy>(
             let edge_ref = edge.borrow();
             if t.len() < edge_ref.chars.len() {
                 ScanReturn {
-                    upper: node.clone(),
+                    upper: A::Ref::clone(&node),
                     t_rem_matched: t,
-                    lower: edge_ref.target.clone(),
+                    lower: A::Ref::clone(&edge_ref.target),
                     matched: ScanMatch::FullMatch,
                 }
             } else {
@@ -159,23 +158,23 @@ fn fast_scan_rec<'s, C: CharT, A: Allocator + Copy>(
             }
         } else {
             ScanReturn {
-                upper: node.clone(),
-                lower: node.clone(),
+                upper: A::Ref::clone(&node),
+                lower: A::Ref::clone(&node),
                 t_rem_matched: AStr::empty(),
                 matched: ScanMatch::MaximalNonFullMatch { t_unmatched: t },
             }
         }
     } else {
         ScanReturn {
-            upper: node.clone(),
+            upper: A::Ref::clone(&node),
             t_rem_matched: AStr::empty(),
-            lower: node.clone(),
+            lower: A::Ref::clone(&node),
             matched: ScanMatch::FullMatch,
         }
     }
 }
 
-impl<'s, C: CharT, A: Allocator + Copy> SuffixTrie<'s, C, A> {
+impl<'s, C: CharT, A: ReferencingAllocator + Copy> SuffixTrie<'s, C, A> {
     /// Finds indexes of given string in the string represented in the trie
     pub fn indexes_substr(&self, t: &'s AStr<C>) -> HashSet<usize> {
         let mut result = HashSet::new();
@@ -277,14 +276,14 @@ impl MaximalSubstrMatch {
     }
 }
 
-pub(crate) fn terminals<'s, C, N: ArrayLength, A: Allocator>(
+pub(crate) fn terminals<'s, C, N: ArrayLength, A: ReferencingAllocator>(
     node: &Node<'s, C, N, A>,
     mut callback: impl FnMut(usize),
 ) {
     terminals_rec(node, &mut callback)
 }
 
-fn terminals_rec<'s, C, N: ArrayLength, A: Allocator>(
+fn terminals_rec<'s, C, N: ArrayLength, A: ReferencingAllocator>(
     node: &Node<'s, C, N, A>,
     callback: &mut impl FnMut(usize),
 ) {
@@ -296,11 +295,15 @@ fn terminals_rec<'s, C, N: ArrayLength, A: Allocator>(
     }
 }
 
-fn single_terminal<'s, C, N: ArrayLength, A: Allocator>(node: &Node<'s, C, N, A>) -> usize {
+fn single_terminal<'s, C, N: ArrayLength, A: ReferencingAllocator>(
+    node: &Node<'s, C, N, A>,
+) -> usize {
     single_terminal_rec(node)
 }
 
-fn single_terminal_rec<'s, C, N: ArrayLength, A: Allocator>(node: &Node<'s, C, N, A>) -> usize {
+fn single_terminal_rec<'s, C, N: ArrayLength, A: ReferencingAllocator>(
+    node: &Node<'s, C, N, A>,
+) -> usize {
     if let Some(terminal) = &node.terminal {
         terminal.suffix_index
     } else {
@@ -318,24 +321,24 @@ fn single_terminal_rec<'s, C, N: ArrayLength, A: Allocator>(node: &Node<'s, C, N
     }
 }
 
-pub fn build_trie<'s, C: CharT>(s: &'s AStr<C>) -> SuffixTrie<'s, C, alloc::Global> {
-    build_trie_with_allocator(s, alloc::Global)
+pub fn build_trie<'s, C: CharT>(s: &'s AStr<C>) -> SuffixTrie<'s, C, StdAllocator<alloc::Global>> {
+    build_trie_with_allocator(s, StdAllocator(alloc::Global))
 }
 
 /// Builds suffix trie
-pub fn build_trie_with_allocator<'s, C: CharT, A: Allocator + Copy>(
+pub fn build_trie_with_allocator<'s, C: CharT, A: ReferencingAllocator + Copy>(
     s: &'s AStr<C>,
     alloc: A,
 ) -> SuffixTrie<'s, C, A> {
     let trie = SuffixTrie {
-        root: Rc::new_in(RefCell::new(Node::default()), alloc),
+        root: alloc.allocate_referenced(RefCell::new(Node::default())),
         s,
     };
 
     insert_tail(0, &trie.root, s, alloc);
 
     let mut head_tail = HeadTail {
-        head: trie.root.clone(),
+        head: A::Ref::clone(&trie.root),
         tail: s,
     };
 
@@ -361,17 +364,17 @@ pub fn build_trie_with_allocator<'s, C: CharT, A: Allocator + Copy>(
     trie
 }
 
-struct HeadTail<'s, C, N: ArrayLength, A: Allocator> {
-    head: Rc<RefCell<Node<'s, C, N, A>>, A>,
+struct HeadTail<'s, C, N: ArrayLength, A: ReferencingAllocator> {
+    head: A::Ref<RefCell<Node<'s, C, N, A>>>,
     tail: &'s AStr<C>,
 }
 
-fn insert_suffix<C: CharT, A: Allocator + Copy>(
+fn insert_suffix<C: CharT, A: ReferencingAllocator + Copy>(
     suffix_index: usize,
     prev_head_tail: HeadTail<C, C::AlphabetSize, A>,
     alloc: A,
 ) -> HeadTail<C, C::AlphabetSize, A> {
-    let parent_edge = prev_head_tail.head.borrow().parent.clone();
+    let parent_edge = A::Ref::clone(&prev_head_tail.head.borrow().parent);
     let (to_suffix_base_node, to_suffix_str, is_head) = if let Some(parent_edge) = parent_edge {
         let parent_edge_ref = parent_edge.borrow();
         let parent_ref = parent_edge_ref.source.borrow();
@@ -404,12 +407,12 @@ fn insert_suffix<C: CharT, A: Allocator + Copy>(
             (insert_intermediate(&upper, &rem_matched, alloc), true)
         };
 
-        prev_head_tail.head.borrow_mut().suffix = Some(s_prev_head.clone());
+        prev_head_tail.head.borrow_mut().suffix = Some(A::Ref::clone(&s_prev_head));
 
         (s_prev_head, prev_head_tail.tail, is_head)
     } else {
         (
-            prev_head_tail.head.clone(),
+            A::Ref::clone(&prev_head_tail.head),
             &prev_head_tail.tail[1..],
             false,
         )
@@ -448,9 +451,9 @@ fn insert_suffix<C: CharT, A: Allocator + Copy>(
 }
 
 /// Precondition: `t_rem` does not exists on edge from `node`
-fn insert_tail<'s, C: CharT, A: Allocator + Copy>(
+fn insert_tail<'s, C: CharT, A: ReferencingAllocator + Copy>(
     suffix_index: usize,
-    node: &Rc<RefCell<Node<'s, C, C::AlphabetSize, A>>, A>,
+    node: &A::Ref<RefCell<Node<'s, C, C::AlphabetSize, A>>>,
     t_rem: &'s AStr<C>,
     alloc: A,
 ) {
@@ -458,27 +461,24 @@ fn insert_tail<'s, C: CharT, A: Allocator + Copy>(
     if t_rem.is_empty() {
         node_mut.terminal = Some(Terminal { suffix_index });
     } else {
-        let edge = Rc::new_in(
-            RefCell::new(Edge {
-                chars: t_rem,
-                source: node.clone(),
-                target: Rc::new_in(RefCell::new(Node::default()), alloc),
-            }),
-            alloc,
-        );
-        let mut new_node = Node::with_parent(edge.clone());
+        let edge = alloc.allocate_referenced(RefCell::new(Edge {
+            chars: t_rem,
+            source: A::Ref::clone(&node),
+            target: alloc.allocate_referenced(RefCell::new(Node::default())),
+        }));
+        let mut new_node = Node::with_parent(A::Ref::clone(&edge));
         new_node.terminal = Some(Terminal { suffix_index });
-        edge.borrow_mut().target = Rc::new_in(RefCell::new(new_node), alloc);
+        edge.borrow_mut().target = alloc.allocate_referenced(RefCell::new(new_node));
         node_mut.children[t_rem[0].index()] = Some(edge);
     }
 }
 
 /// Precondition: `t_rem` exists on edge from `node`
-fn insert_intermediate<'s, C: CharT, A: Allocator + Copy>(
-    node: &Rc<RefCell<Node<'s, C, C::AlphabetSize, A>>, A>,
+fn insert_intermediate<'s, C: CharT, A: ReferencingAllocator + Copy>(
+    node: &A::Ref<RefCell<Node<'s, C, C::AlphabetSize, A>>>,
     t_rem: &AStr<C>,
     alloc: A,
-) -> Rc<RefCell<Node<'s, C, C::AlphabetSize, A>>, A> {
+) -> A::Ref<RefCell<Node<'s, C, C::AlphabetSize, A>>> {
     assert!(!t_rem.is_empty());
     let node_mut = node.borrow_mut();
     let edge = node_mut.children[t_rem[0].index()]
@@ -488,26 +488,24 @@ fn insert_intermediate<'s, C: CharT, A: Allocator + Copy>(
 
     let new_edge = Edge {
         chars: &edge_mut.chars[..t_rem.len()],
-        source: node.clone(),
-        target: Rc::new_in(RefCell::new(Node::with_parent(edge.clone())), alloc),
+        source: A::Ref::clone(&node),
+        target: alloc.allocate_referenced(RefCell::new(Node::with_parent(A::Ref::clone(&edge)))),
     };
 
-    let edge_remainder = Rc::new_in(
-        RefCell::new(mem::replace(edge_mut.deref_mut(), new_edge)),
-        alloc,
-    );
+    let edge_remainder =
+        alloc.allocate_referenced(RefCell::new(mem::replace(edge_mut.deref_mut(), new_edge)));
     let mut edge_remainder_mut = edge_remainder.borrow_mut();
     edge_remainder_mut.chars = &edge_remainder_mut.chars[t_rem.len()..];
-    edge_remainder_mut.source = edge_mut.target.clone();
-    edge_remainder_mut.target.borrow_mut().parent = Some(edge_remainder.clone());
+    edge_remainder_mut.source = A::Ref::clone(&edge_mut.target);
+    edge_remainder_mut.target.borrow_mut().parent = Some(A::Ref::clone(&edge_remainder));
     let rem_ch = edge_remainder_mut.chars[0];
     drop(edge_remainder_mut);
     edge_mut.target.borrow_mut().children[rem_ch.index()] = Some(edge_remainder);
 
-    edge_mut.target.clone()
+    A::Ref::clone(&edge_mut.target)
 }
 
-fn to_dot<C: CharT, A: Allocator>(filepath: impl AsRef<Path>, trie: &SuffixTrie<C, A>) {
+fn to_dot<C: CharT, A: ReferencingAllocator>(filepath: impl AsRef<Path>, trie: &SuffixTrie<C, A>) {
     let mut file = File::create(filepath).unwrap();
     writeln!(file, "digraph G {{").unwrap();
 
@@ -525,15 +523,20 @@ impl Display for NodeId {
     }
 }
 
-fn node_id<C, N: ArrayLength, A: Allocator>(node: &Node<C, N, A>) -> NodeId {
+fn node_id<C, N: ArrayLength, A: ReferencingAllocator>(node: &Node<C, N, A>) -> NodeId {
     NodeId(ptr::from_ref(node) as usize)
 }
 
-pub(crate) fn node_id_rc<C, N: ArrayLength, A: Allocator>(node: &Rc<RefCell<Node<C, N, A>>, A>) -> NodeId {
+pub(crate) fn node_id_rc<C, N: ArrayLength, A: ReferencingAllocator>(
+    node: &A::Ref<RefCell<Node<C, N, A>>>,
+) -> NodeId {
     NodeId(Rc::as_ptr(node) as usize)
 }
 
-fn to_dot_rec<C: CharT, A: Allocator>(write: &mut impl Write, node: &Node<C, C::AlphabetSize, A>) {
+fn to_dot_rec<C: CharT, A: ReferencingAllocator>(
+    write: &mut impl Write,
+    node: &Node<C, C::AlphabetSize, A>,
+) {
     writeln!(write, "    {} [label=\"\" shape=point];", node_id(node)).unwrap();
     if let Some(terminal) = &node.terminal {
         writeln!(
@@ -583,19 +586,19 @@ fn to_dot_rec<C: CharT, A: Allocator>(write: &mut impl Write, node: &Node<C, C::
     }
 }
 
-pub fn trie_stats<'s, C: CharT, A: Allocator + Copy>(trie: &SuffixTrie<'s, C, A>) {
+pub fn trie_stats<'s, C: CharT, A: ReferencingAllocator + Copy>(trie: &SuffixTrie<'s, C, A>) {
     let mut edge_len_hist =
         Histogram::<u64>::new_with_bounds(1, trie.s.len().max(2) as u64, 2).unwrap();
     let mut node_branch_depth_hist = Histogram::<u64>::new(2).unwrap();
 
-    struct ToVisit<'s, C, N: ArrayLength, A: Allocator> {
-        node: Rc<RefCell<Node<'s, C, N, A>>, A>,
+    struct ToVisit<'s, C, N: ArrayLength, A: ReferencingAllocator> {
+        node: A::Ref<RefCell<Node<'s, C, N, A>>>,
         branch_depth: usize,
     }
 
     let mut to_visit = VecDeque::new();
     to_visit.push_front(ToVisit {
-        node: trie.root.clone(),
+        node: A::Ref::clone(&trie.root),
         branch_depth: 0,
     });
 
@@ -616,7 +619,7 @@ pub fn trie_stats<'s, C: CharT, A: Allocator + Copy>(trie: &SuffixTrie<'s, C, A>
                 .unwrap();
 
             to_visit.push_back(ToVisit {
-                node: child_edge_ref.target.clone(),
+                node: A::Ref::clone(&child_edge_ref.target),
                 branch_depth: node.branch_depth + 1,
             });
         }

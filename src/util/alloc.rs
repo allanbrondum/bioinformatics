@@ -4,13 +4,13 @@ use bumpalo::Bump;
 
 
 pub trait ReferencingAllocator {
-    type Ref<T:'static>: Deref<Target = T>;
+    type Ref<T:'static>: Deref<Target = T> + Clone;
 
     fn allocate_referenced<T:'static>(&self, val: T) -> Self::Ref<T>;
 }
 
 #[derive(Clone, Copy)]
-pub struct StdAllocator<A: std::alloc::Allocator>(A);
+pub struct StdAllocator<A: std::alloc::Allocator>(pub A);
 
 impl<A: std::alloc::Allocator + Copy> ReferencingAllocator for StdAllocator<A> {
     type Ref<T:'static> = Rc<T, A>;
@@ -21,7 +21,7 @@ impl<A: std::alloc::Allocator + Copy> ReferencingAllocator for StdAllocator<A> {
 }
 
 #[derive(Clone, Copy)]
-pub struct BumpAllocator<'bump>(&'bump Bump);
+pub struct BumpAllocator<'bump>(pub &'bump Bump);
 
 
 impl<'bump> ReferencingAllocator for BumpAllocator<'bump> {
