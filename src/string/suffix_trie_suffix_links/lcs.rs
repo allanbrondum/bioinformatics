@@ -1,7 +1,9 @@
-use alloc::alloc;
 use crate::alphabet_model::{CharT, WithSeparator};
-use crate::string::suffix_trie_suffix_links::{Node, NodeId, build_trie, node_id_rc, terminals, trie_stats, build_trie_with_allocator};
+use crate::string::suffix_trie_suffix_links::{
+    Node, NodeId, build_trie, build_trie_with_allocator, node_id_rc, terminals, trie_stats,
+};
 use crate::string_model::{AStr, AString};
+use alloc::alloc;
 use std::alloc::Allocator;
 
 use generic_array::ArrayLength;
@@ -10,11 +12,11 @@ use std::cell::RefCell;
 use std::collections::VecDeque;
 use std::iter;
 
+use bumpalo::Bump;
 use hashbrown::HashMap;
 use proptest::strategy::Strategy;
 use std::rc::Rc;
 use std::time::Instant;
-use bumpalo::Bump;
 
 pub fn lcs_joined_trie<'s, C: CharT>(s: &'s AStr<C>, t: &AStr<C>) -> &'s AStr<C>
 where

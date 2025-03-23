@@ -1,6 +1,6 @@
 #![feature(string_into_chars, ascii_char, allocator_api)]
-extern crate core;
 extern crate alloc;
+extern crate core;
 
 pub mod alphabet_model;
 pub mod ascii;

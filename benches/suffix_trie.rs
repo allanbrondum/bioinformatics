@@ -2,9 +2,9 @@
 
 mod bench_util;
 
-use std::mem;
 use bumpalo::Bump;
 use criterion::{Bencher, BenchmarkId, Criterion, Throughput, criterion_group, criterion_main};
+use std::mem;
 
 use crate::bench_util::Char;
 use bioinformatics::string;
@@ -31,7 +31,6 @@ fn bench_build_trie_suffix_links_bumpalo(bencher: &mut Bencher<'_>, s: &AStr<Cha
     });
 }
 
-
 fn bench_build_and_drop_trie_compact(bencher: &mut Bencher<'_>, s: &AStr<Char>) {
     bencher.iter(|| suffix_trie_compact::build_trie(s));
 }
@@ -46,9 +45,6 @@ fn bench_build_and_drop_trie_suffix_links_bumpalo(bencher: &mut Bencher<'_>, s: 
         suffix_trie_suffix_links::build_trie_with_allocator(s, &alloc);
     });
 }
-
-
-
 
 fn bench_lcs_simple(bencher: &mut Bencher<'_>, s: &AStr<Char>, t: &AStr<Char>) {
     bencher.iter(|| string::lcs_simple(s, t));

@@ -1,11 +1,11 @@
 use crate::alphabet_model::CharT;
 use crate::string_model::AString;
+use hdrhistogram::{Counter, Histogram};
 use std::fs;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 use std::path::Path;
 use std::str::FromStr;
-use hdrhistogram::{Counter, Histogram};
 
 pub fn chars<C: CharT>(s: &str) -> impl DoubleEndedIterator<Item = C> {
     s.trim()
@@ -94,7 +94,7 @@ fn fasta_polymers_lines<C: CharT, S: AsRef<str>>(
     res.into_iter()
 }
 
-pub fn print_histogram<T:Counter>(label: &str, hist: &Histogram<T>) {
+pub fn print_histogram<T: Counter>(label: &str, hist: &Histogram<T>) {
     println!(
         "{}: mean={}, max= {}, q0.05={}, q0.25={},  q0.50={} q0.75={} q0.95={}",
         label,

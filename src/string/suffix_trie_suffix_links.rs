@@ -1,6 +1,7 @@
 //! McCreight algorithm
 
 pub mod lcs;
+mod suffix_array;
 
 use crate::alphabet_model::CharT;
 use crate::string_model::{AStr, AString};
@@ -342,9 +343,10 @@ pub fn build_trie_with_allocator<'s, C: CharT, A: Allocator + Copy>(
     let mut head_length = Histogram::<u64>::new(2).unwrap();
 
     for i in 1..s.len() {
-        head_length.record((s.len() - i - head_tail.tail.len() + 1) as u64).unwrap();
+        head_length
+            .record((s.len() - i - head_tail.tail.len() + 1) as u64)
+            .unwrap();
         head_tail = insert_suffix(i, head_tail, alloc);
-
 
         if GRAPH_DEBUG {
             to_dot(format!("target/trie_suffix_link_{}.dot", i), &trie);
@@ -375,7 +377,7 @@ fn insert_suffix<C: CharT, A: Allocator + Copy>(
         let parent_edge_ref = parent_edge.borrow();
         let parent_ref = parent_edge_ref.source.borrow();
 
-        let (to_s_prev_head_base_node, to_s_prev_head_str) = if parent_ref.parent.is_some()  {
+        let (to_s_prev_head_base_node, to_s_prev_head_str) = if parent_ref.parent.is_some() {
             (
                 parent_ref.suffix.as_ref().expect("suffix"),
                 parent_edge_ref.chars,
