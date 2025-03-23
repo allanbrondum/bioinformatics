@@ -5,6 +5,7 @@ use std::fs::File;
 use std::io::{BufRead, BufReader};
 use std::path::Path;
 use std::str::FromStr;
+use hdrhistogram::{Counter, Histogram};
 
 pub fn chars<C: CharT>(s: &str) -> impl DoubleEndedIterator<Item = C> {
     s.trim()
@@ -91,4 +92,18 @@ fn fasta_polymers_lines<C: CharT, S: AsRef<str>>(
     }
 
     res.into_iter()
+}
+
+pub fn print_histogram<T:Counter>(label: &str, hist: &Histogram<T>) {
+    println!(
+        "{}: mean={}, max= {}, q0.05={}, q0.25={},  q0.50={} q0.75={} q0.95={}",
+        label,
+        hist.mean(),
+        hist.max(),
+        hist.value_at_quantile(0.05),
+        hist.value_at_quantile(0.25),
+        hist.value_at_quantile(0.50),
+        hist.value_at_quantile(0.75),
+        hist.value_at_quantile(0.95)
+    );
 }

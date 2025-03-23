@@ -1,8 +1,8 @@
+use alloc::alloc;
 use crate::alphabet_model::{CharT, WithSeparator};
-use crate::string::suffix_trie_suffix_links::{
-    Node, NodeId, build_trie, node_id_rc, terminals, trie_stats,
-};
+use crate::string::suffix_trie_suffix_links::{Node, NodeId, build_trie, node_id_rc, terminals, trie_stats, build_trie_with_allocator};
 use crate::string_model::{AStr, AString};
+use std::alloc::Allocator;
 
 use generic_array::ArrayLength;
 
@@ -14,6 +14,7 @@ use hashbrown::HashMap;
 use proptest::strategy::Strategy;
 use std::rc::Rc;
 use std::time::Instant;
+use bumpalo::Bump;
 
 pub fn lcs_joined_trie<'s, C: CharT>(s: &'s AStr<C>, t: &AStr<C>) -> &'s AStr<C>
 where
@@ -28,7 +29,9 @@ where
         .collect();
 
     // let start = Instant::now();
-    let trie = build_trie(&separated);
+    let alloc = Bump::new();
+    // let alloc = alloc::Global;
+    let trie = build_trie_with_allocator(&separated, &alloc);
     // println!("build trie elapsed {:?}", start.elapsed());
 
     if false {
@@ -60,16 +63,16 @@ where
     &s[min_suffix..min_suffix + deepest_path.depth]
 }
 
-struct PathDepth<'s, C, N: ArrayLength> {
+struct PathDepth<'s, C, N: ArrayLength, A: Allocator> {
     depth: usize,
-    lower: Rc<RefCell<Node<'s, C, N>>>,
+    lower: Rc<RefCell<Node<'s, C, N, A>>, A>,
 }
 
-fn lcs_trie_with_separator_rec<'s, C, N: ArrayLength>(
-    node: &Rc<RefCell<Node<'s, WithSeparator<C>, N>>>,
+fn lcs_trie_with_separator_rec<'s, C, N: ArrayLength, A: Allocator + Copy>(
+    node: &Rc<RefCell<Node<'s, WithSeparator<C>, N, A>>, A>,
     node_depth: usize,
     node_marks: &HashMap<NodeId, Marks>,
-    deepest_path: &mut PathDepth<'s, WithSeparator<C>, N>,
+    deepest_path: &mut PathDepth<'s, WithSeparator<C>, N, A>,
 ) where
     WithSeparator<C>: CharT,
 {
@@ -103,15 +106,15 @@ fn lcs_trie_with_separator_rec<'s, C, N: ArrayLength>(
     }
 }
 
-fn lcs_trie_with_separator_queue<'s, C, N: ArrayLength>(
-    root: &Rc<RefCell<Node<'s, WithSeparator<C>, N>>>,
+fn lcs_trie_with_separator_queue<'s, C, N: ArrayLength, A: Allocator + Copy>(
+    root: &Rc<RefCell<Node<'s, WithSeparator<C>, N, A>>, A>,
     node_marks: &HashMap<NodeId, Marks>,
-) -> PathDepth<'s, WithSeparator<C>, N>
+) -> PathDepth<'s, WithSeparator<C>, N, A>
 where
     WithSeparator<C>: CharT,
 {
-    struct ToVisit<'s, C, N: ArrayLength> {
-        node: Rc<RefCell<Node<'s, WithSeparator<C>, N>>>,
+    struct ToVisit<'s, C, N: ArrayLength, A: Allocator> {
+        node: Rc<RefCell<Node<'s, WithSeparator<C>, N, A>>, A>,
         depth: usize,
     }
 
@@ -123,7 +126,7 @@ where
 
     let mut deepest_path = PathDepth {
         depth: 0,
-        lower: root.clone(),
+        lower: Rc::clone(&root),
     };
 
     while let Some(node) = to_visit.pop_front() {
@@ -171,8 +174,8 @@ impl Marks {
     }
 }
 
-fn mark_nodes_rec<'s, C: PartialEq, N: ArrayLength>(
-    node: &Rc<RefCell<Node<'s, WithSeparator<C>, N>>>,
+fn mark_nodes_rec<'s, C: PartialEq, N: ArrayLength, A: Allocator>(
+    node: &Rc<RefCell<Node<'s, WithSeparator<C>, N, A>>, A>,
     separator_index: usize,
     node_marks: &mut HashMap<NodeId, Marks>,
 ) {
@@ -205,8 +208,8 @@ fn mark_nodes_rec<'s, C: PartialEq, N: ArrayLength>(
     }
 }
 
-fn mark_ancestors<'s, C, N: ArrayLength>(
-    node: &Rc<RefCell<Node<'s, C, N>>>,
+fn mark_ancestors<'s, C, N: ArrayLength, A: Allocator>(
+    node: &Rc<RefCell<Node<'s, C, N, A>>, A>,
     mark_node: &mut impl FnMut(NodeId) -> bool,
 ) {
     if mark_node(node_id_rc(node)) {

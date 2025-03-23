@@ -8,8 +8,10 @@ use generic_array::{ArrayLength, GenericArray};
 
 use crate::string;
 
+use crate::util::print_histogram;
 use hashbrown::HashSet;
 use hdrhistogram::Histogram;
+use std::alloc::Allocator;
 use std::cell::RefCell;
 use std::cmp::Ordering;
 use std::collections::VecDeque;
@@ -20,25 +22,25 @@ use std::io::Write;
 use std::ops::DerefMut;
 use std::path::Path;
 use std::rc::Rc;
-use std::{mem, ptr};
+use std::{alloc, mem, ptr};
 
 const GRAPH_DEBUG: bool = false;
 
 #[derive(Debug)]
-pub struct SuffixTrie<'s, C: CharT> {
-    root: Rc<RefCell<Node<'s, C, C::AlphabetSize>>>,
+pub struct SuffixTrie<'s, C: CharT, A: Allocator> {
+    root: Rc<RefCell<Node<'s, C, C::AlphabetSize, A>>, A>,
     s: &'s AStr<C>,
 }
 
 #[derive(Debug)]
-struct Node<'s, C, N: ArrayLength> {
-    parent: Option<Rc<RefCell<Edge<'s, C, N>>>>,
-    children: GenericArray<Option<Rc<RefCell<Edge<'s, C, N>>>>, N>,
+struct Node<'s, C, N: ArrayLength, A: Allocator> {
+    parent: Option<Rc<RefCell<Edge<'s, C, N, A>>, A>>,
+    children: GenericArray<Option<Rc<RefCell<Edge<'s, C, N, A>>, A>>, N>,
     terminal: Option<Terminal>,
-    suffix: Option<Rc<RefCell<Node<'s, C, N>>>>,
+    suffix: Option<Rc<RefCell<Node<'s, C, N, A>>, A>>,
 }
 
-impl<'s, C, N: ArrayLength> Default for Node<'s, C, N> {
+impl<'s, C, N: ArrayLength, A: Allocator> Default for Node<'s, C, N, A> {
     fn default() -> Self {
         Self {
             parent: None,
@@ -49,8 +51,8 @@ impl<'s, C, N: ArrayLength> Default for Node<'s, C, N> {
     }
 }
 
-impl<'s, C, N: ArrayLength> Node<'s, C, N> {
-    fn with_parent(parent: Rc<RefCell<Edge<'s, C, N>>>) -> Self {
+impl<'s, C, N: ArrayLength, A: Allocator> Node<'s, C, N, A> {
+    fn with_parent(parent: Rc<RefCell<Edge<'s, C, N, A>>, A>) -> Self {
         Self {
             parent: Some(parent),
             children: Default::default(),
@@ -66,15 +68,15 @@ struct Terminal {
 }
 
 #[derive(Debug)]
-struct Edge<'s, C, N: ArrayLength> {
+struct Edge<'s, C, N: ArrayLength, A: Allocator> {
     chars: &'s AStr<C>,
-    source: Rc<RefCell<Node<'s, C, N>>>,
-    target: Rc<RefCell<Node<'s, C, N>>>,
+    source: Rc<RefCell<Node<'s, C, N, A>>, A>,
+    target: Rc<RefCell<Node<'s, C, N, A>>, A>,
 }
 
-struct ScanReturn<'s, C, N: ArrayLength> {
-    upper: Rc<RefCell<Node<'s, C, N>>>,
-    lower: Rc<RefCell<Node<'s, C, N>>>,
+struct ScanReturn<'s, C, N: ArrayLength, A: Allocator> {
+    upper: Rc<RefCell<Node<'s, C, N, A>>, A>,
+    lower: Rc<RefCell<Node<'s, C, N, A>>, A>,
     t_rem_matched: &'s AStr<C>,
     matched: ScanMatch<'s, C>,
 }
@@ -84,11 +86,10 @@ enum ScanMatch<'s, C> {
     MaximalNonFullMatch { t_unmatched: &'s AStr<C> },
 }
 
-// todo loop instead of recurse?
-fn scan_rec<'s, C: CharT>(
-    node: &Rc<RefCell<Node<'s, C, C::AlphabetSize>>>,
+fn scan_rec<'s, C: CharT, A: Allocator + Copy>(
+    node: &Rc<RefCell<Node<'s, C, C::AlphabetSize, A>>, A>,
     t: &'s AStr<C>,
-) -> ScanReturn<'s, C, C::AlphabetSize> {
+) -> ScanReturn<'s, C, C::AlphabetSize, A> {
     let node_ref = node.borrow();
     if let Some(ch) = t.first() {
         if let Some(edge) = &node_ref.children[ch.index()] {
@@ -138,10 +139,10 @@ fn scan_rec<'s, C: CharT>(
     }
 }
 
-fn fast_scan_rec<'s, C: CharT>(
-    node: &Rc<RefCell<Node<'s, C, C::AlphabetSize>>>,
+fn fast_scan_rec<'s, C: CharT, A: Allocator + Copy>(
+    node: &Rc<RefCell<Node<'s, C, C::AlphabetSize, A>>, A>,
     t: &'s AStr<C>,
-) -> ScanReturn<'s, C, C::AlphabetSize> {
+) -> ScanReturn<'s, C, C::AlphabetSize, A> {
     let node_ref = node.borrow();
     if let Some(ch) = t.first() {
         if let Some(edge) = &node_ref.children[ch.index()] {
@@ -174,7 +175,7 @@ fn fast_scan_rec<'s, C: CharT>(
     }
 }
 
-impl<'s, C: CharT> SuffixTrie<'s, C> {
+impl<'s, C: CharT, A: Allocator + Copy> SuffixTrie<'s, C, A> {
     /// Finds indexes of given string in the string represented in the trie
     pub fn indexes_substr(&self, t: &'s AStr<C>) -> HashSet<usize> {
         let mut result = HashSet::new();
@@ -276,11 +277,17 @@ impl MaximalSubstrMatch {
     }
 }
 
-fn terminals<'s, C, N: ArrayLength>(node: &Node<'s, C, N>, mut callback: impl FnMut(usize)) {
+fn terminals<'s, C, N: ArrayLength, A: Allocator>(
+    node: &Node<'s, C, N, A>,
+    mut callback: impl FnMut(usize),
+) {
     terminals_rec(node, &mut callback)
 }
 
-fn terminals_rec<'s, C, N: ArrayLength>(node: &Node<'s, C, N>, callback: &mut impl FnMut(usize)) {
+fn terminals_rec<'s, C, N: ArrayLength, A: Allocator>(
+    node: &Node<'s, C, N, A>,
+    callback: &mut impl FnMut(usize),
+) {
     if let Some(terminal) = &node.terminal {
         callback(terminal.suffix_index);
     }
@@ -289,11 +296,11 @@ fn terminals_rec<'s, C, N: ArrayLength>(node: &Node<'s, C, N>, callback: &mut im
     }
 }
 
-fn single_terminal<'s, C, N: ArrayLength>(node: &Node<'s, C, N>) -> usize {
+fn single_terminal<'s, C, N: ArrayLength, A: Allocator>(node: &Node<'s, C, N, A>) -> usize {
     single_terminal_rec(node)
 }
 
-fn single_terminal_rec<'s, C, N: ArrayLength>(node: &Node<'s, C, N>) -> usize {
+fn single_terminal_rec<'s, C, N: ArrayLength, A: Allocator>(node: &Node<'s, C, N, A>) -> usize {
     if let Some(terminal) = &node.terminal {
         terminal.suffix_index
     } else {
@@ -311,27 +318,40 @@ fn single_terminal_rec<'s, C, N: ArrayLength>(node: &Node<'s, C, N>) -> usize {
     }
 }
 
+pub fn build_trie<'s, C: CharT>(s: &'s AStr<C>) -> SuffixTrie<'s, C, alloc::Global> {
+    build_trie_with_allocator(s, alloc::Global)
+}
+
 /// Builds suffix trie
-pub fn build_trie<'s, C: CharT>(s: &'s AStr<C>) -> SuffixTrie<'s, C> {
+pub fn build_trie_with_allocator<'s, C: CharT, A: Allocator + Copy>(
+    s: &'s AStr<C>,
+    alloc: A,
+) -> SuffixTrie<'s, C, A> {
     let trie = SuffixTrie {
-        root: Rc::new(RefCell::new(Node::default())),
+        root: Rc::new_in(RefCell::new(Node::default()), alloc),
         s,
     };
 
-    insert_tail(0, &trie.root, s);
+    insert_tail(0, &trie.root, s, alloc);
 
     let mut head_tail = HeadTail {
         head: trie.root.clone(),
         tail: s,
     };
 
+    let mut head_length = Histogram::<u64>::new(2).unwrap();
+
     for i in 1..s.len() {
-        head_tail = insert_suffix(i, head_tail);
+        head_length.record((s.len() - i - head_tail.tail.len() + 1) as u64).unwrap();
+        head_tail = insert_suffix(i, head_tail, alloc);
+
 
         if GRAPH_DEBUG {
             to_dot(format!("target/trie_suffix_link_{}.dot", i), &trie);
         }
     }
+
+    print_histogram("head length", &head_length);
 
     if GRAPH_DEBUG {
         to_dot("target/trie_suffix_link.dot", &trie);
@@ -340,21 +360,22 @@ pub fn build_trie<'s, C: CharT>(s: &'s AStr<C>) -> SuffixTrie<'s, C> {
     trie
 }
 
-struct HeadTail<'s, C, N: ArrayLength> {
-    head: Rc<RefCell<Node<'s, C, N>>>,
+struct HeadTail<'s, C, N: ArrayLength, A: Allocator> {
+    head: Rc<RefCell<Node<'s, C, N, A>>, A>,
     tail: &'s AStr<C>,
 }
 
-fn insert_suffix<C: CharT>(
+fn insert_suffix<C: CharT, A: Allocator + Copy>(
     suffix_index: usize,
-    prev_head_tail: HeadTail<C, C::AlphabetSize>,
-) -> HeadTail<C, C::AlphabetSize> {
+    prev_head_tail: HeadTail<C, C::AlphabetSize, A>,
+    alloc: A,
+) -> HeadTail<C, C::AlphabetSize, A> {
     let parent_edge = prev_head_tail.head.borrow().parent.clone();
     let (to_suffix_base_node, to_suffix_str, is_head) = if let Some(parent_edge) = parent_edge {
         let parent_edge_ref = parent_edge.borrow();
         let parent_ref = parent_edge_ref.source.borrow();
 
-        let (to_s_prev_head_base_node, to_s_prev_head_str) = if parent_ref.parent.is_some() {
+        let (to_s_prev_head_base_node, to_s_prev_head_str) = if parent_ref.parent.is_some()  {
             (
                 parent_ref.suffix.as_ref().expect("suffix"),
                 parent_edge_ref.chars,
@@ -379,7 +400,7 @@ fn insert_suffix<C: CharT>(
         let (s_prev_head, is_head) = if rem_matched.is_empty() {
             (upper, false)
         } else {
-            (insert_intermediate(&upper, &rem_matched), true)
+            (insert_intermediate(&upper, &rem_matched, alloc), true)
         };
 
         prev_head_tail.head.borrow_mut().suffix = Some(s_prev_head.clone());
@@ -414,44 +435,49 @@ fn insert_suffix<C: CharT>(
         let head = if to_head_str.is_empty() {
             upper
         } else {
-            insert_intermediate(&upper, to_head_str)
+            insert_intermediate(&upper, to_head_str, alloc)
         };
 
         (head, tail)
     };
 
-    insert_tail(suffix_index, &head, tail);
+    insert_tail(suffix_index, &head, tail, alloc);
 
     HeadTail { head, tail }
 }
 
 /// Precondition: `t_rem` does not exists on edge from `node`
-fn insert_tail<'s, C: CharT>(
+fn insert_tail<'s, C: CharT, A: Allocator + Copy>(
     suffix_index: usize,
-    node: &Rc<RefCell<Node<'s, C, C::AlphabetSize>>>,
+    node: &Rc<RefCell<Node<'s, C, C::AlphabetSize, A>>, A>,
     t_rem: &'s AStr<C>,
+    alloc: A,
 ) {
     let mut node_mut = node.borrow_mut();
     if t_rem.is_empty() {
         node_mut.terminal = Some(Terminal { suffix_index });
     } else {
-        let edge = Rc::new(RefCell::new(Edge {
-            chars: t_rem,
-            source: node.clone(),
-            target: Rc::new(RefCell::new(Node::default())),
-        }));
+        let edge = Rc::new_in(
+            RefCell::new(Edge {
+                chars: t_rem,
+                source: node.clone(),
+                target: Rc::new_in(RefCell::new(Node::default()), alloc),
+            }),
+            alloc,
+        );
         let mut new_node = Node::with_parent(edge.clone());
         new_node.terminal = Some(Terminal { suffix_index });
-        edge.borrow_mut().target = Rc::new(RefCell::new(new_node));
+        edge.borrow_mut().target = Rc::new_in(RefCell::new(new_node), alloc);
         node_mut.children[t_rem[0].index()] = Some(edge);
     }
 }
 
 /// Precondition: `t_rem` exists on edge from `node`
-fn insert_intermediate<'s, C: CharT>(
-    node: &Rc<RefCell<Node<'s, C, C::AlphabetSize>>>,
+fn insert_intermediate<'s, C: CharT, A: Allocator + Copy>(
+    node: &Rc<RefCell<Node<'s, C, C::AlphabetSize, A>>, A>,
     t_rem: &AStr<C>,
-) -> Rc<RefCell<Node<'s, C, C::AlphabetSize>>> {
+    alloc: A,
+) -> Rc<RefCell<Node<'s, C, C::AlphabetSize, A>>, A> {
     assert!(!t_rem.is_empty());
     let node_mut = node.borrow_mut();
     let edge = node_mut.children[t_rem[0].index()]
@@ -462,10 +488,13 @@ fn insert_intermediate<'s, C: CharT>(
     let new_edge = Edge {
         chars: &edge_mut.chars[..t_rem.len()],
         source: node.clone(),
-        target: Rc::new(RefCell::new(Node::with_parent(edge.clone()))),
+        target: Rc::new_in(RefCell::new(Node::with_parent(edge.clone())), alloc),
     };
 
-    let edge_remainder = Rc::new(RefCell::new(mem::replace(edge_mut.deref_mut(), new_edge)));
+    let edge_remainder = Rc::new_in(
+        RefCell::new(mem::replace(edge_mut.deref_mut(), new_edge)),
+        alloc,
+    );
     let mut edge_remainder_mut = edge_remainder.borrow_mut();
     edge_remainder_mut.chars = &edge_remainder_mut.chars[t_rem.len()..];
     edge_remainder_mut.source = edge_mut.target.clone();
@@ -477,7 +506,7 @@ fn insert_intermediate<'s, C: CharT>(
     edge_mut.target.clone()
 }
 
-fn to_dot<C: CharT>(filepath: impl AsRef<Path>, trie: &SuffixTrie<C>) {
+fn to_dot<C: CharT, A: Allocator>(filepath: impl AsRef<Path>, trie: &SuffixTrie<C, A>) {
     let mut file = File::create(filepath).unwrap();
     writeln!(file, "digraph G {{").unwrap();
 
@@ -495,15 +524,15 @@ impl Display for NodeId {
     }
 }
 
-fn node_id<C, N: ArrayLength>(node: &Node<C, N>) -> NodeId {
+fn node_id<C, N: ArrayLength, A: Allocator>(node: &Node<C, N, A>) -> NodeId {
     NodeId(ptr::from_ref(node) as usize)
 }
 
-fn node_id_rc<C, N: ArrayLength>(node: &Rc<RefCell<Node<C, N>>>) -> NodeId {
+fn node_id_rc<C, N: ArrayLength, A: Allocator>(node: &Rc<RefCell<Node<C, N, A>>, A>) -> NodeId {
     NodeId(Rc::as_ptr(node) as usize)
 }
 
-fn to_dot_rec<C: CharT>(write: &mut impl Write, node: &Node<C, C::AlphabetSize>) {
+fn to_dot_rec<C: CharT, A: Allocator>(write: &mut impl Write, node: &Node<C, C::AlphabetSize, A>) {
     writeln!(write, "    {} [label=\"\" shape=point];", node_id(node)).unwrap();
     if let Some(terminal) = &node.terminal {
         writeln!(
@@ -553,13 +582,13 @@ fn to_dot_rec<C: CharT>(write: &mut impl Write, node: &Node<C, C::AlphabetSize>)
     }
 }
 
-pub fn trie_stats<'s, C: CharT>(trie: &SuffixTrie<'s, C>) {
+pub fn trie_stats<'s, C: CharT, A: Allocator + Copy>(trie: &SuffixTrie<'s, C, A>) {
     let mut edge_len_hist =
         Histogram::<u64>::new_with_bounds(1, trie.s.len().max(2) as u64, 2).unwrap();
     let mut node_branch_depth_hist = Histogram::<u64>::new(2).unwrap();
 
-    struct ToVisit<'s, C, N: ArrayLength> {
-        node: Rc<RefCell<Node<'s, C, N>>>,
+    struct ToVisit<'s, C, N: ArrayLength, A: Allocator> {
+        node: Rc<RefCell<Node<'s, C, N, A>>, A>,
         branch_depth: usize,
     }
 
@@ -597,28 +626,8 @@ pub fn trie_stats<'s, C: CharT>(trie: &SuffixTrie<'s, C>) {
         node_branch_depth_hist.len(),
         edge_len_hist.len()
     );
-
-    println!(
-        "edge length: mean={}, max= {}, q0.05={}, q0.25={},  q0.50={} q0.75={} q0.95={}",
-        edge_len_hist.mean(),
-        edge_len_hist.max(),
-        edge_len_hist.value_at_quantile(0.05),
-        edge_len_hist.value_at_quantile(0.25),
-        edge_len_hist.value_at_quantile(0.50),
-        edge_len_hist.value_at_quantile(0.75),
-        edge_len_hist.value_at_quantile(0.95)
-    );
-
-    println!(
-        "node branch depth: mean={}, max= {}, q0.05={}, q0.25={},  q0.50={} q0.75={} q0.95={}",
-        node_branch_depth_hist.mean(),
-        node_branch_depth_hist.max(),
-        node_branch_depth_hist.value_at_quantile(0.05),
-        node_branch_depth_hist.value_at_quantile(0.25),
-        node_branch_depth_hist.value_at_quantile(0.50),
-        node_branch_depth_hist.value_at_quantile(0.75),
-        node_branch_depth_hist.value_at_quantile(0.95)
-    );
+    print_histogram("edge length", &edge_len_hist);
+    print_histogram("node branch depth", &node_branch_depth_hist);
 }
 
 #[cfg(test)]
