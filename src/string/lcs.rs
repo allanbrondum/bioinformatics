@@ -1,9 +1,8 @@
 use crate::alphabet_model::{CharT, WithSeparator};
 use crate::string::suffix_trie_suffix_links::{
-    Node, NodeId, build_trie, build_trie_with_allocator, node_id_rc, terminals, trie_stats,
+     node_id_rc, terminals, trie_stats, Node, NodeId,
 };
 use crate::string_model::{AStr, AString};
-use alloc::alloc;
 use std::alloc::Allocator;
 
 use generic_array::ArrayLength;
@@ -17,6 +16,7 @@ use hashbrown::HashMap;
 use proptest::strategy::Strategy;
 use std::rc::Rc;
 use std::time::Instant;
+use crate::string::suffix_trie_suffix_links_arena_refs;
 
 pub fn lcs_joined_trie<'s, C: CharT>(s: &'s AStr<C>, t: &AStr<C>) -> &'s AStr<C>
 where
@@ -33,7 +33,7 @@ where
     // let start = Instant::now();
     let alloc = Bump::new();
     // let alloc = alloc::Global;
-    let trie = build_trie_with_allocator(&separated, &alloc);
+    let trie = suffix_trie_suffix_links_arena_refs::build_trie_with_allocator(&separated, &alloc);
     // println!("build trie elapsed {:?}", start.elapsed());
 
     if false {
@@ -223,7 +223,8 @@ fn mark_ancestors<'s, C, N: ArrayLength, A: Allocator>(
 
 pub fn lcs_single_trie<'a, C: CharT>(s: &AStr<C>, t: &'a AStr<C>) -> &'a AStr<C> {
     // let start = Instant::now();
-    let trie = build_trie(s);
+    let bump = Bump::new();
+    let trie = suffix_trie_suffix_links_arena_refs::build_trie_with_allocator(s, &bump);
     // println!("build trie elapsed {:?}", start.elapsed());
 
     if false {

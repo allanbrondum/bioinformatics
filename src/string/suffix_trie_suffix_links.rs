@@ -1,7 +1,6 @@
 //! McCreight algorithm
 
-pub mod lcs;
-mod suffix_array;
+
 
 use crate::alphabet_model::CharT;
 use crate::string_model::{AStr, AString};
@@ -29,15 +28,15 @@ const GRAPH_DEBUG: bool = false;
 
 #[derive(Debug)]
 pub struct SuffixTrie<'s, C: CharT, A: Allocator> {
-    root: Rc<RefCell<Node<'s, C, C::AlphabetSize, A>>, A>,
+    pub(crate) root: Rc<RefCell<Node<'s, C, C::AlphabetSize, A>>, A>,
     s: &'s AStr<C>,
 }
 
 #[derive(Debug)]
-struct Node<'s, C, N: ArrayLength, A: Allocator> {
-    parent: Option<Rc<RefCell<Edge<'s, C, N, A>>, A>>,
-    children: GenericArray<Option<Rc<RefCell<Edge<'s, C, N, A>>, A>>, N>,
-    terminal: Option<Terminal>,
+pub(crate) struct Node<'s, C, N: ArrayLength, A: Allocator> {
+    pub(crate) parent: Option<Rc<RefCell<Edge<'s, C, N, A>>, A>>,
+    pub(crate) children: GenericArray<Option<Rc<RefCell<Edge<'s, C, N, A>>, A>>, N>,
+    pub(crate) terminal: Option<Terminal>,
     suffix: Option<Rc<RefCell<Node<'s, C, N, A>>, A>>,
 }
 
@@ -65,14 +64,14 @@ impl<'s, C, N: ArrayLength, A: Allocator> Node<'s, C, N, A> {
 
 #[derive(Debug)]
 struct Terminal {
-    suffix_index: usize,
+    pub(crate) suffix_index: usize,
 }
 
 #[derive(Debug)]
 struct Edge<'s, C, N: ArrayLength, A: Allocator> {
-    chars: &'s AStr<C>,
-    source: Rc<RefCell<Node<'s, C, N, A>>, A>,
-    target: Rc<RefCell<Node<'s, C, N, A>>, A>,
+    pub(crate) chars: &'s AStr<C>,
+    pub(crate) source: Rc<RefCell<Node<'s, C, N, A>>, A>,
+    pub(crate) target: Rc<RefCell<Node<'s, C, N, A>>, A>,
 }
 
 struct ScanReturn<'s, C, N: ArrayLength, A: Allocator> {
@@ -249,9 +248,9 @@ impl<'s, C: CharT, A: Allocator + Copy> SuffixTrie<'s, C, A> {
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct MaximalSubstrMatch {
-    index: usize,
-    length: usize,
-    matched: Matched,
+    pub index: usize,
+    pub length: usize,
+    pub matched: Matched,
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
@@ -278,7 +277,7 @@ impl MaximalSubstrMatch {
     }
 }
 
-fn terminals<'s, C, N: ArrayLength, A: Allocator>(
+pub(crate) fn terminals<'s, C, N: ArrayLength, A: Allocator>(
     node: &Node<'s, C, N, A>,
     mut callback: impl FnMut(usize),
 ) {
@@ -518,7 +517,7 @@ fn to_dot<C: CharT, A: Allocator>(filepath: impl AsRef<Path>, trie: &SuffixTrie<
 }
 
 #[derive(Debug, Eq, PartialEq, Hash)]
-struct NodeId(usize);
+pub(crate) struct NodeId(usize);
 
 impl Display for NodeId {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
@@ -530,7 +529,7 @@ fn node_id<C, N: ArrayLength, A: Allocator>(node: &Node<C, N, A>) -> NodeId {
     NodeId(ptr::from_ref(node) as usize)
 }
 
-fn node_id_rc<C, N: ArrayLength, A: Allocator>(node: &Rc<RefCell<Node<C, N, A>>, A>) -> NodeId {
+pub(crate) fn node_id_rc<C, N: ArrayLength, A: Allocator>(node: &Rc<RefCell<Node<C, N, A>>, A>) -> NodeId {
     NodeId(Rc::as_ptr(node) as usize)
 }
 

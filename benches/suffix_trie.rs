@@ -3,15 +3,13 @@
 mod bench_util;
 
 use bumpalo::Bump;
-use criterion::{Bencher, BenchmarkId, Criterion, Throughput, criterion_group, criterion_main};
+use criterion::{criterion_group, criterion_main, Bencher, BenchmarkId, Criterion, Throughput};
 use std::mem;
 
 use crate::bench_util::Char;
 use bioinformatics::string;
-use bioinformatics::string::{
-    suffix_trie_compact, suffix_trie_suffix_links, suffix_trie_suffix_links_arena_refs,
-};
-use bioinformatics::string_model::{AStr, arb_astring};
+use bioinformatics::string::{lcs, suffix_trie_compact, suffix_trie_suffix_links, suffix_trie_suffix_links_arena_refs};
+use bioinformatics::string_model::{arb_astring, AStr};
 use proptest::strategy::{Strategy, ValueTree};
 
 const STRING_LENGTHS: &[usize] = &[200, 5000, 1_000_000];
@@ -61,11 +59,11 @@ fn bench_lcs_simple(bencher: &mut Bencher<'_>, s: &AStr<Char>, t: &AStr<Char>) {
 }
 
 fn bench_lcs_single_trie(bencher: &mut Bencher<'_>, s: &AStr<Char>, t: &AStr<Char>) {
-    bencher.iter(|| suffix_trie_suffix_links::lcs::lcs_single_trie(s, t));
+    bencher.iter(|| lcs::lcs_single_trie(s, t));
 }
 
 fn bench_lcs_joined_trie(bencher: &mut Bencher<'_>, s: &AStr<Char>, t: &AStr<Char>) {
-    bencher.iter(|| suffix_trie_suffix_links::lcs::lcs_joined_trie(s, t));
+    bencher.iter(|| lcs::lcs_joined_trie(s, t));
 }
 
 // fn bench_indexes_substr(bencher: &mut Bencher<'_>, trie: suffix_trie_simple::SuffixTrie<Char>) {

@@ -1,3 +1,5 @@
+pub mod alloc;
+
 use crate::alphabet_model::CharT;
 use crate::string_model::AString;
 use hdrhistogram::{Counter, Histogram};

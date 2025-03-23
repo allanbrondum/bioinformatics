@@ -24,15 +24,15 @@ const GRAPH_DEBUG: bool = false;
 
 #[derive(Debug)]
 pub struct SuffixTrie<'arena, 's, C: CharT> {
-    root: &'arena RefCell<Node<'arena, 's, C, C::AlphabetSize>>,
+    pub(crate) root: &'arena RefCell<Node<'arena, 's, C, C::AlphabetSize>>,
     s: &'s AStr<C>,
 }
 
 #[derive(Debug)]
 struct Node<'arena, 's, C, N: ArrayLength> {
     parent: Option<&'arena RefCell<Edge<'arena, 's, C, N>>>,
-    children: GenericArray<Option<&'arena RefCell<Edge<'arena, 's, C, N>>>, N>,
-    terminal: Option<Terminal>,
+    pub(crate) children: GenericArray<Option<&'arena RefCell<Edge<'arena, 's, C, N>>>, N>,
+    pub(crate) terminal: Option<Terminal>,
     suffix: Option<&'arena RefCell<Node<'arena, 's, C, N>>>,
 }
 
@@ -60,14 +60,14 @@ impl<'arena, 's, C, N: ArrayLength> Node<'arena, 's, C, N> {
 
 #[derive(Debug)]
 struct Terminal {
-    suffix_index: usize,
+    pub(crate) suffix_index: usize,
 }
 
 #[derive(Debug)]
 struct Edge<'arena, 's, C, N: ArrayLength> {
     chars: &'s AStr<C>,
     source: &'arena RefCell<Node<'arena, 's, C, N>>,
-    target: &'arena RefCell<Node<'arena, 's, C, N>>,
+    pub(crate) target: &'arena RefCell<Node<'arena, 's, C, N>>,
 }
 
 struct ScanReturn<'arena, 's, C, N: ArrayLength> {
