@@ -1,7 +1,7 @@
 //! McCreight algorithm
 
 use crate::alphabet_model::CharT;
-use crate::string_model::{AStr, AString};
+use crate::string_model::AStr;
 use generic_array::{ArrayLength, GenericArray};
 
 use crate::string;
@@ -10,6 +10,7 @@ use crate::util::alloc::{ReferencingAllocator, StdAllocator};
 use crate::util::print_histogram;
 use hashbrown::HashSet;
 use hdrhistogram::Histogram;
+use rand::distr::uniform::SampleBorrow;
 use std::alloc::Allocator;
 use std::cell::RefCell;
 use std::cmp::Ordering;
@@ -18,9 +19,8 @@ use std::fmt::{Debug, Display, Formatter};
 use std::fs::File;
 use std::hash::Hash;
 use std::io::Write;
-use std::ops::DerefMut;
+use std::ops::{Deref, DerefMut};
 use std::path::Path;
-use std::rc::Rc;
 use std::{alloc, mem, ptr};
 
 const GRAPH_DEBUG: bool = false;
@@ -179,7 +179,7 @@ impl<'s, C: CharT, A: ReferencingAllocator + Copy> SuffixTrie<'s, C, A> {
     pub fn indexes_substr(&self, t: &'s AStr<C>) -> HashSet<usize> {
         let mut result = HashSet::new();
 
-        let scan_ret = scan_rec(&self.root, t);
+        let scan_ret = scan_rec::<_, A>(&self.root, t);
         if let ScanReturn {
             lower,
             matched: ScanMatch::FullMatch,
@@ -198,7 +198,7 @@ impl<'s, C: CharT, A: ReferencingAllocator + Copy> SuffixTrie<'s, C, A> {
     pub fn indexes_substr_maximal(&self, t: &'s AStr<C>) -> HashSet<MaximalSubstrMatch> {
         let mut result = HashSet::new();
 
-        match scan_rec(&self.root, t) {
+        match scan_rec::<_, A>(&self.root, t) {
             ScanReturn {
                 lower,
                 matched: ScanMatch::FullMatch,
@@ -227,7 +227,7 @@ impl<'s, C: CharT, A: ReferencingAllocator + Copy> SuffixTrie<'s, C, A> {
 
     /// Finds index of maximal prefixes of given string
     pub fn index_substr_maximal(&self, t: &'s AStr<C>) -> MaximalSubstrMatch {
-        match scan_rec(&self.root, t) {
+        match scan_rec::<_, A>(&self.root, t) {
             ScanReturn {
                 lower,
                 matched: ScanMatch::FullMatch,
@@ -374,7 +374,7 @@ fn insert_suffix<C: CharT, A: ReferencingAllocator + Copy>(
     prev_head_tail: HeadTail<C, C::AlphabetSize, A>,
     alloc: A,
 ) -> HeadTail<C, C::AlphabetSize, A> {
-    let parent_edge = A::Ref::clone(&prev_head_tail.head.borrow().parent);
+    let parent_edge = prev_head_tail.head.borrow().parent.clone();
     let (to_suffix_base_node, to_suffix_str, is_head) = if let Some(parent_edge) = parent_edge {
         let parent_edge_ref = parent_edge.borrow();
         let parent_ref = parent_edge_ref.source.borrow();
@@ -393,7 +393,7 @@ fn insert_suffix<C: CharT, A: ReferencingAllocator + Copy>(
             t_rem_matched: rem_matched,
             matched: ScanMatch::FullMatch,
             ..
-        } = fast_scan_rec(to_s_prev_head_base_node, to_s_prev_head_str)
+        } = fast_scan_rec::<_, A>(to_s_prev_head_base_node, to_s_prev_head_str)
         else {
             panic!("should be full match");
         };
@@ -421,7 +421,7 @@ fn insert_suffix<C: CharT, A: ReferencingAllocator + Copy>(
     let (head, tail) = if is_head {
         (to_suffix_base_node, to_suffix_str)
     } else {
-        let (upper, to_head_str, tail) = match scan_rec(&to_suffix_base_node, to_suffix_str) {
+        let (upper, to_head_str, tail) = match scan_rec::<_, A>(&to_suffix_base_node, to_suffix_str) {
             ScanReturn {
                 upper,
                 t_rem_matched,
@@ -527,12 +527,6 @@ fn node_id<C, N: ArrayLength, A: ReferencingAllocator>(node: &Node<C, N, A>) -> 
     NodeId(ptr::from_ref(node) as usize)
 }
 
-pub(crate) fn node_id_rc<C, N: ArrayLength, A: ReferencingAllocator>(
-    node: &A::Ref<RefCell<Node<C, N, A>>>,
-) -> NodeId {
-    NodeId(Rc::as_ptr(node) as usize)
-}
-
 fn to_dot_rec<C: CharT, A: ReferencingAllocator>(
     write: &mut impl Write,
     node: &Node<C, C::AlphabetSize, A>,
@@ -597,7 +591,7 @@ pub fn trie_stats<'s, C: CharT, A: ReferencingAllocator + Copy>(trie: &SuffixTri
     }
 
     let mut to_visit = VecDeque::new();
-    to_visit.push_front(ToVisit {
+    to_visit.push_front(ToVisit::<_, _, A> {
         node: A::Ref::clone(&trie.root),
         branch_depth: 0,
     });
