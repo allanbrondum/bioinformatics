@@ -353,7 +353,7 @@ pub fn build_trie_with_allocator<'s, C: CharT, A: Allocator + Copy>(
         }
     }
 
-    print_histogram("head length", &head_length);
+    // print_histogram("head length", &head_length);
 
     if GRAPH_DEBUG {
         to_dot("target/trie_suffix_link.dot", &trie);

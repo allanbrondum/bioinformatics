@@ -259,7 +259,7 @@ pub fn build_trie_with_allocator<'arena, 's, C: CharT + Copy>(
         head_tail = insert_suffix(i, head_tail, alloc);
     }
 
-    print_histogram("head length", &head_length);
+    // print_histogram("head length", &head_length);
 
     trie
 }
