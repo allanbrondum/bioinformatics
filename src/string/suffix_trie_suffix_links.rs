@@ -333,7 +333,7 @@ pub fn build_trie_with_allocator<'s, C: CharT, A: Allocator + Copy>(
         s,
     };
 
-    insert_tail(0, &trie.root, s, alloc);
+    append_tail_with_terminal(0, &trie.root, s, alloc);
 
     let mut head_tail = HeadTail {
         head: trie.root.clone(),
@@ -443,13 +443,13 @@ fn insert_suffix<C: CharT, A: Allocator + Copy>(
         (head, tail)
     };
 
-    insert_tail(suffix_index, &head, tail, alloc);
+    append_tail_with_terminal(suffix_index, &head, tail, alloc);
 
     HeadTail { head, tail }
 }
 
-/// Precondition: `t_rem` does not exists on edge from `node`
-fn insert_tail<'s, C: CharT, A: Allocator + Copy>(
+/// Precondition: `t_rem` (or first char of) does not exists on edge from `node`
+fn append_tail_with_terminal<'s, C: CharT, A: Allocator + Copy>(
     suffix_index: usize,
     node: &NodeRef<'s, C, C::AlphabetSize, A>,
     t_rem: &'s AStr<C>,

@@ -17,6 +17,7 @@ use std::fmt::{Debug, Display, Formatter};
 use std::fs::File;
 use std::hash::Hash;
 use std::io::Write;
+
 use std::ops::DerefMut;
 use std::path::Path;
 use std::{mem, ptr};
@@ -191,7 +192,6 @@ impl<'arena, 's, C: CharT + Copy> SuffixTrie<'arena, 's, C> {
 
         result
     }
-
 }
 
 pub(crate) fn terminals<'arena, 's, C, N: ArrayLength>(
@@ -245,136 +245,74 @@ pub fn build_trie_with_allocator<'arena, 's, C: CharT + Copy>(
         s,
     };
 
-    insert_tail(0, &trie.root, s, alloc);
+    let mut suffixes = Vec::new();
 
-    let mut head_tail = HeadTail {
-        head: trie.root,
-        tail: s,
-    };
+    for i in 0..s.len() {
+        let chars = &s[..i];
 
-    // let mut head_length = Histogram::<u64>::new(2).unwrap();
+        for suffix in &mut suffixes {
+            *suffix = insert_last_char(*suffix, chars, alloc);
+        }
 
-    for i in 1..s.len() {
-        // head_length
-        //     .record((s.len() - i - head_tail.tail.len() + 1) as u64)
-        //     .unwrap();
-        // let mut head_tail = HeadTail {
-        //     head: trie.root,
-        //     tail: &s[i..],
-        // };
-
-        todo!()
-        // head_tail = insert_suffix(i, head_tail, alloc);
+        suffixes.push(insert_last_char(&trie.root, chars, alloc));
     }
 
-    // print_histogram("head length", &head_length);
+    for (suffix_index, suffix) in suffixes.iter().enumerate() {
+        suffix.borrow_mut().terminal = Some(Terminal { suffix_index });
+    }
+
+    if GRAPH_DEBUG {
+        to_dot("target/trie_suffix_link.dot", &trie);
+    }
 
     trie
 }
 
-struct HeadTail<'arena, 's, C, N: ArrayLength> {
-    head: &'arena RefCell<Node<'arena, 's, C, N>>,
-    tail: &'s AStr<C>,
+/// Inserts single char (last in given string) relative to given node. Returns
+/// resulting node.
+fn insert_last_char<'arena, 's, C: CharT + Copy>(
+    node: &'arena RefCell<Node<'arena, 's, C, C::AlphabetSize>>,
+    chars: &'s AStr<C>,
+    alloc: &'arena Bump,
+) -> &'arena RefCell<Node<'arena, 's, C, C::AlphabetSize>> {
+    let ch = chars.last().copied().expect("chars must be non empty");
+
+    let node_ref = node.borrow();
+    if let Some(edge) = &node_ref.children[ch.index()] {
+        let edge_ref = edge.borrow();
+        todo!()
+    } else if node_ref.children.is_empty() && node_ref.parent.is_some() {
+        // Extend this leaf
+        let mut parent_edge_mut = node_ref.parent.unwrap().borrow_mut();
+        parent_edge_mut.chars = &chars[chars.len() - parent_edge_mut.chars.len() - 1..];
+        node
+    } else {
+        // Insert new leaf on edge from this node
+        append_tail(node, &chars[chars.len() - 1..], alloc)
+    }
 }
 
-// fn insert_suffix<'arena, 's, C: CharT + Copy>(
-//     suffix_index: usize,
-//     prev_head_tail: HeadTail<'arena, 's, C, C::AlphabetSize>,
-//     alloc: &'arena Bump,
-// ) -> HeadTail<'arena, 's, C, C::AlphabetSize> {
-//     let parent_edge = prev_head_tail.head.borrow().parent;
-//     let (to_suffix_base_node, to_suffix_str, is_head) = if let Some(parent_edge) = parent_edge {
-//         let parent_edge_ref = parent_edge.borrow();
-//         let parent_ref = parent_edge_ref.source.borrow();
-//
-//         let (to_s_prev_head_base_node, to_s_prev_head_str) = if parent_ref.parent.is_some() {
-//             (
-//                 parent_ref.suffix.as_ref().expect("suffix"),
-//                 parent_edge_ref.chars,
-//             )
-//         } else {
-//             (&parent_edge_ref.source, &parent_edge_ref.chars[1..])
-//         };
-//
-//         let ScanReturn {
-//             upper,
-//             t_rem_matched: rem_matched,
-//             matched: ScanMatch::FullMatch,
-//             ..
-//         } = fast_scan_rec(to_s_prev_head_base_node, to_s_prev_head_str)
-//         else {
-//             panic!("should be full match");
-//         };
-//         let rem_matched = rem_matched.to_owned();
-//         drop(parent_ref);
-//         drop(parent_edge_ref);
-//
-//         let (s_prev_head, is_head) = if rem_matched.is_empty() {
-//             (upper, false)
-//         } else {
-//             (insert_intermediate(&upper, &rem_matched, alloc), true)
-//         };
-//
-//         prev_head_tail.head.borrow_mut().suffix = Some(s_prev_head);
-//
-//         (s_prev_head, prev_head_tail.tail, is_head)
-//     } else {
-//         (prev_head_tail.head, &prev_head_tail.tail[1..], false)
-//     };
-//
-//     let (head, tail) = if is_head {
-//         (to_suffix_base_node, to_suffix_str)
-//     } else {
-//         let (upper, to_head_str, tail) = match scan_rec(to_suffix_base_node, to_suffix_str) {
-//             ScanReturn {
-//                 upper,
-//                 t_rem_matched,
-//                 matched: ScanMatch::FullMatch,
-//                 ..
-//             } => (upper, t_rem_matched, AStr::empty()),
-//             ScanReturn {
-//                 upper,
-//                 t_rem_matched,
-//                 matched: ScanMatch::MaximalNonFullMatch { t_unmatched },
-//                 ..
-//             } => (upper, t_rem_matched, t_unmatched),
-//         };
-//
-//         let head = if to_head_str.is_empty() {
-//             upper
-//         } else {
-//             insert_intermediate(&upper, to_head_str, alloc)
-//         };
-//
-//         (head, tail)
-//     };
-//
-//     insert_tail(suffix_index, &head, tail, alloc);
-//
-//     HeadTail { head, tail }
-// }
-
-/// Precondition: `t_rem` does not exists on edge from `node`
-fn insert_tail<'arena, 's, C: CharT + Copy>(
-    suffix_index: usize,
-    node: &&'arena RefCell<Node<'arena, 's, C, C::AlphabetSize>>,
-    t_rem: &'s AStr<C>,
+/// Precondition: `t_rem` (or first char of) does not exist on edge from `node`
+fn append_tail<'arena, 's, C: CharT + Copy>(
+    node: &'arena RefCell<Node<'arena, 's, C, C::AlphabetSize>>,
+    chars: &'s AStr<C>,
     alloc: &'arena Bump,
-) {
+) -> &'arena RefCell<Node<'arena, 's, C, C::AlphabetSize>> {
+    assert!(!chars.is_empty());
+
     let mut node_mut = node.borrow_mut();
-    if t_rem.is_empty() {
-        node_mut.terminal = Some(Terminal { suffix_index });
-    } else {
-        let edge = alloc.alloc(RefCell::new(Edge {
-            chars: t_rem,
-            source: node,
-            target: alloc.alloc(RefCell::new(Node::default())),
-        }));
-        let mut new_node = Node::with_parent(edge);
-        new_node.terminal = Some(Terminal { suffix_index });
-        edge.borrow_mut().target = alloc.alloc(RefCell::new(new_node));
-        node_mut.children[t_rem[0].index()] = Some(edge);
-    }
+
+    let edge = alloc.alloc(RefCell::new(Edge {
+        chars,
+        source: node,
+        target: alloc.alloc(RefCell::new(Node::default())),
+    }));
+    let new_node = Node::with_parent(edge);
+    let new_node_ref = alloc.alloc(RefCell::new(new_node));
+    edge.borrow_mut().target = new_node_ref;
+    node_mut.children[chars[0].index()] = Some(edge);
+
+    new_node_ref
 }
 
 /// Precondition: `t_rem` exists on edge from `node`
@@ -406,6 +344,11 @@ fn insert_intermediate<'arena, 's, C: CharT + Copy>(
     edge_mut.target.borrow_mut().children[rem_ch.index()] = Some(edge_remainder);
 
     edge_mut.target
+}
+
+struct HeadTail<'arena, 's, C, N: ArrayLength> {
+    head: &'arena RefCell<Node<'arena, 's, C, N>>,
+    tail: &'s AStr<C>,
 }
 
 #[derive(Debug, Eq, PartialEq, Hash)]

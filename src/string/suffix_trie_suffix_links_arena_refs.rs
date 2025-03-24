@@ -294,7 +294,7 @@ pub fn build_trie_with_allocator<'arena, 's, C: CharT + Copy>(
         s,
     };
 
-    insert_tail(0, &trie.root, s, alloc);
+    append_tail_with_terminal(0, &trie.root, s, alloc);
 
     let mut head_tail = HeadTail {
         head: trie.root,
@@ -397,15 +397,15 @@ fn insert_suffix<'arena, 's, C: CharT + Copy>(
         (head, tail)
     };
 
-    insert_tail(suffix_index, &head, tail, alloc);
+    append_tail_with_terminal(suffix_index, &head, tail, alloc);
 
     HeadTail { head, tail }
 }
 
-/// Precondition: `t_rem` does not exists on edge from `node`
-fn insert_tail<'arena, 's, C: CharT + Copy>(
+/// Precondition: `t_rem` (or first char of) does not exist on edge from `node`
+fn append_tail_with_terminal<'arena, 's, C: CharT + Copy>(
     suffix_index: usize,
-    node: &&'arena RefCell<Node<'arena, 's, C, C::AlphabetSize>>,
+    node: &'arena RefCell<Node<'arena, 's, C, C::AlphabetSize>>,
     t_rem: &'s AStr<C>,
     alloc: &'arena Bump,
 ) {
