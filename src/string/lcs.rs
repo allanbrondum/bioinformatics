@@ -1,9 +1,6 @@
 use crate::alphabet_model::{CharT, WithSeparator};
-use crate::string::suffix_trie_suffix_links::{
-     node_id_rc, terminals, trie_stats, Node, NodeId,
-};
+use crate::string::suffix_trie_suffix_links_arena_refs::{node_id, terminals, Node, NodeId};
 use crate::string_model::{AStr, AString};
-use std::alloc::Allocator;
 
 use generic_array::ArrayLength;
 
@@ -14,7 +11,6 @@ use std::iter;
 use bumpalo::Bump;
 use hashbrown::HashMap;
 use proptest::strategy::Strategy;
-use std::rc::Rc;
 use std::time::Instant;
 use crate::string::suffix_trie_suffix_links_arena_refs;
 
@@ -36,12 +32,6 @@ where
     let trie = suffix_trie_suffix_links_arena_refs::build_trie_with_allocator(&separated, &alloc);
     // println!("build trie elapsed {:?}", start.elapsed());
 
-    if false {
-        let start = Instant::now();
-        trie_stats(&trie);
-        println!("stats elapsed {:?}", start.elapsed());
-    }
-
     // let start = Instant::now();
     let mut node_marks = HashMap::new();
     mark_nodes_rec(&trie.root, s.len(), &mut node_marks);
@@ -50,7 +40,7 @@ where
     // let start = Instant::now();
     // let mut deepest_path = PathDepth {
     //     depth: 0,
-    //     lower: trie.root.clone(),
+    //     lower: trie.root,
     // };
     // lcs_trie_with_separator_rec(&trie.root, 0, &node_marks, &mut deepest_path);
     let deepest_path = lcs_trie_with_separator_queue(&trie.root, &node_marks);
@@ -65,23 +55,23 @@ where
     &s[min_suffix..min_suffix + deepest_path.depth]
 }
 
-struct PathDepth<'s, C, N: ArrayLength, A: Allocator> {
+struct PathDepth<'arena, 's, C, N: ArrayLength> {
     depth: usize,
-    lower: Rc<RefCell<Node<'s, C, N, A>>, A>,
+    lower: &'arena RefCell<Node<'arena, 's, C, N>>,
 }
 
-fn lcs_trie_with_separator_rec<'s, C, N: ArrayLength, A: Allocator + Copy>(
-    node: &Rc<RefCell<Node<'s, WithSeparator<C>, N, A>>, A>,
+fn lcs_trie_with_separator_rec<'arena, 's, C, N: ArrayLength>(
+    node: &'arena RefCell<Node<'arena, 's, WithSeparator<C>, N>>,
     node_depth: usize,
     node_marks: &HashMap<NodeId, Marks>,
-    deepest_path: &mut PathDepth<'s, WithSeparator<C>, N, A>,
+    deepest_path: &mut PathDepth<'arena, 's, WithSeparator<C>, N>,
 ) where
     WithSeparator<C>: CharT,
 {
     if node_depth > deepest_path.depth {
         *deepest_path = PathDepth {
             depth: node_depth,
-            lower: node.clone(),
+            lower: node,
         };
     }
 
@@ -93,7 +83,7 @@ fn lcs_trie_with_separator_rec<'s, C, N: ArrayLength, A: Allocator + Copy>(
     {
         let child_edge_ref = child_edge.borrow();
         if node_marks
-            .get(&node_id_rc(&child_edge_ref.target))
+            .get(&node_id(child_edge_ref.target))
             .copied()
             .unwrap_or_default()
             .both()
@@ -108,34 +98,34 @@ fn lcs_trie_with_separator_rec<'s, C, N: ArrayLength, A: Allocator + Copy>(
     }
 }
 
-fn lcs_trie_with_separator_queue<'s, C, N: ArrayLength, A: Allocator + Copy>(
-    root: &Rc<RefCell<Node<'s, WithSeparator<C>, N, A>>, A>,
+fn lcs_trie_with_separator_queue<'arena, 's, C, N: ArrayLength>(
+    root: &'arena RefCell<Node<'arena, 's, WithSeparator<C>, N>>,
     node_marks: &HashMap<NodeId, Marks>,
-) -> PathDepth<'s, WithSeparator<C>, N, A>
+) -> PathDepth<'arena, 's, WithSeparator<C>, N>
 where
     WithSeparator<C>: CharT,
 {
-    struct ToVisit<'s, C, N: ArrayLength, A: Allocator> {
-        node: Rc<RefCell<Node<'s, WithSeparator<C>, N, A>>, A>,
+    struct ToVisit<'arena, 's, C, N: ArrayLength> {
+        node: &'arena RefCell<Node<'arena, 's, WithSeparator<C>, N>>,
         depth: usize,
     }
 
     let mut to_visit = VecDeque::new();
     to_visit.push_front(ToVisit {
-        node: root.clone(),
+        node: root,
         depth: 0,
     });
 
     let mut deepest_path = PathDepth {
         depth: 0,
-        lower: Rc::clone(&root),
+        lower: root,
     };
 
     while let Some(node) = to_visit.pop_front() {
         if node.depth > deepest_path.depth {
             deepest_path = PathDepth {
                 depth: node.depth,
-                lower: node.node.clone(),
+                lower: node.node,
             };
         }
 
@@ -148,13 +138,13 @@ where
         {
             let child_edge_ref = child_edge.borrow();
             if node_marks
-                .get(&node_id_rc(&child_edge_ref.target))
+                .get(&node_id(child_edge_ref.target))
                 .copied()
                 .unwrap_or_default()
                 .both()
             {
                 to_visit.push_back(ToVisit {
-                    node: child_edge_ref.target.clone(),
+                    node: child_edge_ref.target,
                     depth: node.depth + child_edge_ref.chars.len(),
                 });
             }
@@ -176,8 +166,8 @@ impl Marks {
     }
 }
 
-fn mark_nodes_rec<'s, C: PartialEq, N: ArrayLength, A: Allocator>(
-    node: &Rc<RefCell<Node<'s, WithSeparator<C>, N, A>>, A>,
+fn mark_nodes_rec<'arena, 's, C: PartialEq, N: ArrayLength>(
+    node: &'arena RefCell<Node<'arena, 's, WithSeparator<C>, N>>,
     separator_index: usize,
     node_marks: &mut HashMap<NodeId, Marks>,
 ) {
@@ -210,11 +200,11 @@ fn mark_nodes_rec<'s, C: PartialEq, N: ArrayLength, A: Allocator>(
     }
 }
 
-fn mark_ancestors<'s, C, N: ArrayLength, A: Allocator>(
-    node: &Rc<RefCell<Node<'s, C, N, A>>, A>,
+fn mark_ancestors<'arena, 's, C, N: ArrayLength>(
+    node: &'arena RefCell<Node<'arena, 's, C, N>>,
     mark_node: &mut impl FnMut(NodeId) -> bool,
 ) {
-    if mark_node(node_id_rc(node)) {
+    if mark_node(node_id(node)) {
         if let Some(parent) = node.borrow().parent.as_ref() {
             mark_ancestors(&parent.borrow().source, mark_node);
         }
@@ -226,12 +216,6 @@ pub fn lcs_single_trie<'a, C: CharT>(s: &AStr<C>, t: &'a AStr<C>) -> &'a AStr<C>
     let bump = Bump::new();
     let trie = suffix_trie_suffix_links_arena_refs::build_trie_with_allocator(s, &bump);
     // println!("build trie elapsed {:?}", start.elapsed());
-
-    if false {
-        let start = Instant::now();
-        trie_stats(&trie);
-        println!("stats elapsed {:?}", start.elapsed());
-    }
 
     // let start = Instant::now();
     let mut substr: &AStr<C> = AStr::empty();
