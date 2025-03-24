@@ -1,7 +1,7 @@
 //! McCreight algorithm
 
 use crate::alphabet_model::CharT;
-use crate::string_model::{AStr, AString};
+use crate::string_model::AStr;
 use generic_array::{ArrayLength, GenericArray};
 
 use crate::string;
@@ -26,16 +26,19 @@ const GRAPH_DEBUG: bool = false;
 
 #[derive(Debug)]
 pub struct SuffixTrie<'s, C: CharT, A: Allocator> {
-    root: Rc<RefCell<Node<'s, C, C::AlphabetSize, A>>, A>,
+    root: NodeRef<'s, C, C::AlphabetSize, A>,
     s: &'s AStr<C>,
 }
 
+type EdgeRef<'s, C, N, A> = Rc<RefCell<Edge<'s, C, N, A>>, A>;
+type NodeRef<'s, C, N, A> = Rc<RefCell<Node<'s, C, N, A>>, A>;
+
 #[derive(Debug)]
 struct Node<'s, C, N: ArrayLength, A: Allocator> {
-    parent: Option<Rc<RefCell<Edge<'s, C, N, A>>, A>>,
-    children: GenericArray<Option<Rc<RefCell<Edge<'s, C, N, A>>, A>>, N>,
+    parent: Option<EdgeRef<'s, C, N, A>>,
+    children: GenericArray<Option<EdgeRef<'s, C, N, A>>, N>,
     terminal: Option<Terminal>,
-    suffix: Option<Rc<RefCell<Node<'s, C, N, A>>, A>>,
+    suffix: Option<NodeRef<'s, C, N, A>>,
 }
 
 impl<'s, C, N: ArrayLength, A: Allocator> Default for Node<'s, C, N, A> {
@@ -50,7 +53,7 @@ impl<'s, C, N: ArrayLength, A: Allocator> Default for Node<'s, C, N, A> {
 }
 
 impl<'s, C, N: ArrayLength, A: Allocator> Node<'s, C, N, A> {
-    fn with_parent(parent: Rc<RefCell<Edge<'s, C, N, A>>, A>) -> Self {
+    fn with_parent(parent: EdgeRef<'s, C, N, A>) -> Self {
         Self {
             parent: Some(parent),
             children: Default::default(),
@@ -68,13 +71,13 @@ struct Terminal {
 #[derive(Debug)]
 struct Edge<'s, C, N: ArrayLength, A: Allocator> {
     chars: &'s AStr<C>,
-    source: Rc<RefCell<Node<'s, C, N, A>>, A>,
-    target: Rc<RefCell<Node<'s, C, N, A>>, A>,
+    source: NodeRef<'s, C, N, A>,
+    target: NodeRef<'s, C, N, A>,
 }
 
 struct ScanReturn<'s, C, N: ArrayLength, A: Allocator> {
-    upper: Rc<RefCell<Node<'s, C, N, A>>, A>,
-    lower: Rc<RefCell<Node<'s, C, N, A>>, A>,
+    upper: NodeRef<'s, C, N, A>,
+    lower: NodeRef<'s, C, N, A>,
     t_rem_matched: &'s AStr<C>,
     matched: ScanMatch<'s, C>,
 }
@@ -85,7 +88,7 @@ enum ScanMatch<'s, C> {
 }
 
 fn scan_rec<'s, C: CharT, A: Allocator + Copy>(
-    node: &Rc<RefCell<Node<'s, C, C::AlphabetSize, A>>, A>,
+    node: &NodeRef<'s, C, C::AlphabetSize, A>,
     t: &'s AStr<C>,
 ) -> ScanReturn<'s, C, C::AlphabetSize, A> {
     let node_ref = node.borrow();
@@ -138,7 +141,7 @@ fn scan_rec<'s, C: CharT, A: Allocator + Copy>(
 }
 
 fn fast_scan_rec<'s, C: CharT, A: Allocator + Copy>(
-    node: &Rc<RefCell<Node<'s, C, C::AlphabetSize, A>>, A>,
+    node: &NodeRef<'s, C, C::AlphabetSize, A>,
     t: &'s AStr<C>,
 ) -> ScanReturn<'s, C, C::AlphabetSize, A> {
     let node_ref = node.borrow();
@@ -360,7 +363,7 @@ pub fn build_trie_with_allocator<'s, C: CharT, A: Allocator + Copy>(
 }
 
 struct HeadTail<'s, C, N: ArrayLength, A: Allocator> {
-    head: Rc<RefCell<Node<'s, C, N, A>>, A>,
+    head: NodeRef<'s, C, N, A>,
     tail: &'s AStr<C>,
 }
 
@@ -448,7 +451,7 @@ fn insert_suffix<C: CharT, A: Allocator + Copy>(
 /// Precondition: `t_rem` does not exists on edge from `node`
 fn insert_tail<'s, C: CharT, A: Allocator + Copy>(
     suffix_index: usize,
-    node: &Rc<RefCell<Node<'s, C, C::AlphabetSize, A>>, A>,
+    node: &NodeRef<'s, C, C::AlphabetSize, A>,
     t_rem: &'s AStr<C>,
     alloc: A,
 ) {
@@ -473,10 +476,10 @@ fn insert_tail<'s, C: CharT, A: Allocator + Copy>(
 
 /// Precondition: `t_rem` exists on edge from `node`
 fn insert_intermediate<'s, C: CharT, A: Allocator + Copy>(
-    node: &Rc<RefCell<Node<'s, C, C::AlphabetSize, A>>, A>,
+    node: &NodeRef<'s, C, C::AlphabetSize, A>,
     t_rem: &AStr<C>,
     alloc: A,
-) -> Rc<RefCell<Node<'s, C, C::AlphabetSize, A>>, A> {
+) -> NodeRef<'s, C, C::AlphabetSize, A> {
     assert!(!t_rem.is_empty());
     let node_mut = node.borrow_mut();
     let edge = node_mut.children[t_rem[0].index()]
@@ -527,7 +530,7 @@ fn node_id<C, N: ArrayLength, A: Allocator>(node: &Node<C, N, A>) -> NodeId {
     NodeId(ptr::from_ref(node) as usize)
 }
 
-fn node_id_rc<C, N: ArrayLength, A: Allocator>(node: &Rc<RefCell<Node<C, N, A>>, A>) -> NodeId {
+fn node_id_rc<C, N: ArrayLength, A: Allocator>(node: &NodeRef<C, N, A>) -> NodeId {
     NodeId(Rc::as_ptr(node) as usize)
 }
 
@@ -587,7 +590,7 @@ pub fn trie_stats<'s, C: CharT, A: Allocator + Copy>(trie: &SuffixTrie<'s, C, A>
     let mut node_branch_depth_hist = Histogram::<u64>::new(2).unwrap();
 
     struct ToVisit<'s, C, N: ArrayLength, A: Allocator> {
-        node: Rc<RefCell<Node<'s, C, N, A>>, A>,
+        node: NodeRef<'s, C, N, A>,
         branch_depth: usize,
     }
 

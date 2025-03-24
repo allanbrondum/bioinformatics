@@ -6,18 +6,14 @@ use generic_array::{ArrayLength, GenericArray};
 
 use crate::string;
 
-use crate::util::print_histogram;
 use bumpalo::Bump;
 use hashbrown::HashSet;
 use hdrhistogram::Histogram;
-use std::alloc::Allocator;
 use std::cell::RefCell;
 use std::cmp::Ordering;
 use std::fmt::{Debug, Display, Formatter};
 use std::hash::Hash;
-use std::io::Write;
 use std::ops::DerefMut;
-use std::rc::Rc;
 use std::{mem, ptr};
 
 const GRAPH_DEBUG: bool = false;
@@ -93,7 +89,7 @@ fn scan_rec<'arena, 's, C: CharT + Copy>(
             let lcp_len = string::lcp(&t[1..], &edge_ref.chars[1..]).len() + 1;
 
             match lcp_len.cmp(&edge_ref.chars.len()) {
-                Ordering::Equal => scan_rec(&edge_ref.target, &t[edge_ref.chars.len()..]),
+                Ordering::Equal => scan_rec(edge_ref.target, &t[edge_ref.chars.len()..]),
                 Ordering::Less => match lcp_len.cmp(&t.len()) {
                     Ordering::Equal => ScanReturn {
                         upper: node,
@@ -151,7 +147,7 @@ fn fast_scan_rec<'arena, 's, C: CharT + Copy>(
                     matched: ScanMatch::FullMatch,
                 }
             } else {
-                fast_scan_rec(&edge_ref.target, &t[edge_ref.chars.len()..])
+                fast_scan_rec(edge_ref.target, &t[edge_ref.chars.len()..])
             }
         } else {
             ScanReturn {
@@ -176,7 +172,7 @@ impl<'arena, 's, C: CharT + Copy> SuffixTrie<'arena, 's, C> {
     pub fn indexes_substr(&self, t: &'s AStr<C>) -> HashSet<usize> {
         let mut result = HashSet::new();
 
-        let scan_ret = scan_rec(&self.root, t);
+        let scan_ret = scan_rec(self.root, t);
         if let ScanReturn {
             lower,
             matched: ScanMatch::FullMatch,
@@ -193,7 +189,7 @@ impl<'arena, 's, C: CharT + Copy> SuffixTrie<'arena, 's, C> {
 
     /// Finds index of maximal prefixes of given string
     pub fn index_substr_maximal(&self, t: &'s AStr<C>) -> MaximalSubstrMatch {
-        match scan_rec(&self.root, t) {
+        match scan_rec(self.root, t) {
             ScanReturn {
                 lower,
                 matched: ScanMatch::FullMatch,
@@ -300,7 +296,7 @@ pub fn build_trie_with_allocator<'arena, 's, C: CharT + Copy>(
         tail: s,
     };
 
-    let mut head_length = Histogram::<u64>::new(2).unwrap();
+    // let mut head_length = Histogram::<u64>::new(2).unwrap();
 
     for i in 1..s.len() {
         // head_length
@@ -372,7 +368,7 @@ fn insert_suffix<'arena, 's, C: CharT + Copy>(
     let (head, tail) = if is_head {
         (to_suffix_base_node, to_suffix_str)
     } else {
-        let (upper, to_head_str, tail) = match scan_rec(&to_suffix_base_node, to_suffix_str) {
+        let (upper, to_head_str, tail) = match scan_rec(to_suffix_base_node, to_suffix_str) {
             ScanReturn {
                 upper,
                 t_rem_matched,

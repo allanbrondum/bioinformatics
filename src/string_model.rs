@@ -76,7 +76,7 @@ impl<'a, C: PartialEq> PartialEq<&'a AStr<C>> for AString<C> {
     }
 }
 
-impl<'a, C: PartialEq> PartialEq<AString<C>> for &'a AStr<C> {
+impl<C: PartialEq> PartialEq<AString<C>> for &AStr<C> {
     fn eq(&self, other: &AString<C>) -> bool {
         (*self).eq(other.as_str())
     }

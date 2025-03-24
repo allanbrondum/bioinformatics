@@ -1,7 +1,5 @@
 use crate::alphabet_model::{CharT, WithSeparator};
-use crate::string::suffix_trie_suffix_links_arena_refs::{
-    Node, NodeId, node_id, node_id_ptr, terminals,
-};
+use crate::string::suffix_trie_suffix_links_arena_refs::{Node, NodeId, node_id_ptr, terminals};
 use crate::string_model::{AStr, AString};
 
 use generic_array::ArrayLength;
@@ -13,8 +11,6 @@ use std::iter;
 use crate::string::suffix_trie_suffix_links_arena_refs;
 use bumpalo::Bump;
 use hashbrown::HashMap;
-use proptest::strategy::Strategy;
-use std::time::Instant;
 
 pub fn lcs_joined_trie<'s, C: CharT>(s: &'s AStr<C>, t: &AStr<C>) -> &'s AStr<C>
 where
@@ -36,7 +32,7 @@ where
 
     // let start = Instant::now();
     let mut node_marks = HashMap::new();
-    mark_nodes_rec(&trie.root, s.len(), &mut node_marks);
+    mark_nodes_rec(trie.root, s.len(), &mut node_marks);
     // println!("mark nodes elapsed {:?}", start.elapsed());
 
     // let start = Instant::now();
@@ -45,7 +41,7 @@ where
     //     lower: trie.root,
     // };
     // lcs_trie_with_separator_rec(&trie.root, 0, &node_marks, &mut deepest_path);
-    let deepest_path = lcs_trie_with_separator_queue(&trie.root, &node_marks);
+    let deepest_path = lcs_trie_with_separator_queue(trie.root, &node_marks);
     // println!("scan for lcs elapsed {:?}", start.elapsed());
 
     // let start = Instant::now();
@@ -91,7 +87,7 @@ fn lcs_trie_with_separator_rec<'arena, 's, C, N: ArrayLength>(
             .both()
         {
             lcs_trie_with_separator_rec(
-                &child_edge_ref.target,
+                child_edge_ref.target,
                 node_depth + child_edge_ref.chars.len(),
                 node_marks,
                 deepest_path,
@@ -180,10 +176,11 @@ fn mark_nodes_rec<'arena, 's, C: PartialEq, N: ArrayLength>(
         .filter_map(|child| child.as_ref())
     {
         let child_edge_ref = child_edge.borrow();
-        mark_nodes_rec(&child_edge_ref.target, separator_index, node_marks);
+        mark_nodes_rec(child_edge_ref.target, separator_index, node_marks);
     }
 
     if let Some(terminal) = node.borrow().terminal.as_ref() {
+        #[allow(clippy::comparison_chain)]
         if terminal.suffix_index < separator_index {
             mark_ancestors(node, &mut |node_id| {
                 let mark = node_marks.entry(node_id).or_default();
@@ -208,7 +205,7 @@ fn mark_ancestors<'arena, 's, C, N: ArrayLength>(
 ) {
     if mark_node(node_id_ptr(node.as_ptr())) {
         if let Some(parent) = node.borrow().parent.as_ref() {
-            mark_ancestors(&parent.borrow().source, mark_node);
+            mark_ancestors(parent.borrow().source, mark_node);
         }
     }
 }
@@ -245,6 +242,7 @@ mod test {
     use crate::string_model::test_util::Char;
 
     use proptest::prelude::ProptestConfig;
+    use proptest::strategy::Strategy;
     use proptest::strategy::ValueTree;
     use proptest::{prop_assert, prop_assert_eq, proptest};
 
@@ -296,8 +294,6 @@ mod test {
 
     #[test]
     fn test_lcs_joined_trie_perf() {
-        use crate::string_model::test_util::Char::*;
-
         let mut runner = proptest::test_runner::TestRunner::default();
         let s = arb_astring::<Char>(10_000)
             .new_tree(&mut runner)
@@ -313,8 +309,6 @@ mod test {
 
     #[test]
     fn test_lcs_single_trie_perf() {
-        use crate::string_model::test_util::Char::*;
-
         let mut runner = proptest::test_runner::TestRunner::default();
         let s = arb_astring::<Char>(10_000)
             .new_tree(&mut runner)
