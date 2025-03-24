@@ -1,7 +1,6 @@
 use alloc::rc::Rc;
-use std::ops::Deref;
 use bumpalo::Bump;
-
+use std::ops::Deref;
 
 pub trait ReferencingAllocator {
     type Ref<T>: Deref<Target = T> + Clone;
@@ -23,13 +22,10 @@ impl<A: std::alloc::Allocator + Copy> ReferencingAllocator for StdAllocator<A> {
 #[derive(Clone, Copy)]
 pub struct BumpAllocator<'bump>(pub &'bump Bump);
 
-
-impl<'bump> ReferencingAllocator for BumpAllocator<'bump> {
-    type Ref<T> = &'bump T;
-
-    fn allocate_referenced<T>(&self, val: T) -> Self::Ref<T> {
-        self.0.alloc(val)
-    }
-}
-
-
+// impl<'bump> ReferencingAllocator for BumpAllocator<'bump> {
+//     type Ref<T> = &'bump T;
+//
+//     fn allocate_referenced<T>(&self, val: T) -> Self::Ref<T> {
+//         self.0.alloc(val)
+//     }
+// }

@@ -1,5 +1,7 @@
 use crate::alphabet_model::{CharT, WithSeparator};
-use crate::string::suffix_trie_suffix_links_arena_refs::{node_id, terminals, Node, NodeId};
+use crate::string::suffix_trie_suffix_links_arena_refs::{
+    Node, NodeId, node_id, node_id_ptr, terminals,
+};
 use crate::string_model::{AStr, AString};
 
 use generic_array::ArrayLength;
@@ -8,11 +10,11 @@ use std::cell::RefCell;
 use std::collections::VecDeque;
 use std::iter;
 
+use crate::string::suffix_trie_suffix_links_arena_refs;
 use bumpalo::Bump;
 use hashbrown::HashMap;
 use proptest::strategy::Strategy;
 use std::time::Instant;
-use crate::string::suffix_trie_suffix_links_arena_refs;
 
 pub fn lcs_joined_trie<'s, C: CharT>(s: &'s AStr<C>, t: &AStr<C>) -> &'s AStr<C>
 where
@@ -83,7 +85,7 @@ fn lcs_trie_with_separator_rec<'arena, 's, C, N: ArrayLength>(
     {
         let child_edge_ref = child_edge.borrow();
         if node_marks
-            .get(&node_id(child_edge_ref.target))
+            .get(&node_id_ptr(child_edge_ref.target.as_ptr()))
             .copied()
             .unwrap_or_default()
             .both()
@@ -138,7 +140,7 @@ where
         {
             let child_edge_ref = child_edge.borrow();
             if node_marks
-                .get(&node_id(child_edge_ref.target))
+                .get(&node_id_ptr(child_edge_ref.target.as_ptr()))
                 .copied()
                 .unwrap_or_default()
                 .both()
@@ -204,7 +206,7 @@ fn mark_ancestors<'arena, 's, C, N: ArrayLength>(
     node: &'arena RefCell<Node<'arena, 's, C, N>>,
     mark_node: &mut impl FnMut(NodeId) -> bool,
 ) {
-    if mark_node(node_id(node)) {
+    if mark_node(node_id_ptr(node.as_ptr())) {
         if let Some(parent) = node.borrow().parent.as_ref() {
             mark_ancestors(&parent.borrow().source, mark_node);
         }

@@ -3,13 +3,15 @@
 mod bench_util;
 
 use bumpalo::Bump;
-use criterion::{criterion_group, criterion_main, Bencher, BenchmarkId, Criterion, Throughput};
+use criterion::{Bencher, BenchmarkId, Criterion, Throughput, criterion_group, criterion_main};
 use std::mem;
 
 use crate::bench_util::Char;
 use bioinformatics::string;
-use bioinformatics::string::{lcs, suffix_trie_compact, suffix_trie_suffix_links, suffix_trie_suffix_links_arena_refs};
-use bioinformatics::string_model::{arb_astring, AStr};
+use bioinformatics::string::{
+    lcs, suffix_trie_compact, suffix_trie_suffix_links, suffix_trie_suffix_links_arena_refs,
+};
+use bioinformatics::string_model::{AStr, arb_astring};
 use proptest::strategy::{Strategy, ValueTree};
 
 const STRING_LENGTHS: &[usize] = &[200, 5000, 1_000_000];

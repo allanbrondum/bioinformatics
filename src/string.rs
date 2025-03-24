@@ -1,8 +1,8 @@
+pub mod lcs;
 pub mod suffix_trie_compact;
 pub mod suffix_trie_simple;
 pub mod suffix_trie_suffix_links;
 pub mod suffix_trie_suffix_links_arena_refs;
-pub mod lcs;
 // pub mod suffix_array; // todo 1
 mod superstring_petgraph;
 mod superstring_rcrefcell;

@@ -59,12 +59,12 @@ impl<'arena, 's, C, N: ArrayLength> Node<'arena, 's, C, N> {
 }
 
 #[derive(Debug)]
-struct Terminal {
+pub(crate) struct Terminal {
     pub(crate) suffix_index: usize,
 }
 
 #[derive(Debug)]
-struct Edge<'arena, 's, C, N: ArrayLength> {
+pub(crate) struct Edge<'arena, 's, C, N: ArrayLength> {
     pub(crate) chars: &'s AStr<C>,
     pub(crate) source: &'arena RefCell<Node<'arena, 's, C, N>>,
     pub(crate) target: &'arena RefCell<Node<'arena, 's, C, N>>,
@@ -241,7 +241,6 @@ impl MaximalSubstrMatch {
         }
     }
 }
-
 
 pub(crate) fn terminals<'arena, 's, C, N: ArrayLength>(
     node: &Node<'arena, 's, C, N>,
@@ -467,6 +466,10 @@ impl Display for NodeId {
 
 pub(crate) fn node_id<C, N: ArrayLength>(node: &Node<C, N>) -> NodeId {
     NodeId(ptr::from_ref(node) as usize)
+}
+
+pub(crate) fn node_id_ptr<C, N: ArrayLength>(node: *const Node<C, N>) -> NodeId {
+    NodeId(node as usize)
 }
 
 #[cfg(test)]
