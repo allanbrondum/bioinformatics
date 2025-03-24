@@ -50,7 +50,7 @@ impl<'s, C: CharT + Ord> SuffixArray<'s, C> {
         &self.s[self.sorted_suffixes[i]..]
     }
 
-    pub fn index_substr(&self, t: &'s AStr<C>) -> Option<usize> {
+    pub fn index_substr_naive(&self, t: &'s AStr<C>) -> Option<usize> {
         let mut low = 0;
         let mut high = self.sorted_suffixes.len();
 
@@ -62,6 +62,40 @@ impl<'s, C: CharT + Ord> SuffixArray<'s, C> {
                 Ordering::Equal => return Some(self.sorted_suffixes[middle]),
                 Ordering::Less => high = middle,
                 Ordering::Greater => low = middle + 1,
+            }
+        }
+
+        None
+    }
+
+    pub fn index_substr_simple(&self, t: &'s AStr<C>) -> Option<usize> {
+        let mut low = 0;
+        let mut high = self.sorted_suffixes.len();
+        let mut p_low = self.ord_suffix(low).lcp(t).len();
+        let mut p_high = self.ord_suffix(high - 1).lcp(t).len();
+
+        while low < high {
+            let middle = (low + high) / 2;
+            let middle_s = self.ord_suffix(middle);
+            let p = p_low.min(p_high);
+            let p_middle = p + middle_s[p..].lcp(&t[p..]).len();
+
+            if p_middle == t.len() {
+                return Some(self.sorted_suffixes[middle]);
+            } else {
+                match t[p_middle..].cmp(&middle_s[p_middle..middle_s.len()]) {
+                    Ordering::Less => {
+                        high = middle;
+                        p_high = p_middle;
+                    }
+                    Ordering::Greater => {
+                        low = middle + 1;
+                        p_low = p_middle;
+                    }
+                    Ordering::Equal => {
+                        unreachable!()
+                    }
+                }
             }
         }
 
@@ -93,11 +127,11 @@ mod test {
 
         let array = build_array(Cow::Borrowed(s));
 
-        assert_eq!(array.index_substr(AStr::from_slice(&[])), None);
+        assert_eq!(array.index_substr_naive(AStr::from_slice(&[])), None);
     }
 
     #[test]
-    fn test_build_array_and_find_substr_repetition() {
+    fn test_build_array_and_find_substr_naive_repetition() {
         use crate::string_model::test_util::Char::*;
 
         let s = AStr::from_slice(&[A, A, A]);
@@ -105,24 +139,33 @@ mod test {
         let array = build_array(Cow::Borrowed(s));
         print_array(&array);
 
-        assert_eq!(array.index_substr(AStr::from_slice(&[A, A, A])), Some(0));
-        assert_eq!(array.index_substr(AStr::from_slice(&[A, A])), Some(1));
-        assert_eq!(array.index_substr(AStr::from_slice(&[A])), Some(1));
+        assert_eq!(
+            array.index_substr_naive(AStr::from_slice(&[A, A, A])),
+            Some(0)
+        );
+        assert_eq!(array.index_substr_naive(AStr::from_slice(&[A, A])), Some(1));
+        assert_eq!(array.index_substr_naive(AStr::from_slice(&[A])), Some(1));
     }
 
     #[test]
-    fn test_build_array_and_find_substr() {
+    fn test_build_array_and_find_substr_naive() {
         use crate::string_model::test_util::Char::*;
 
         let s = AStr::from_slice(&[A, B, A, A, B, A, B, A, A]);
         let array = build_array(Cow::Borrowed(s));
         print_array(&array);
 
-        assert_eq!(array.index_substr(AStr::from_slice(&[A, A, A])), None);
-        assert_eq!(array.index_substr(AStr::from_slice(&[A, B, A])), Some(0));
-        assert_eq!(array.index_substr(AStr::from_slice(&[B, A, A])), Some(1));
+        assert_eq!(array.index_substr_naive(AStr::from_slice(&[A, A, A])), None);
         assert_eq!(
-            array.index_substr(AStr::from_slice(&[B, A, B, A,])),
+            array.index_substr_naive(AStr::from_slice(&[A, B, A])),
+            Some(0)
+        );
+        assert_eq!(
+            array.index_substr_naive(AStr::from_slice(&[B, A, A])),
+            Some(1)
+        );
+        assert_eq!(
+            array.index_substr_naive(AStr::from_slice(&[B, A, B, A,])),
             Some(4)
         );
     }
@@ -131,9 +174,71 @@ mod test {
         #![proptest_config(ProptestConfig::with_cases(2000))]
 
         #[test]
-        fn prop_test_trie(s in arb_astring::<Char>(0..20), t in arb_astring::<Char>(3)) {
+        fn prop_test_trie_naive(s in arb_astring::<Char>(0..20), t in arb_astring::<Char>(3)) {
             let array = build_array(Cow::Borrowed(&s));
-            let index = array.index_substr( &t);
+            let index = array.index_substr_naive(&t);
+            if let Some(index) = index {
+                prop_assert_eq!(t.as_str(), &s[index..index + t.len()]);
+            } else {
+                prop_assert!(!s.contains(&t));
+            }
+
+        }
+    }
+
+    #[test]
+    fn test_build_array_and_find_substr_simple_repetition() {
+        use crate::string_model::test_util::Char::*;
+
+        let s = AStr::from_slice(&[A, A, A]);
+
+        let array = build_array(Cow::Borrowed(s));
+        print_array(&array);
+
+        assert_eq!(
+            array.index_substr_simple(AStr::from_slice(&[A, A, A])),
+            Some(0)
+        );
+        assert_eq!(
+            array.index_substr_simple(AStr::from_slice(&[A, A])),
+            Some(1)
+        );
+        assert_eq!(array.index_substr_simple(AStr::from_slice(&[A])), Some(1));
+    }
+
+    #[test]
+    fn test_build_array_and_find_substr_simple() {
+        use crate::string_model::test_util::Char::*;
+
+        let s = AStr::from_slice(&[A, B, A, A, B, A, B, A, A]);
+        let array = build_array(Cow::Borrowed(s));
+        print_array(&array);
+
+        assert_eq!(
+            array.index_substr_simple(AStr::from_slice(&[A, A, A])),
+            None
+        );
+        assert_eq!(
+            array.index_substr_simple(AStr::from_slice(&[A, B, A])),
+            Some(0)
+        );
+        assert_eq!(
+            array.index_substr_simple(AStr::from_slice(&[B, A, A])),
+            Some(1)
+        );
+        assert_eq!(
+            array.index_substr_simple(AStr::from_slice(&[B, A, B, A,])),
+            Some(4)
+        );
+    }
+
+    proptest! {
+        #![proptest_config(ProptestConfig::with_cases(2000))]
+
+        #[test]
+        fn prop_test_trie_simple(s in arb_astring::<Char>(0..20), t in arb_astring::<Char>(3)) {
+            let array = build_array(Cow::Borrowed(&s));
+            let index = array.index_substr_simple(&t);
             if let Some(index) = index {
                 prop_assert_eq!(t.as_str(), &s[index..index + t.len()]);
             } else {
