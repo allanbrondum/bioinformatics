@@ -247,7 +247,7 @@ pub fn build_trie_with_allocator<'arena, 's, C: CharT + Copy>(
 
     let mut suffixes = Vec::new();
 
-    for i in 0..s.len() {
+    for i in 1..s.len() {
         let chars = &s[..i];
 
         for suffix in &mut suffixes {
@@ -287,6 +287,7 @@ fn insert_last_char<'arena, 's, C: CharT + Copy>(
         parent_edge_mut.chars = &chars[chars.len() - parent_edge_mut.chars.len() - 1..];
         node
     } else {
+        drop(node_ref);
         // Insert new leaf on edge from this node
         append_tail(node, &chars[chars.len() - 1..], alloc)
     }
