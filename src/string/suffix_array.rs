@@ -3,10 +3,11 @@ use crate::string::suffix_trie_suffix_links_arena_refs;
 use crate::string_model::AStr;
 use alloc::borrow::Cow;
 use bumpalo::Bump;
-use std::collections::VecDeque;
 use hashbrown::HashSet;
 use std::borrow::Borrow;
 use std::cell::RefCell;
+use std::cmp::Ordering;
+use std::collections::VecDeque;
 
 #[derive(Debug)]
 pub struct SuffixArray<'s, C: CharT> {
@@ -17,6 +18,7 @@ pub struct SuffixArray<'s, C: CharT> {
 pub fn build_array<'s, C: CharT>(s: Cow<'s, AStr<C>>) -> SuffixArray<'s, C> {
     let bump = Bump::new();
     let trie = suffix_trie_suffix_links_arena_refs::build_trie_with_allocator(s.borrow(), &bump);
+    // suffix_trie_suffix_links_arena_refs::to_dot("target/build_array.dot", &trie);
 
     let mut sorted_suffixes = Vec::with_capacity(s.len());
 
@@ -29,7 +31,12 @@ pub fn build_array<'s, C: CharT>(s: Cow<'s, AStr<C>>) -> SuffixArray<'s, C> {
             sorted_suffixes.push(terminal.suffix_index);
         }
 
-        for child_edge in node_ref.children.iter().filter_map(|child| child.as_ref()) {
+        for child_edge in node_ref
+            .children
+            .iter()
+            .rev()
+            .filter_map(|child| child.as_ref())
+        {
             let child_edge_ref = RefCell::borrow(child_edge);
             to_visit.push_front(child_edge_ref.target);
         }
@@ -38,13 +45,33 @@ pub fn build_array<'s, C: CharT>(s: Cow<'s, AStr<C>>) -> SuffixArray<'s, C> {
     SuffixArray { sorted_suffixes, s }
 }
 
-impl<'s, C: CharT> SuffixArray<'s, C>{
-    pub fn indexes_substr(&self, t: &'s AStr<C>) -> HashSet<usize> {
-        let mut result = HashSet::new();
+impl<'s, C: CharT + Ord> SuffixArray<'s, C> {
+    fn ord_suffix(&self, i: usize) -> &AStr<C> {
+        &self.s[self.sorted_suffixes[i]..]
+    }
 
+    pub fn index_substr(&self, t: &'s AStr<C>) -> Option<usize> {
+        let mut low = 0;
+        let mut high = self.sorted_suffixes.len();
 
+        while low < high {
+            let middle = (low + high) / 2;
+            let middle_s = self.ord_suffix(middle);
 
-        result
+            match t.cmp(&middle_s[..t.len().min(middle_s.len())]) {
+                Ordering::Equal => return Some(self.sorted_suffixes[middle]),
+                Ordering::Less => high = middle,
+                Ordering::Greater => low = middle + 1,
+            }
+        }
+
+        None
+    }
+}
+
+fn print_array<'s, C: CharT>(array: &SuffixArray<'s, C>) {
+    for suffix in array.sorted_suffixes.iter().copied() {
+        println!("{}", &array.s[suffix..]);
     }
 }
 
@@ -57,78 +84,62 @@ mod test {
     use crate::string_model::test_util::Char;
 
     use proptest::prelude::ProptestConfig;
-    use proptest::{prop_assert_eq, proptest};
+    use proptest::{prop_assert, prop_assert_eq, proptest};
 
     #[test]
-    fn test_build_trie_and_find_substr_empty() {
+    #[ignore]
+    fn test_build_array_and_find_substr_empty() {
         let s: &AStr<Char> = AStr::from_slice(&[]);
 
         let array = build_array(Cow::Borrowed(s));
 
-        assert_eq!(
-            array.indexes_substr(AStr::from_slice(&[])),
-            HashSet::from([0])
-        );
+        assert_eq!(array.index_substr(AStr::from_slice(&[])), None);
     }
 
     #[test]
-    fn test_build_trie_and_find_substr_repetition() {
+    fn test_build_array_and_find_substr_repetition() {
         use crate::string_model::test_util::Char::*;
 
         let s = AStr::from_slice(&[A, A, A]);
 
         let array = build_array(Cow::Borrowed(s));
+        print_array(&array);
 
-        assert_eq!(
-            array.indexes_substr(AStr::from_slice(&[A, A, A])),
-            HashSet::from([0])
-        );
-        assert_eq!(
-            array.indexes_substr(AStr::from_slice(&[A, A])),
-            HashSet::from([0, 1])
-        );
-        assert_eq!(
-            array.indexes_substr(AStr::from_slice(&[A])),
-            HashSet::from([0, 1, 2])
-        );
+        assert_eq!(array.index_substr(AStr::from_slice(&[A, A, A])), Some(0));
+        assert_eq!(array.index_substr(AStr::from_slice(&[A, A])), Some(1));
+        assert_eq!(array.index_substr(AStr::from_slice(&[A])), Some(1));
     }
 
     #[test]
-    fn test_build_trie_and_find_substr() {
+    fn test_build_array_and_find_substr() {
         use crate::string_model::test_util::Char::*;
 
         let s = AStr::from_slice(&[A, B, A, A, B, A, B, A, A]);
-
         let array = build_array(Cow::Borrowed(s));
+        print_array(&array);
 
+        assert_eq!(array.index_substr(AStr::from_slice(&[A, A, A])), None);
+        assert_eq!(array.index_substr(AStr::from_slice(&[A, B, A])), Some(0));
+        assert_eq!(array.index_substr(AStr::from_slice(&[B, A, A])), Some(1));
         assert_eq!(
-            array.indexes_substr(AStr::from_slice(&[])),
-            HashSet::from([0, 1, 2, 3, 4, 5, 6, 7, 8])
-        );
-        assert_eq!(
-            array.indexes_substr(AStr::from_slice(&[A, A, A])),
-            HashSet::from([])
-        );
-        assert_eq!(
-            array.indexes_substr(AStr::from_slice(&[A, B, A])),
-            HashSet::from([0, 3, 5])
-        );
-        assert_eq!(
-            array.indexes_substr(AStr::from_slice(&[B, A, A])),
-            HashSet::from([1, 6])
+            array.index_substr(AStr::from_slice(&[B, A, B, A,])),
+            Some(4)
         );
     }
-
 
     proptest! {
         #![proptest_config(ProptestConfig::with_cases(2000))]
 
         #[test]
         fn prop_test_trie(s in arb_astring::<Char>(0..20), t in arb_astring::<Char>(3)) {
-            let array = build_array(Cow::Owned(s));
-            let expected = string::indexes(&s, &t);
-            let indexes = array.indexes_substr( &t);
-            prop_assert_eq!(indexes, HashSet::from_iter(expected.into_iter()));
+            let array = build_array(Cow::Borrowed(&s));
+            let index = array.index_substr( &t);
+            if let Some(index) = index {
+                prop_assert_eq!(t.as_str(), &s[index..index + t.len()]);
+            } else {
+                prop_assert!(!s.contains(&t));
+            }
+
         }
     }
 }

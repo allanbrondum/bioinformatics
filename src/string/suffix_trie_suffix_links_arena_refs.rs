@@ -6,14 +6,19 @@ use generic_array::{ArrayLength, GenericArray};
 
 use crate::string;
 
+use crate::util::print_histogram;
 use bumpalo::Bump;
 use hashbrown::HashSet;
 use hdrhistogram::Histogram;
 use std::cell::RefCell;
 use std::cmp::Ordering;
+use std::collections::VecDeque;
 use std::fmt::{Debug, Display, Formatter};
+use std::fs::File;
 use std::hash::Hash;
+use std::io::Write;
 use std::ops::DerefMut;
+use std::path::Path;
 use std::{mem, ptr};
 
 const GRAPH_DEBUG: bool = false;
@@ -466,6 +471,119 @@ pub(crate) fn node_id<C, N: ArrayLength>(node: &Node<C, N>) -> NodeId {
 
 pub(crate) fn node_id_ptr<C, N: ArrayLength>(node: *const Node<C, N>) -> NodeId {
     NodeId(node as usize)
+}
+
+pub(crate) fn to_dot<'arena, 's, C: CharT>(
+    filepath: impl AsRef<Path>,
+    trie: &SuffixTrie<'arena, 's, C>,
+) {
+    let mut file = File::create(filepath).unwrap();
+    writeln!(file, "digraph G {{").unwrap();
+
+    to_dot_rec(&mut file, &trie.root.borrow());
+
+    writeln!(file, "}}").unwrap();
+}
+
+fn to_dot_rec<'arena, 's, C: CharT>(
+    write: &mut impl Write,
+    node: &Node<'arena, 's, C, C::AlphabetSize>,
+) {
+    writeln!(write, "    {} [label=\"\" shape=point];", node_id(node)).unwrap();
+    if let Some(terminal) = &node.terminal {
+        writeln!(
+            write,
+            "    {} [label=\"{}\"];",
+            ptr::from_ref(terminal) as usize,
+            terminal.suffix_index
+        )
+        .unwrap();
+        writeln!(
+            write,
+            "    \"{}\" -> \"{}\" [label=\"$\" dir=none];",
+            node_id(node),
+            ptr::from_ref(terminal) as usize,
+        )
+        .unwrap();
+    }
+    if let Some(suffix) = &node.suffix {
+        writeln!(
+            write,
+            "    \"{}\" -> \"{}\" [style=dashed];",
+            node_id(node),
+            node_id(&suffix.borrow()),
+        )
+        .unwrap();
+    }
+    // if let Some(parent) = &node.parent {
+    //     writeln!(
+    //         write,
+    //         "    \"{}\" -> \"{}\" [style=dashed label=\"parent\"];",
+    //         node_id(node),
+    //         node_id(&parent.borrow()),
+    //     )
+    //         .unwrap();
+    // }
+    for edge in node.children.iter().filter_map(|edge| edge.as_ref()) {
+        let edge_ref = edge.borrow();
+        writeln!(
+            write,
+            "    \"{}\" -> \"{}\" [label=\"{}\" dir=none];",
+            node_id(node),
+            node_id(&edge_ref.target.borrow()),
+            edge_ref.chars
+        )
+        .unwrap();
+        to_dot_rec(write, &edge_ref.target.borrow());
+    }
+}
+
+pub fn trie_stats<'arena, 's, C: CharT>(trie: &SuffixTrie<'arena, 's, C>) {
+    let mut edge_len_hist =
+        Histogram::<u64>::new_with_bounds(1, trie.s.len().max(2) as u64, 2).unwrap();
+    let mut node_branch_depth_hist = Histogram::<u64>::new(2).unwrap();
+
+    struct ToVisit<'arena, 's, C, N: ArrayLength> {
+        node: &'arena RefCell<Node<'arena, 's, C, N>>,
+        branch_depth: usize,
+    }
+
+    let mut to_visit = VecDeque::new();
+    to_visit.push_front(ToVisit {
+        node: &trie.root,
+        branch_depth: 0,
+    });
+
+    while let Some(node) = to_visit.pop_front() {
+        for child_edge in node
+            .node
+            .borrow()
+            .children
+            .iter()
+            .filter_map(|child| child.as_ref())
+        {
+            let child_edge_ref = child_edge.borrow();
+            edge_len_hist
+                .record(child_edge_ref.chars.len() as u64)
+                .unwrap();
+            node_branch_depth_hist
+                .record(node.branch_depth as u64)
+                .unwrap();
+
+            to_visit.push_back(ToVisit {
+                node: child_edge_ref.target,
+                branch_depth: node.branch_depth + 1,
+            });
+        }
+    }
+
+    println!(
+        "nodes: {}, edges: {}",
+        node_branch_depth_hist.len(),
+        edge_len_hist.len()
+    );
+    print_histogram("edge length", &edge_len_hist);
+    print_histogram("node branch depth", &node_branch_depth_hist);
 }
 
 #[cfg(test)]

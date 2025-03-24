@@ -84,7 +84,7 @@ macro_rules! enum_char {
     (@count_items_typenum, $tt:tt) => {generic_array::typenum::U1};
 
     ($enum_ident:ident; $( $variant_ident:ident ),+ ) => {
-        #[derive(Debug, Clone, Copy, Eq, PartialEq, Hash, proptest_derive::Arbitrary)]
+        #[derive(Debug, Clone, Copy, Eq, PartialEq, Hash, PartialOrd, Ord, proptest_derive::Arbitrary)]
         pub enum $enum_ident {
             $(
                 $variant_ident,

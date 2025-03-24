@@ -15,7 +15,7 @@ use std::mem;
 use std::ops::{Add, Deref, Index, Range, RangeFrom, RangeInclusive, RangeTo, RangeToInclusive};
 use std::str::FromStr;
 
-#[derive(Debug, Eq, PartialEq, Hash)]
+#[derive(Debug, Eq, PartialEq, Hash, Ord, PartialOrd)]
 pub struct AStr<C>([C]);
 
 impl<'a, C> IntoIterator for &'a AStr<C> {
