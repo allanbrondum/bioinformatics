@@ -284,6 +284,7 @@ fn insert_last_char<'arena, 's, C: CharT + Copy>(
         if edge_ref.chars.len() == 1 {
             edge_ref.target
         } else {
+            unreachable!();
             insert_intermediate(node, &chars[chars.len() - 1..], alloc)
         }
     } else if node_ref.children.is_empty() && node_ref.parent.is_some() {
