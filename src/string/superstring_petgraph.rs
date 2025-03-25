@@ -4,7 +4,7 @@ use crate::string_model::AString;
 use itertools::Itertools;
 use petgraph::Direction;
 use petgraph::dot::Dot;
-use petgraph::matrix_graph::{MatrixGraph, NodeIndex};
+use petgraph::matrix_graph::{DiMatrix, MatrixGraph, NodeIndex};
 use petgraph::visit::{
     Data, GraphProp, IntoEdgeReferences, IntoNodeIdentifiers, IntoNodeReferences, NodeIndexable,
 };
@@ -22,7 +22,7 @@ pub fn scs<C: CharT + Debug>(
     min_overlap: usize,
 ) -> Vec<AString<C>> {
     let strs = strs.into_iter();
-    let mut graph: MatrixGraph<Node<C>, Edge> = MatrixGraph::with_capacity(strs.size_hint().0);
+    let mut graph: DiMatrix<Node<C>, Edge> = MatrixGraph::with_capacity(strs.size_hint().0);
 
     let node_idxs = strs
         .into_iter()

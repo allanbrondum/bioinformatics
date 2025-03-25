@@ -1,4 +1,4 @@
-//! Ukkonen's algorithm
+//! Ukkonen's algorithm (unfinished)
 
 use crate::alphabet_model::CharT;
 use crate::string_model::AStr;
@@ -255,6 +255,7 @@ pub fn build_trie_with_allocator<'arena, 's, C: CharT + Copy>(
 
         suffixes.push(SuffixTracker::new(trie.root));
 
+        // println!("suffix_rem_index: {}", suffix_rem_index);
         for j in suffix_rem_index..suffixes.len() {
             let suffix_tracker = insert_char(suffixes[j].node, s, i, alloc);
             if suffix_tracker.fully_inserted {
@@ -329,6 +330,7 @@ fn insert_char<'arena, 's, C: CharT + Copy>(
         }
     } else if node_ref.children.is_empty() && node_ref.parent.is_some() {
         // Extend this leaf
+        panic!();
         let mut parent_edge_mut = node_ref.parent.unwrap().borrow_mut();
         parent_edge_mut.chars = &s[char_index - parent_edge_mut.chars.len()..];
         SuffixTracker::full(node)
@@ -533,6 +535,7 @@ pub fn trie_stats<'arena, 's, C: CharT>(trie: &SuffixTrie<'arena, 's, C>) {
 
 #[cfg(test)]
 mod test {
+    use std::time::Instant;
     use super::*;
 
     use crate::string;
@@ -541,6 +544,8 @@ mod test {
 
     use proptest::prelude::ProptestConfig;
     use proptest::{prop_assert_eq, proptest};
+    use proptest::strategy::ValueTree;
+use proptest::strategy::Strategy;
 
     #[test]
     #[ignore]
@@ -632,5 +637,20 @@ mod test {
             let indexes = trie.indexes_substr( &t);
             prop_assert_eq!(indexes, HashSet::from_iter(expected.into_iter()));
         }
+    }
+
+    #[test]
+    fn test_build_trie_ukn_perf() {
+        let mut runner = proptest::test_runner::TestRunner::default();
+        let s = arb_astring::<Char>(10_000)
+            .new_tree(&mut runner)
+            .unwrap()
+            .current();
+
+        let start = Instant::now();
+        let bump = Bump::new();
+        let trie = build_trie_with_allocator(&s, &bump);
+        println!("build trie elapsed {:?}", start.elapsed());
+
     }
 }
