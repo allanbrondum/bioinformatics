@@ -139,7 +139,7 @@ fn scan_rec<'arena, 's, C: CharT + Copy>(
 }
 
 fn fast_scan_rec<'arena, 's, C: CharT + Copy>(
-    node:NodeRef<'arena, 's, C, C::AlphabetSize>,
+    node: NodeRef<'arena, 's, C, C::AlphabetSize>,
     t: &'s AStr<C>,
 ) -> ScanReturn<'arena, 's, C, C::AlphabetSize> {
     let node_ref = node.borrow();
@@ -246,19 +246,28 @@ pub fn build_trie_with_allocator<'arena, 's, C: CharT + Copy>(
         s,
     };
 
-    let mut suffixes:Vec<SuffixTracker< _, _>> = Vec::new();
+    let mut suffixes: Vec<SuffixTracker<_, _>> = Vec::new();
+    let mut suffix_rem_index = 0;
 
     for i in 0..s.len() {
         // let chars = &s[..i];
         // let full_suffix = &s[i - 1..];
 
-        for suffix in &mut suffixes {
-            if !suffix.fully_inserted {
-                *suffix = insert_char(suffix.node, s, i, alloc);
+        suffixes.push(SuffixTracker::new(trie.root));
+
+        for j in suffix_rem_index..suffixes.len() {
+            let suffix_tracker = insert_char(suffixes[j].node, s, i, alloc);
+            if suffix_tracker.fully_inserted {
+                suffix_rem_index = j + 1;
             }
+            suffixes[j] = suffix_tracker;
         }
 
-        suffixes.push(insert_char(&trie.root, s, i, alloc));
+        // suffixes.push(insert_char(&trie.root, s, i, alloc));
+
+        if GRAPH_DEBUG {
+            to_dot(format!("target/trie_suffix_link_ukn_{}.dot", i), &trie);
+        }
     }
 
     for (suffix_index, suffix) in suffixes.iter().enumerate() {
@@ -274,18 +283,18 @@ pub fn build_trie_with_allocator<'arena, 's, C: CharT + Copy>(
 
 struct SuffixTracker<'arena, 's, C, N: ArrayLength> {
     fully_inserted: bool,
-    node: NodeRef<'arena, 's, C, N>
+    node: NodeRef<'arena, 's, C, N>,
 }
 
-impl<'arena, 's, C, N: ArrayLength> SuffixTracker<'arena, 's, C,N> {
-    fn full(node: NodeRef<'arena, 's, C, N>)-> Self {
+impl<'arena, 's, C, N: ArrayLength> SuffixTracker<'arena, 's, C, N> {
+    fn full(node: NodeRef<'arena, 's, C, N>) -> Self {
         Self {
             fully_inserted: true,
             node,
         }
     }
 
-    fn new(node: NodeRef<'arena, 's, C, N>)-> Self {
+    fn new(node: NodeRef<'arena, 's, C, N>) -> Self {
         Self {
             fully_inserted: false,
             node,
@@ -309,18 +318,27 @@ fn insert_char<'arena, 's, C: CharT + Copy>(
         if edge_ref.chars.len() == 1 {
             SuffixTracker::new(edge_ref.target)
         } else {
-            unreachable!();
-            SuffixTracker::new(insert_intermediate(node, &s[char_index..=char_index], alloc))
+            // unreachable!();
+            drop(node_ref);
+            drop(edge_ref);
+            SuffixTracker::new(insert_intermediate(
+                node,
+                &s[char_index..=char_index],
+                alloc,
+            ))
         }
     } else if node_ref.children.is_empty() && node_ref.parent.is_some() {
         // Extend this leaf
         let mut parent_edge_mut = node_ref.parent.unwrap().borrow_mut();
-        parent_edge_mut.chars = &s[char_index - parent_edge_mut.chars.len()..=char_index] ;
-        SuffixTracker::new(node)
+        parent_edge_mut.chars = &s[char_index - parent_edge_mut.chars.len()..];
+        SuffixTracker::full(node)
+        // parent_edge_mut.chars = &s[char_index - parent_edge_mut.chars.len()..=char_index] ;
+        // SuffixTracker::new(node)
     } else {
         drop(node_ref);
         // Insert new leaf on edge from this node
-        SuffixTracker::new(append_tail(node, &s[char_index..=char_index], alloc))
+        SuffixTracker::full(append_tail(node, &s[char_index..], alloc))
+        // SuffixTracker::new(append_tail(node, &s[char_index..=char_index], alloc))
     }
 }
 
@@ -352,7 +370,7 @@ fn insert_intermediate<'arena, 's, C: CharT + Copy>(
     node: NodeRef<'arena, 's, C, C::AlphabetSize>,
     t_rem: &AStr<C>,
     alloc: &'arena Bump,
-) ->NodeRef<'arena, 's, C, C::AlphabetSize> {
+) -> NodeRef<'arena, 's, C, C::AlphabetSize> {
     assert!(!t_rem.is_empty());
     let node_mut = node.borrow_mut();
     let edge = node_mut.children[t_rem[0].index()]
@@ -558,6 +576,21 @@ mod test {
         assert_eq!(
             trie.indexes_substr(AStr::from_slice(&[A])),
             HashSet::from([0, 1, 2])
+        );
+    }
+
+    #[test]
+    fn test_build_trie_and_find_substr_2() {
+        use crate::string_model::test_util::Char::*;
+
+        let s = AStr::from_slice(&[A, A]);
+
+        let bump = Bump::new();
+        let trie = build_trie_with_allocator(s, &bump);
+
+        assert_eq!(
+            trie.indexes_substr(AStr::from_slice(&[A, A, A])),
+            HashSet::from([])
         );
     }
 
