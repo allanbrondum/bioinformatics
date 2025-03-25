@@ -24,18 +24,20 @@ use std::{mem, ptr};
 
 const GRAPH_DEBUG: bool = false;
 
+type NodeRef<'arena, 's, C, N: ArrayLength> = &'arena RefCell<Node<'arena, 's, C, N>>;
+type EdgeRef<'arena, 's, C, N: ArrayLength> = &'arena RefCell<Edge<'arena, 's, C, N>>;
+
 #[derive(Debug)]
 pub struct SuffixTrie<'arena, 's, C: CharT> {
-    pub(crate) root: &'arena RefCell<Node<'arena, 's, C, C::AlphabetSize>>,
+    pub(crate) root: NodeRef<'arena, 's, C, C::AlphabetSize>,
     s: &'s AStr<C>,
 }
 
 #[derive(Debug)]
 pub(crate) struct Node<'arena, 's, C, N: ArrayLength> {
-    pub(crate) parent: Option<&'arena RefCell<Edge<'arena, 's, C, N>>>,
-    pub(crate) children: GenericArray<Option<&'arena RefCell<Edge<'arena, 's, C, N>>>, N>,
+    pub(crate) parent: Option<EdgeRef<'arena, 's, C, N>>,
+    pub(crate) children: GenericArray<Option<EdgeRef<'arena, 's, C, N>>, N>,
     pub(crate) terminal: Option<Terminal>,
-    // suffix: Option<&'arena RefCell<Node<'arena, 's, C, N>>>,
 }
 
 impl<'arena, 's, C, N: ArrayLength> Default for Node<'arena, 's, C, N> {
@@ -44,7 +46,6 @@ impl<'arena, 's, C, N: ArrayLength> Default for Node<'arena, 's, C, N> {
             parent: None,
             children: Default::default(),
             terminal: None,
-            // suffix: None,
         }
     }
 }
@@ -68,13 +69,13 @@ pub(crate) struct Terminal {
 #[derive(Debug)]
 pub(crate) struct Edge<'arena, 's, C, N: ArrayLength> {
     pub(crate) chars: &'s AStr<C>,
-    pub(crate) source: &'arena RefCell<Node<'arena, 's, C, N>>,
-    pub(crate) target: &'arena RefCell<Node<'arena, 's, C, N>>,
+    pub(crate) source: NodeRef<'arena, 's, C, N>,
+    pub(crate) target: NodeRef<'arena, 's, C, N>,
 }
 
 struct ScanReturn<'arena, 's, C, N: ArrayLength> {
-    upper: &'arena RefCell<Node<'arena, 's, C, N>>,
-    lower: &'arena RefCell<Node<'arena, 's, C, N>>,
+    upper: NodeRef<'arena, 's, C, N>,
+    lower: NodeRef<'arena, 's, C, N>,
     t_rem_matched: &'s AStr<C>,
     matched: ScanMatch<'s, C>,
 }
@@ -85,7 +86,7 @@ enum ScanMatch<'s, C> {
 }
 
 fn scan_rec<'arena, 's, C: CharT + Copy>(
-    node: &'arena RefCell<Node<'arena, 's, C, C::AlphabetSize>>,
+    node: NodeRef<'arena, 's, C, C::AlphabetSize>,
     t: &'s AStr<C>,
 ) -> ScanReturn<'arena, 's, C, C::AlphabetSize> {
     let node_ref = node.borrow();
@@ -138,7 +139,7 @@ fn scan_rec<'arena, 's, C: CharT + Copy>(
 }
 
 fn fast_scan_rec<'arena, 's, C: CharT + Copy>(
-    node: &'arena RefCell<Node<'arena, 's, C, C::AlphabetSize>>,
+    node:NodeRef<'arena, 's, C, C::AlphabetSize>,
     t: &'s AStr<C>,
 ) -> ScanReturn<'arena, 's, C, C::AlphabetSize> {
     let node_ref = node.borrow();
@@ -271,10 +272,10 @@ pub fn build_trie_with_allocator<'arena, 's, C: CharT + Copy>(
 /// Inserts single char (last in given string) relative to given node. Returns
 /// resulting node.
 fn insert_last_char<'arena, 's, C: CharT + Copy>(
-    node: &'arena RefCell<Node<'arena, 's, C, C::AlphabetSize>>,
+    node: NodeRef<'arena, 's, C, C::AlphabetSize>,
     chars: &'s AStr<C>,
     alloc: &'arena Bump,
-) -> &'arena RefCell<Node<'arena, 's, C, C::AlphabetSize>> {
+) -> NodeRef<'arena, 's, C, C::AlphabetSize> {
     let ch = chars.last().copied().expect("chars must be non empty");
 
     let node_ref = node.borrow();
@@ -299,10 +300,10 @@ fn insert_last_char<'arena, 's, C: CharT + Copy>(
 
 /// Precondition: `t_rem` (or first char of) does not exist on edge from `node`
 fn append_tail<'arena, 's, C: CharT + Copy>(
-    node: &'arena RefCell<Node<'arena, 's, C, C::AlphabetSize>>,
+    node: NodeRef<'arena, 's, C, C::AlphabetSize>,
     chars: &'s AStr<C>,
     alloc: &'arena Bump,
-) -> &'arena RefCell<Node<'arena, 's, C, C::AlphabetSize>> {
+) -> NodeRef<'arena, 's, C, C::AlphabetSize> {
     assert!(!chars.is_empty());
 
     let mut node_mut = node.borrow_mut();
@@ -322,10 +323,10 @@ fn append_tail<'arena, 's, C: CharT + Copy>(
 
 /// Precondition: `t_rem` exists on edge from `node`
 fn insert_intermediate<'arena, 's, C: CharT + Copy>(
-    node: &'arena RefCell<Node<'arena, 's, C, C::AlphabetSize>>,
+    node: NodeRef<'arena, 's, C, C::AlphabetSize>,
     t_rem: &AStr<C>,
     alloc: &'arena Bump,
-) -> &'arena RefCell<Node<'arena, 's, C, C::AlphabetSize>> {
+) ->NodeRef<'arena, 's, C, C::AlphabetSize> {
     assert!(!t_rem.is_empty());
     let node_mut = node.borrow_mut();
     let edge = node_mut.children[t_rem[0].index()]
