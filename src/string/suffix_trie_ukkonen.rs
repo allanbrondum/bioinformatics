@@ -246,20 +246,23 @@ pub fn build_trie_with_allocator<'arena, 's, C: CharT + Copy>(
         s,
     };
 
-    let mut suffixes = Vec::new();
+    let mut suffixes:Vec<SuffixTracker< _, _>> = Vec::new();
 
-    for i in 1..=s.len() {
-        let chars = &s[..i];
+    for i in 0..s.len() {
+        // let chars = &s[..i];
+        // let full_suffix = &s[i - 1..];
 
         for suffix in &mut suffixes {
-            *suffix = insert_last_char(*suffix, chars, alloc);
+            if !suffix.fully_inserted {
+                *suffix = insert_char(suffix.node, s, i, alloc);
+            }
         }
 
-        suffixes.push(insert_last_char(&trie.root, chars, alloc));
+        suffixes.push(insert_char(&trie.root, s, i, alloc));
     }
 
     for (suffix_index, suffix) in suffixes.iter().enumerate() {
-        suffix.borrow_mut().terminal = Some(Terminal { suffix_index });
+        suffix.node.borrow_mut().terminal = Some(Terminal { suffix_index });
     }
 
     if GRAPH_DEBUG {
@@ -269,33 +272,55 @@ pub fn build_trie_with_allocator<'arena, 's, C: CharT + Copy>(
     trie
 }
 
+struct SuffixTracker<'arena, 's, C, N: ArrayLength> {
+    fully_inserted: bool,
+    node: NodeRef<'arena, 's, C, N>
+}
+
+impl<'arena, 's, C, N: ArrayLength> SuffixTracker<'arena, 's, C,N> {
+    fn full(node: NodeRef<'arena, 's, C, N>)-> Self {
+        Self {
+            fully_inserted: true,
+            node,
+        }
+    }
+
+    fn new(node: NodeRef<'arena, 's, C, N>)-> Self {
+        Self {
+            fully_inserted: false,
+            node,
+        }
+    }
+}
+
 /// Inserts single char (last in given string) relative to given node. Returns
 /// resulting node.
-fn insert_last_char<'arena, 's, C: CharT + Copy>(
+fn insert_char<'arena, 's, C: CharT + Copy>(
     node: NodeRef<'arena, 's, C, C::AlphabetSize>,
-    chars: &'s AStr<C>,
+    s: &'s AStr<C>,
+    char_index: usize,
     alloc: &'arena Bump,
-) -> NodeRef<'arena, 's, C, C::AlphabetSize> {
-    let ch = chars.last().copied().expect("chars must be non empty");
+) -> SuffixTracker<'arena, 's, C, C::AlphabetSize> {
+    let ch = s[char_index];
 
     let node_ref = node.borrow();
     if let Some(edge) = &node_ref.children[ch.index()] {
         let edge_ref = edge.borrow();
         if edge_ref.chars.len() == 1 {
-            edge_ref.target
+            SuffixTracker::new(edge_ref.target)
         } else {
             unreachable!();
-            insert_intermediate(node, &chars[chars.len() - 1..], alloc)
+            SuffixTracker::new(insert_intermediate(node, &s[char_index..=char_index], alloc))
         }
     } else if node_ref.children.is_empty() && node_ref.parent.is_some() {
         // Extend this leaf
         let mut parent_edge_mut = node_ref.parent.unwrap().borrow_mut();
-        parent_edge_mut.chars = &chars[chars.len() - parent_edge_mut.chars.len() - 1..];
-        node
+        parent_edge_mut.chars = &s[char_index - parent_edge_mut.chars.len()..=char_index] ;
+        SuffixTracker::new(node)
     } else {
         drop(node_ref);
         // Insert new leaf on edge from this node
-        append_tail(node, &chars[chars.len() - 1..], alloc)
+        SuffixTracker::new(append_tail(node, &s[char_index..=char_index], alloc))
     }
 }
 
