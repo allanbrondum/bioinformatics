@@ -3,7 +3,6 @@ use crate::string::suffix_trie_suffix_links_arena_refs;
 use crate::string_model::AStr;
 use alloc::borrow::Cow;
 use bumpalo::Bump;
-use hashbrown::HashSet;
 use std::borrow::Borrow;
 use std::cell::RefCell;
 use std::cmp::Ordering;
@@ -113,7 +112,7 @@ fn print_array<'s, C: CharT>(array: &SuffixArray<'s, C>) {
 mod test {
     use super::*;
 
-    use crate::string;
+    
     use crate::string_model::arb_astring;
     use crate::string_model::test_util::Char;
 

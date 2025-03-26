@@ -24,8 +24,8 @@ use std::{mem, ptr};
 
 const GRAPH_DEBUG: bool = false;
 
-type NodeRef<'arena, 's, C, N: ArrayLength> = &'arena RefCell<Node<'arena, 's, C, N>>;
-type EdgeRef<'arena, 's, C, N: ArrayLength> = &'arena RefCell<Edge<'arena, 's, C, N>>;
+type NodeRef<'arena, 's, C, N> = &'arena RefCell<Node<'arena, 's, C, N>>;
+type EdgeRef<'arena, 's, C, N> = &'arena RefCell<Edge<'arena, 's, C, N>>;
 
 #[derive(Debug)]
 pub struct SuffixTrie<'arena, 's, C: CharT> {
@@ -497,7 +497,7 @@ pub fn trie_stats<'arena, 's, C: CharT>(trie: &SuffixTrie<'arena, 's, C>) {
 
     let mut to_visit = VecDeque::new();
     to_visit.push_front(ToVisit {
-        node: &trie.root,
+        node: trie.root,
         branch_depth: 0,
     });
 
@@ -535,17 +535,17 @@ pub fn trie_stats<'arena, 's, C: CharT>(trie: &SuffixTrie<'arena, 's, C>) {
 
 #[cfg(test)]
 mod test {
-    use std::time::Instant;
     use super::*;
+    use std::time::Instant;
 
     use crate::string;
     use crate::string_model::arb_astring;
     use crate::string_model::test_util::Char;
 
     use proptest::prelude::ProptestConfig;
-    use proptest::{prop_assert_eq, proptest};
+    use proptest::strategy::Strategy;
     use proptest::strategy::ValueTree;
-use proptest::strategy::Strategy;
+    use proptest::{prop_assert_eq, proptest};
 
     #[test]
     #[ignore]
@@ -651,6 +651,5 @@ use proptest::strategy::Strategy;
         let bump = Bump::new();
         let trie = build_trie_with_allocator(&s, &bump);
         println!("build trie elapsed {:?}", start.elapsed());
-
     }
 }

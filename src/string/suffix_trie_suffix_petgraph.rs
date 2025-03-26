@@ -2,24 +2,18 @@
 
 use crate::alphabet_model::CharT;
 use crate::string_model::AStr;
-use generic_array::ArrayLength;
 
 use crate::string;
 
-use bumpalo::Bump;
 use hashbrown::HashSet;
 use petgraph::Direction;
 use petgraph::data::Build;
+use petgraph::graph::EdgeIndex;
 use petgraph::stable_graph::{NodeIndex, StableDiGraph};
 use petgraph::visit::EdgeRef;
-use std::cell::RefCell;
 use std::cmp::Ordering;
-use std::fmt::{Debug, Display, Formatter};
+use std::fmt::Debug;
 use std::hash::Hash;
-use std::io::Write;
-use std::mem;
-use std::ops::DerefMut;
-use petgraph::graph::EdgeIndex;
 
 const GRAPH_DEBUG: bool = false;
 
@@ -83,12 +77,13 @@ fn child<'a, 's, C: PartialEq>(
     graph
         .edges_directed(node_idx, Direction::Outgoing)
         .filter_map(|edge| match edge.weight() {
-            Edge::Tree(tree_edge) if tree_edge.chars[0] == ch => Some((tree_edge, edge.target(), edge.id())),
+            Edge::Tree(tree_edge) if tree_edge.chars[0] == ch => {
+                Some((tree_edge, edge.target(), edge.id()))
+            }
             _ => None,
         })
         .next()
 }
-
 
 fn suffix<'s, C: PartialEq>(graph: &Graph<'s, C>, node_idx: NodeIndex) -> Option<NodeIndex> {
     graph
@@ -433,7 +428,7 @@ fn append_tail_with_terminal<'s, C: CharT + Copy>(
         let mut new_node = Node::default();
         new_node.terminal = Some(Terminal { suffix_index });
         let new_node_idx = graph.add_node(new_node);
-        let edge = Edge::Tree (TreeEdge{ chars: t_rem });
+        let edge = Edge::Tree(TreeEdge { chars: t_rem });
         graph.add_edge(node_idx, new_node_idx, edge);
     }
 }
@@ -445,14 +440,13 @@ fn insert_intermediate<'s, C: CharT + Copy>(
     t_rem: &AStr<C>,
 ) -> NodeIndex {
     assert!(!t_rem.is_empty());
-    let (edge, edge_target, edge_idx) = child(graph, node_idx, t_rem[0])
-        .expect("edge must exist");
+    let (edge, edge_target, edge_idx) = child(graph, node_idx, t_rem[0]).expect("edge must exist");
 
     let new_edge = Edge::Tree(TreeEdge {
         chars: &edge.chars[..t_rem.len()],
     });
     let new_node = Node::default();
-    let edge_remainder = Edge::Tree( TreeEdge {
+    let edge_remainder = Edge::Tree(TreeEdge {
         chars: &edge.chars[t_rem.len()..],
     });
 
@@ -464,14 +458,14 @@ fn insert_intermediate<'s, C: CharT + Copy>(
     new_node_idx
 }
 
-#[derive(Debug, Eq, PartialEq, Hash)]
-pub(crate) struct NodeId(NodeIndex);
-
-impl Display for NodeId {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        Display::fmt(&self.0.index(), f)
-    }
-}
+// #[derive(Debug, Eq, PartialEq, Hash)]
+// pub(crate) struct NodeId(NodeIndex);
+//
+// impl Display for NodeId {
+//     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+//         Display::fmt(&self.0.index(), f)
+//     }
+// }
 
 #[cfg(test)]
 mod test {

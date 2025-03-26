@@ -4,12 +4,11 @@ pub mod suffix_trie_compact;
 pub mod suffix_trie_simple;
 pub mod suffix_trie_suffix_links;
 pub mod suffix_trie_suffix_links_arena_refs;
-pub mod suffix_trie_ukkonen;
 pub mod suffix_trie_suffix_petgraph;
+pub mod suffix_trie_ukkonen;
 
 mod superstring_petgraph;
 mod superstring_rcrefcell;
-
 
 use crate::alphabet_model::CharT;
 use crate::string_model::{AStr, AString};

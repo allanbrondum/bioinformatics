@@ -294,7 +294,7 @@ pub fn build_trie_with_allocator<'arena, 's, C: CharT + Copy>(
         s,
     };
 
-    append_tail_with_terminal(0, &trie.root, s, alloc);
+    append_tail_with_terminal(0, trie.root, s, alloc);
 
     let mut head_tail = HeadTail {
         head: trie.root,
@@ -397,7 +397,7 @@ fn insert_suffix<'arena, 's, C: CharT + Copy>(
         (head, tail)
     };
 
-    append_tail_with_terminal(suffix_index, &head, tail, alloc);
+    append_tail_with_terminal(suffix_index, head, tail, alloc);
 
     HeadTail { head, tail }
 }
@@ -550,7 +550,7 @@ pub fn trie_stats<'arena, 's, C: CharT>(trie: &SuffixTrie<'arena, 's, C>) {
 
     let mut to_visit = VecDeque::new();
     to_visit.push_front(ToVisit {
-        node: &trie.root,
+        node: trie.root,
         branch_depth: 0,
     });
 
