@@ -14,23 +14,24 @@ pub trait CharT: Display + Copy + Eq + PartialEq + 'static {
     fn to_char(self) -> char;
 }
 
-const SEPARATOR: char = '#';
+
+
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
-pub enum WithSeparator<C> {
+pub enum WithSpecial<C, const SPECIAL_CHAR: char, const SPECIAL_FIRST: bool> {
     Char(C),
-    Separator,
+    Special,
 }
 
-impl<C: Display> Display for WithSeparator<C> {
+impl<C: Display, const SPECIAL_CHAR: char, const SPECIAL_FIRST: bool> Display for WithSpecial<C, SPECIAL_CHAR, SPECIAL_FIRST> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
-            WithSeparator::Char(ch) => Display::fmt(&ch, f),
-            WithSeparator::Separator => f.write_char(SEPARATOR),
+            WithSpecial::Char(ch) => Display::fmt(&ch, f),
+            WithSpecial::Special => f.write_char(SPECIAL_CHAR),
         }
     }
 }
 
-impl<C: CharT> CharT for WithSeparator<C>
+impl<C: CharT, const SPECIAL_CHAR: char, const SPECIAL_FIRST: bool> CharT for WithSpecial<C, SPECIAL_CHAR , SPECIAL_FIRST>
 where
     C::AlphabetSize: Unsigned + Add<B1>,
     Add1<C::AlphabetSize>: Debug + ArrayLength,
@@ -38,15 +39,22 @@ where
     type AlphabetSize = Add1<C::AlphabetSize>;
 
     fn index(self) -> usize {
-        match self {
-            WithSeparator::Char(ch) => ch.index(),
-            WithSeparator::Separator => C::AlphabetSize::to_usize(),
+        if SPECIAL_FIRST {
+            match self {
+                WithSpecial::Char(ch) => ch.index() + 1,
+                WithSpecial::Special => 0,
+            }
+        } else {
+            match self {
+                WithSpecial::Char(ch) => ch.index(),
+                WithSpecial::Special => C::AlphabetSize::to_usize(),
+            }
         }
     }
 
     fn from_char(ch: char) -> Option<Self> {
-        if ch == SEPARATOR {
-            Some(Self::Separator)
+        if ch == SPECIAL_CHAR {
+            Some(Self::Special)
         } else {
             C::from_char(ch).map(Self::Char)
         }
@@ -54,8 +62,8 @@ where
 
     fn to_char(self) -> char {
         match self {
-            WithSeparator::Char(c) => c.to_char(),
-            WithSeparator::Separator => SEPARATOR,
+            WithSpecial::Char(c) => c.to_char(),
+            WithSpecial::Special => SPECIAL_CHAR,
         }
     }
 }

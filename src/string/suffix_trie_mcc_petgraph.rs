@@ -9,7 +9,7 @@ use hashbrown::HashSet;
 use petgraph::Direction;
 use petgraph::data::Build;
 use petgraph::graph::EdgeIndex;
-use petgraph::stable_graph::{NodeIndex, StableDiGraph};
+use petgraph::graph::{NodeIndex, DiGraph};
 use petgraph::visit::EdgeRef;
 use std::cmp::Ordering;
 use std::fmt::Debug;
@@ -17,7 +17,7 @@ use std::hash::Hash;
 
 const GRAPH_DEBUG: bool = false;
 
-type Graph<'s, C> = StableDiGraph<Node, Edge<'s, C>>;
+type Graph<'s, C> = DiGraph<Node, Edge<'s, C>>;
 
 #[derive(Debug)]
 pub struct SuffixTrie<'s, C: CharT> {
@@ -97,7 +97,7 @@ fn parent<'a, 's, C: PartialEq>(
     graph
         .edges_directed(node_idx, Direction::Incoming)
         .filter_map(|edge| match edge.weight() {
-            Edge::Tree(tree_edge) => Some((tree_edge, edge.source())), // todo!
+            Edge::Tree(tree_edge) => Some((tree_edge, edge.source())),
             _ => None,
         })
         .next()
@@ -312,7 +312,7 @@ fn single_terminal_rec<'s, C>(graph: &Graph<'s, C>, node_idx: NodeIndex) -> usiz
 
 /// Builds suffix trie
 pub fn build_trie<'s, C: CharT + Copy>(s: &'s AStr<C>) -> SuffixTrie<'s, C> {
-    let mut graph = StableDiGraph::new();
+    let mut graph = Graph::new();
     let root = graph.add_node(Node::default());
 
     append_tail_with_terminal(&mut graph, 0, root, s);

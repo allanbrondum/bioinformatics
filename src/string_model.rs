@@ -120,11 +120,19 @@ impl<C: Copy> AString<C> {
     pub fn push_str(&mut self, str: &AStr<C>) {
         self.0.extend_from_slice(str.as_slice());
     }
+
+    pub fn push(&mut self, ch: C) {
+        self.0.push(ch);
+    }
 }
 
 impl<C> AString<C> {
     pub fn as_str(&self) -> &AStr<C> {
         AStr::from_slice(self.0.as_slice())
+    }
+
+    pub fn with_capacity(capacity:usize) -> Self {
+        Self (AStringVec::with_capacity(capacity))
     }
 }
 

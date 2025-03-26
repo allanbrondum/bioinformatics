@@ -1,4 +1,4 @@
-use crate::alphabet_model::{CharT, WithSeparator};
+use crate::alphabet_model::{CharT, WithSpecial};
 use crate::string::suffix_trie_mcc_arena::{Node, NodeId, node_id_ptr, terminals};
 use crate::string_model::{AStr, AString};
 
@@ -12,6 +12,8 @@ use crate::string::suffix_trie_mcc_arena;
 use bumpalo::Bump;
 use hashbrown::HashMap;
 
+type WithSeparator<C> = WithSpecial<C, '#', false>;
+
 pub fn lcs_joined_trie<'s, C: CharT>(s: &'s AStr<C>, t: &AStr<C>) -> &'s AStr<C>
 where
     WithSeparator<C>: CharT,
@@ -20,7 +22,7 @@ where
         .iter()
         .copied()
         .map(WithSeparator::Char)
-        .chain(iter::once(WithSeparator::Separator))
+        .chain(iter::once(WithSeparator::Special))
         .chain(t.iter().copied().map(WithSeparator::Char))
         .collect();
 
