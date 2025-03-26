@@ -445,27 +445,23 @@ fn insert_intermediate<'s, C: CharT + Copy>(
     t_rem: &AStr<C>,
 ) -> NodeIndex {
     assert!(!t_rem.is_empty());
-    let node_mut = &mut graph[node_idx];
     let (edge, edge_target, edge_idx) = child(graph, node_idx, t_rem[0])
         .expect("edge must exist");
-    let edge_mut = graph.edge_weight_mut(edge_idx).unwrap();
 
-    let new_edge = Edge {
-        chars: &edge_mut.chars[..t_rem.len()],
-        source: node_idx,
-        target: alloc.alloc(RefCell::new(Node::with_parent(edge))),
-    };
+    let new_edge = Edge::Tree(TreeEdge {
+        chars: &edge.chars[..t_rem.len()],
+    });
+    let new_node = Node::default();
+    let edge_remainder = Edge::Tree( TreeEdge {
+        chars: &edge.chars[t_rem.len()..],
+    });
 
-    let edge_remainder = alloc.alloc(RefCell::new(mem::replace(edge_mut.deref_mut(), new_edge)));
-    let mut edge_remainder_mut = edge_remainder.borrow_mut();
-    edge_remainder_mut.chars = &edge_remainder_mut.chars[t_rem.len()..];
-    edge_remainder_mut.source = edge_mut.target;
-    edge_remainder_mut.target.borrow_mut().parent = Some(edge_remainder);
-    let rem_ch = edge_remainder_mut.chars[0];
-    drop(edge_remainder_mut);
-    edge_mut.target.borrow_mut().children[rem_ch.index()] = Some(edge_remainder);
+    graph.remove_edge(edge_idx);
+    let new_node_idx = graph.add_node(new_node);
+    graph.add_edge(node_idx, new_node_idx, new_edge);
+    graph.add_edge(new_node_idx, edge_target, edge_remainder);
 
-    edge_mut.target
+    new_node_idx
 }
 
 #[derive(Debug, Eq, PartialEq, Hash)]
