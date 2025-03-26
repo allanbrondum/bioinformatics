@@ -3,10 +3,13 @@ use crate::string::suffix_trie_mcc_arena;
 use crate::string_model::{AStr, AString};
 use alloc::borrow::Cow;
 use bumpalo::Bump;
+use generic_array::typenum::Unsigned;
+use itertools::Itertools;
 use std::borrow::Borrow;
 use std::cell::RefCell;
 use std::cmp::Ordering;
 use std::collections::VecDeque;
+use std::iter;
 
 #[derive(Debug)]
 pub struct BWT<'s, C: CharT> {
@@ -82,7 +85,46 @@ where
     println!("{} (l)", l);
     println!("{} (f)", f);
 
-    todo!()
+    let mut char_count = vec![0; <WithTerminator::<C> as CharT>::AlphabetSize::USIZE];
+    for char in l {
+        char_count[char.index()] += 1;
+    }
+
+    println!("{:?} (char_count)", char_count);
+
+    let mut f_char_indexes = char_count
+        .iter()
+        .copied()
+        .scan(0, |cumulated, count| {
+            let tmp = *cumulated;
+            *cumulated += count;
+            Some(tmp)
+        })
+        .collect_vec();
+
+    println!("{:?} (f_char_indexes)", f_char_indexes);
+
+    let lf_map = l
+        .iter()
+        .copied()
+        .map(|ch| {
+            let f_idx = f_char_indexes[ch.index()];
+            f_char_indexes[ch.index()] += 1;
+            f_idx
+        })
+        .collect_vec();
+
+    println!("{:?} (lf_map)", lf_map);
+
+    let s_rev: AString<_> = iter::repeat_n((), l.len())
+        .scan(0, |next_f_idx, _| {
+            let tmp = *next_f_idx;
+            *next_f_idx = lf_map[*next_f_idx];
+            Some(f[tmp])
+        })
+        .collect();
+
+    s_rev.into_iter().rev().collect()
 }
 
 fn print_bwt<'s, C: CharT>(bwt: &BWT<'s, C>) {
