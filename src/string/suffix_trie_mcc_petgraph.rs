@@ -26,16 +26,11 @@ pub struct SuffixTrie<'s, C: CharT> {
     s: &'s AStr<C>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub(crate) struct Node {
     pub(crate) terminal: Option<Terminal>,
 }
 
-impl Default for Node {
-    fn default() -> Self {
-        Self { terminal: None }
-    }
-}
 
 #[derive(Debug)]
 pub(crate) struct Terminal {
@@ -316,7 +311,7 @@ fn single_terminal_rec<'s, C>(graph: &Graph<'s, C>, node_idx: NodeIndex) -> usiz
 }
 
 /// Builds suffix trie
-pub fn build_trie_with_allocator<'s, C: CharT + Copy>(s: &'s AStr<C>) -> SuffixTrie<'s, C> {
+pub fn build_trie<'s, C: CharT + Copy>(s: &'s AStr<C>) -> SuffixTrie<'s, C> {
     let mut graph = StableDiGraph::new();
     let root = graph.add_node(Node::default());
 
@@ -482,7 +477,7 @@ mod test {
     fn test_build_trie_and_find_substr_empty() {
         let s: &AStr<Char> = AStr::from_slice(&[]);
 
-        let trie = build_trie_with_allocator(s);
+        let trie = build_trie(s);
 
         assert_eq!(
             trie.indexes_substr(AStr::from_slice(&[])),
@@ -496,7 +491,7 @@ mod test {
 
         let s = AStr::from_slice(&[A, A, A]);
 
-        let trie = build_trie_with_allocator(s);
+        let trie = build_trie(s);
 
         assert_eq!(
             trie.indexes_substr(AStr::from_slice(&[A, A, A])),
@@ -518,7 +513,7 @@ mod test {
 
         let s = AStr::from_slice(&[A, B, A, A, B, A, B, A, A]);
 
-        let trie = build_trie_with_allocator(s);
+        let trie = build_trie(s);
 
         assert_eq!(
             trie.indexes_substr(AStr::from_slice(&[])),
@@ -544,7 +539,7 @@ mod test {
 
         let s = AStr::from_slice(&[A, B, A, A, B, A, B, A, A]);
 
-        let trie = build_trie_with_allocator(s);
+        let trie = build_trie(s);
 
         assert_eq!(
             trie.index_substr_maximal(AStr::from_slice(&[A, B, A])),
@@ -565,7 +560,7 @@ mod test {
 
         #[test]
         fn prop_test_trie(s in arb_astring::<Char>(0..20), t in arb_astring::<Char>(3)) {
-            let trie = build_trie_with_allocator(&s);
+            let trie = build_trie(&s);
             let expected = string::indexes(&s, &t);
             let indexes = trie.indexes_substr( &t);
             prop_assert_eq!(indexes, HashSet::from_iter(expected.into_iter()));

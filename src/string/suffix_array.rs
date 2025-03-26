@@ -1,5 +1,5 @@
 use crate::alphabet_model::CharT;
-use crate::string::suffix_trie_suffix_links_arena_refs;
+use crate::string::suffix_trie_mcc_arena;
 use crate::string_model::AStr;
 use alloc::borrow::Cow;
 use bumpalo::Bump;
@@ -16,7 +16,7 @@ pub struct SuffixArray<'s, C: CharT> {
 
 pub fn build_array<'s, C: CharT>(s: Cow<'s, AStr<C>>) -> SuffixArray<'s, C> {
     let bump = Bump::new();
-    let trie = suffix_trie_suffix_links_arena_refs::build_trie_with_allocator(s.borrow(), &bump);
+    let trie = suffix_trie_mcc_arena::build_trie_with_allocator(s.borrow(), &bump);
     // suffix_trie_suffix_links_arena_refs::to_dot("target/build_array.dot", &trie);
 
     let mut sorted_suffixes = Vec::with_capacity(s.len());

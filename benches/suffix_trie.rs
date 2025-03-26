@@ -8,10 +8,7 @@ use std::mem;
 
 use crate::bench_util::Char;
 use bioinformatics::string;
-use bioinformatics::string::{
-    lcs, suffix_trie_compact, suffix_trie_suffix_links, suffix_trie_suffix_links_arena_refs,
-    suffix_trie_ukkonen,
-};
+use bioinformatics::string::{lcs, suffix_trie_compact, suffix_trie_mcc_rc, suffix_trie_mcc_arena, suffix_trie_ukn, suffix_trie_mcc_petgraph};
 use bioinformatics::string_model::{AStr, arb_astring};
 use proptest::strategy::{Strategy, ValueTree};
 
@@ -21,49 +18,56 @@ fn bench_build_trie_compact(bencher: &mut Bencher<'_>, s: &AStr<Char>) {
     bencher.iter_with_large_drop(|| suffix_trie_compact::build_trie(s));
 }
 
-fn bench_build_trie_suffix_links(bencher: &mut Bencher<'_>, s: &AStr<Char>) {
-    bencher.iter_with_large_drop(|| suffix_trie_suffix_links::build_trie(s));
+fn bench_build_trie_mcc_rc(bencher: &mut Bencher<'_>, s: &AStr<Char>) {
+    bencher.iter_with_large_drop(|| suffix_trie_mcc_rc::build_trie(s));
 }
 
-fn bench_build_trie_suffix_links_bumpalo(bencher: &mut Bencher<'_>, s: &AStr<Char>) {
+fn bench_build_trie_mcc_rc_bumpalo(bencher: &mut Bencher<'_>, s: &AStr<Char>) {
     bencher.iter_with_large_drop(|| {
         let alloc = Bump::new();
-        let trie = suffix_trie_suffix_links::build_trie_with_allocator(s, &alloc);
+        let trie = suffix_trie_mcc_rc::build_trie_with_allocator(s, &alloc);
         mem::forget(trie);
         alloc
     });
 }
 
-fn bench_build_trie_suffix_links_arena_refs(bencher: &mut Bencher<'_>, s: &AStr<Char>) {
+fn bench_build_trie_mcc_arena(bencher: &mut Bencher<'_>, s: &AStr<Char>) {
     bencher.iter_with_large_drop(|| {
         let alloc = Bump::new();
-        let _trie = suffix_trie_suffix_links_arena_refs::build_trie_with_allocator(s, &alloc);
+        let _trie = suffix_trie_mcc_arena::build_trie_with_allocator(s, &alloc);
         alloc
     });
 }
 
-fn bench_build_trie_ukkonen(bencher: &mut Bencher<'_>, s: &AStr<Char>) {
+fn bench_build_trie_mcc_petgraph(bencher: &mut Bencher<'_>, s: &AStr<Char>) {
+    bencher.iter_with_large_drop(|| {
+        suffix_trie_mcc_petgraph::build_trie(s)
+
+    });
+}
+
+fn bench_build_trie_ukn(bencher: &mut Bencher<'_>, s: &AStr<Char>) {
     bencher.iter_with_large_drop(|| {
         let alloc = Bump::new();
-        let _trie = suffix_trie_ukkonen::build_trie_with_allocator(s, &alloc);
+        let _trie = suffix_trie_ukn::build_trie_with_allocator(s, &alloc);
         alloc
     });
 }
 
-fn bench_build_and_drop_trie_compact(bencher: &mut Bencher<'_>, s: &AStr<Char>) {
-    bencher.iter(|| suffix_trie_compact::build_trie(s));
-}
-
-fn bench_build_and_drop_trie_suffix_links(bencher: &mut Bencher<'_>, s: &AStr<Char>) {
-    bencher.iter(|| suffix_trie_suffix_links::build_trie(s));
-}
-
-fn bench_build_and_drop_trie_suffix_links_bumpalo(bencher: &mut Bencher<'_>, s: &AStr<Char>) {
-    bencher.iter(|| {
-        let alloc = Bump::new();
-        suffix_trie_suffix_links::build_trie_with_allocator(s, &alloc);
-    });
-}
+// fn bench_build_and_drop_trie_compact(bencher: &mut Bencher<'_>, s: &AStr<Char>) {
+//     bencher.iter(|| suffix_trie_compact::build_trie(s));
+// }
+//
+// fn bench_build_and_drop_trie_suffix_links(bencher: &mut Bencher<'_>, s: &AStr<Char>) {
+//     bencher.iter(|| suffix_trie_mcc_rc::build_trie(s));
+// }
+//
+// fn bench_build_and_drop_trie_suffix_links_bumpalo(bencher: &mut Bencher<'_>, s: &AStr<Char>) {
+//     bencher.iter(|| {
+//         let alloc = Bump::new();
+//         suffix_trie_mcc_rc::build_trie_with_allocator(s, &alloc);
+//     });
+// }
 
 fn bench_lcs_simple(bencher: &mut Bencher<'_>, s: &AStr<Char>, t: &AStr<Char>) {
     bencher.iter(|| string::lcs_simple(s, t));
@@ -108,30 +112,37 @@ fn build_trie_benches(criterion: &mut Criterion) {
             .throughput(Throughput::Elements(string_length as u64));
         build_trie_benches
             .bench_with_input(
-                BenchmarkId::new("build_trie_suffix_links", string_length),
+                BenchmarkId::new("build_trie_mcc_rc", string_length),
                 &s,
-                |bencher, s| bench_build_trie_suffix_links(bencher, s),
+                |bencher, s| bench_build_trie_mcc_rc(bencher, s),
             )
             .throughput(Throughput::Elements(string_length as u64));
         build_trie_benches
             .bench_with_input(
-                BenchmarkId::new("build_trie_suffix_links_bumpalo", string_length),
+                BenchmarkId::new("build_trie_mcc_rc_bumpalo", string_length),
                 &s,
-                |bencher, s| bench_build_trie_suffix_links_bumpalo(bencher, s),
+                |bencher, s| bench_build_trie_mcc_rc_bumpalo(bencher, s),
             )
             .throughput(Throughput::Elements(string_length as u64));
         build_trie_benches
             .bench_with_input(
-                BenchmarkId::new("build_trie_suffix_links_arena_refs", string_length),
+                BenchmarkId::new("build_trie_mcc_arena", string_length),
                 &s,
-                |bencher, s| bench_build_trie_suffix_links_arena_refs(bencher, s),
+                |bencher, s| bench_build_trie_mcc_arena(bencher, s),
             )
             .throughput(Throughput::Elements(string_length as u64));
         build_trie_benches
             .bench_with_input(
-                BenchmarkId::new("build_trie_ukkonen", string_length),
+                BenchmarkId::new("build_trie_mcc_petgraph", string_length),
                 &s,
-                |bencher, s| bench_build_trie_ukkonen(bencher, s),
+                |bencher, s| bench_build_trie_mcc_petgraph(bencher, s),
+            )
+            .throughput(Throughput::Elements(string_length as u64));
+        build_trie_benches
+            .bench_with_input(
+                BenchmarkId::new("build_trie_ukn", string_length),
+                &s,
+                |bencher, s| bench_build_trie_ukn(bencher, s),
             )
             .throughput(Throughput::Elements(string_length as u64));
         // build_trie_benches

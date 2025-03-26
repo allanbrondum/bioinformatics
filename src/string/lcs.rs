@@ -1,5 +1,5 @@
 use crate::alphabet_model::{CharT, WithSeparator};
-use crate::string::suffix_trie_suffix_links_arena_refs::{Node, NodeId, node_id_ptr, terminals};
+use crate::string::suffix_trie_mcc_arena::{Node, NodeId, node_id_ptr, terminals};
 use crate::string_model::{AStr, AString};
 
 use generic_array::ArrayLength;
@@ -8,7 +8,7 @@ use std::cell::RefCell;
 use std::collections::VecDeque;
 use std::iter;
 
-use crate::string::suffix_trie_suffix_links_arena_refs;
+use crate::string::suffix_trie_mcc_arena;
 use bumpalo::Bump;
 use hashbrown::HashMap;
 
@@ -27,7 +27,7 @@ where
     // let start = Instant::now();
     let alloc = Bump::new();
     // let alloc = alloc::Global;
-    let trie = suffix_trie_suffix_links_arena_refs::build_trie_with_allocator(&separated, &alloc);
+    let trie = suffix_trie_mcc_arena::build_trie_with_allocator(&separated, &alloc);
     // println!("build trie elapsed {:?}", start.elapsed());
 
     // let start = Instant::now();
@@ -213,7 +213,7 @@ fn mark_ancestors<'arena, 's, C, N: ArrayLength>(
 pub fn lcs_single_trie<'a, C: CharT>(s: &AStr<C>, t: &'a AStr<C>) -> &'a AStr<C> {
     // let start = Instant::now();
     let bump = Bump::new();
-    let trie = suffix_trie_suffix_links_arena_refs::build_trie_with_allocator(s, &bump);
+    let trie = suffix_trie_mcc_arena::build_trie_with_allocator(s, &bump);
     // println!("build trie elapsed {:?}", start.elapsed());
 
     // let start = Instant::now();
