@@ -7,23 +7,35 @@ use generic_array::typenum::Unsigned;
 use itertools::Itertools;
 use std::borrow::Borrow;
 use std::cell::RefCell;
-use std::cmp::Ordering;
 use std::collections::VecDeque;
 use std::iter;
 
 #[derive(Debug)]
-pub struct BWT<'s, C: CharT> {
-    l: AString<C>,
-    s: Cow<'s, AStr<C>>,
+pub struct BWT<C> {
+    /// BWT transform of s
+    l: AString<WithTerminator<C>>,
+    /// s sorted
+    f: AString<WithTerminator<C>>,
+    lf_map: Vec<usize>,
+    // s: Cow<'s, AStr<C>>,
 }
 
 type WithTerminator<C> = WithSpecial<C, '$', true>;
 
-pub fn build_bwt<'s, C: CharT>(s: Cow<'s, AStr<C>>) -> BWT<'s, C> {
+pub fn build_bwt<'s, C: CharT>(s: &'s AStr<C>) -> BWT<C>
+where
+    WithTerminator<C>: CharT,
+{
     let bump = Bump::new();
-    let trie = suffix_trie_mcc_arena::build_trie_with_allocator(s.borrow(), &bump);
+    let s_terminated: AString<_> = s
+        .iter()
+        .copied()
+        .map(WithTerminator::Char)
+        .chain(iter::once(WithTerminator::Special))
+        .collect();
+    let trie = suffix_trie_mcc_arena::build_trie_with_allocator(&s_terminated, &bump);
 
-    let mut transform = AString::with_capacity(s.len());
+    let mut l = AString::with_capacity(s_terminated.len());
 
     let mut to_visit = VecDeque::new();
     to_visit.push_front(trie.root);
@@ -31,7 +43,9 @@ pub fn build_bwt<'s, C: CharT>(s: Cow<'s, AStr<C>>) -> BWT<'s, C> {
     while let Some(node) = to_visit.pop_front() {
         let node_ref = node.borrow();
         if let Some(terminal) = node_ref.terminal.as_ref() {
-            transform.push(s[(terminal.suffix_index + s.len() - 1) % s.len()]);
+            l.push(
+                s_terminated[(terminal.suffix_index + s_terminated.len() - 1) % s_terminated.len()],
+            );
         }
 
         for child_edge in node_ref
@@ -45,10 +59,43 @@ pub fn build_bwt<'s, C: CharT>(s: Cow<'s, AStr<C>>) -> BWT<'s, C> {
         }
     }
 
-    BWT { l: transform, s }
+    let f = {
+        let mut tmp = s_terminated.to_owned();
+        tmp.sort();
+        tmp
+    };
+
+    let mut char_count = vec![0; <WithTerminator::<C> as CharT>::AlphabetSize::USIZE];
+    for char in l.iter().copied() {
+        char_count[char.index()] += 1;
+    }
+
+    let mut f_char_indexes = char_count
+        .iter()
+        .copied()
+        .scan(0, |cumulated, count| {
+            let tmp = *cumulated;
+            *cumulated += count;
+            Some(tmp)
+        })
+        .collect_vec();
+
+    let lf_map = l
+        .iter()
+        .copied()
+        .map(|ch| {
+            let f_idx = f_char_indexes[ch.index()];
+            f_char_indexes[ch.index()] += 1;
+            f_idx
+        })
+        .collect_vec();
+
+    // println!("{:?} (lf_map)", lf_map);
+
+    BWT { l, f, lf_map }
 }
 
-impl<'s, C: CharT + Ord> BWT<'s, C> {
+impl<'s, C: CharT + Ord> BWT<C> {
     // fn ord_suffix(&self, i: usize) -> &AStr<C> {
     //     &self.s[self.sorted_suffixes[i]..]
     // }
@@ -72,91 +119,48 @@ impl<'s, C: CharT + Ord> BWT<'s, C> {
     // }
 }
 
-fn bwt_reverse<C: CharT>(l: &AStr<WithTerminator<C>>) -> AString<WithTerminator<C>>
-where
-    WithTerminator<C>: CharT,
+fn bwt_reverse<C: CharT>(bwt: &BWT<C>) -> AString<C>
+// where
+//     WithTerminator<C>: CharT,
 {
-    let f = {
-        let mut tmp = l.to_owned();
-        tmp.sort();
-        tmp
-    };
-
-    println!("{} (l)", l);
-    println!("{} (f)", f);
-
-    let mut char_count = vec![0; <WithTerminator::<C> as CharT>::AlphabetSize::USIZE];
-    for char in l {
-        char_count[char.index()] += 1;
-    }
-
-    println!("{:?} (char_count)", char_count);
-
-    let mut f_char_indexes = char_count
-        .iter()
-        .copied()
-        .scan(0, |cumulated, count| {
-            let tmp = *cumulated;
-            *cumulated += count;
-            Some(tmp)
-        })
-        .collect_vec();
-
-    println!("{:?} (f_char_indexes)", f_char_indexes);
-
-    let lf_map = l
-        .iter()
-        .copied()
-        .map(|ch| {
-            let f_idx = f_char_indexes[ch.index()];
-            f_char_indexes[ch.index()] += 1;
-            f_idx
-        })
-        .collect_vec();
-
-    println!("{:?} (lf_map)", lf_map);
-
-    let s_rev: AString<_> = iter::repeat_n((), l.len())
+    let s_rev: AString<_> = iter::repeat_n((), bwt.l.len())
         .scan(0, |next_f_idx, _| {
             let tmp = *next_f_idx;
-            *next_f_idx = lf_map[*next_f_idx];
-            Some(f[tmp])
+            *next_f_idx = bwt.lf_map[*next_f_idx];
+            Some(bwt.f[tmp])
         })
         .collect();
 
-    s_rev.into_iter().rev().collect()
+    s_rev
+        .into_iter()
+        .rev()
+        .filter_map(|ch| match ch {
+            WithTerminator::Char(ch) => Some(ch),
+            WithTerminator::Special => None,
+        })
+        .collect()
 }
 
-fn print_bwt<'s, C: CharT>(bwt: &BWT<'s, C>) {
-    println!("{}", bwt.s);
+fn print_bwt<'s, C: CharT>(bwt: &BWT<C>) {
+    println!("{}", bwt.f);
     println!("{}", bwt.l);
+    println!("{:?}", bwt.lf_map);
 }
 
 #[cfg(test)]
 mod test {
     use super::*;
+    use std::mem;
 
-    use crate::string_model::arb_astring;
     use crate::string_model::test_util::Char;
-
-    use proptest::prelude::ProptestConfig;
-    use proptest::{prop_assert, prop_assert_eq, proptest};
 
     #[test]
     fn test_build_bwt() {
         use crate::string_model::test_util::Char::*;
 
-        let s: &AStr<WithTerminator<Char>> = AStr::from_slice(&[
-            WithTerminator::Char(A),
-            WithTerminator::Char(B),
-            WithTerminator::Char(A),
-            WithTerminator::Char(A),
-            WithTerminator::Char(B),
-            WithTerminator::Char(A),
-            WithTerminator::Special,
-        ]);
+        let s: &AStr<Char> = AStr::from_slice(&[A, B, A, A, B, A]);
 
-        let bwt = build_bwt(Cow::Borrowed(s));
+        let bwt = build_bwt(&s);
 
         assert_eq!(
             bwt.l,
@@ -176,19 +180,11 @@ mod test {
     fn test_reverse_bwt() {
         use crate::string_model::test_util::Char::*;
 
-        let s: &AStr<WithTerminator<Char>> = AStr::from_slice(&[
-            WithTerminator::Char(A),
-            WithTerminator::Char(B),
-            WithTerminator::Char(A),
-            WithTerminator::Char(A),
-            WithTerminator::Char(B),
-            WithTerminator::Char(A),
-            WithTerminator::Special,
-        ]);
+        let s: &AStr<Char> = AStr::from_slice(&[A, B, A, A, B, A]);
 
-        let bwt = build_bwt(Cow::Borrowed(s));
+        let bwt = build_bwt(&s);
 
-        assert_eq!(bwt_reverse(&bwt.l), s);
+        assert_eq!(bwt_reverse(&bwt), s);
     }
 
     // #[test]
