@@ -119,24 +119,35 @@ impl<'s, C: CharT + Ord> BWT<C> {
     // }
 }
 
-fn bwt_reverse<C: CharT>(bwt: &BWT<C>) -> AString<C>
-// where
-//     WithTerminator<C>: CharT,
-{
-    let s_rev: AString<_> = iter::repeat_n((), bwt.l.len())
+// fn bwt_reverse<C: CharT>(bwt: &BWT<C>) -> AString<C>
+// {
+//     let s_rev: AString<_> = iter::repeat_n((), bwt.l.len())
+//         .scan(0, |next_f_idx, _| {
+//             let tmp = *next_f_idx;
+//             *next_f_idx = bwt.lf_map[*next_f_idx];
+//             Some(bwt.f[tmp])
+//         })
+//         .collect();
+//
+//     s_rev
+//         .into_iter()
+//         .rev()
+//         .filter_map(|ch| match ch {
+//             WithTerminator::Char(ch) => Some(ch),
+//             WithTerminator::Special => None,
+//         })
+//         .collect()
+// }
+
+fn bwt_reverse<C: CharT>(bwt: &BWT<C>) -> AString<C> {
+    iter::repeat(())
         .scan(0, |next_f_idx, _| {
             let tmp = *next_f_idx;
             *next_f_idx = bwt.lf_map[*next_f_idx];
-            Some(bwt.f[tmp])
-        })
-        .collect();
-
-    s_rev
-        .into_iter()
-        .rev()
-        .filter_map(|ch| match ch {
-            WithTerminator::Char(ch) => Some(ch),
-            WithTerminator::Special => None,
+            match bwt.l[tmp] {
+                WithTerminator::Char(ch) => Some(ch),
+                WithTerminator::Special => None,
+            }
         })
         .collect()
 }
