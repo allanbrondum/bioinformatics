@@ -10,7 +10,7 @@ use std::collections::VecDeque;
 
 #[derive(Debug)]
 pub struct BWT<'s, C: CharT> {
-    transform: AString<C>,
+    l: AString<C>,
     s: Cow<'s, AStr<C>>,
 }
 
@@ -42,7 +42,7 @@ pub fn build_bwt<'s, C: CharT>(s: Cow<'s, AStr<C>>) -> BWT<'s, C> {
         }
     }
 
-    BWT { transform, s }
+    BWT { l: transform, s }
 }
 
 impl<'s, C: CharT + Ord> BWT<'s, C> {
@@ -69,9 +69,25 @@ impl<'s, C: CharT + Ord> BWT<'s, C> {
     // }
 }
 
+fn bwt_reverse<C: CharT>(l: &AStr<WithTerminator<C>>) -> AString<WithTerminator<C>>
+where
+    WithTerminator<C>: CharT,
+{
+    let f = {
+        let mut tmp = l.to_owned();
+        tmp.sort();
+        tmp
+    };
+
+    println!("{} (l)", l);
+    println!("{} (f)", f);
+
+    todo!()
+}
+
 fn print_bwt<'s, C: CharT>(bwt: &BWT<'s, C>) {
     println!("{}", bwt.s);
-    println!("{}", bwt.transform);
+    println!("{}", bwt.l);
 }
 
 #[cfg(test)]
@@ -101,7 +117,7 @@ mod test {
         let bwt = build_bwt(Cow::Borrowed(s));
 
         assert_eq!(
-            bwt.transform,
+            bwt.l,
             AStr::from_slice(&[
                 WithTerminator::Char(A),
                 WithTerminator::Char(B),
@@ -112,6 +128,25 @@ mod test {
                 WithTerminator::Char(A),
             ])
         );
+    }
+
+    #[test]
+    fn test_reverse_bwt() {
+        use crate::string_model::test_util::Char::*;
+
+        let s: &AStr<WithTerminator<Char>> = AStr::from_slice(&[
+            WithTerminator::Char(A),
+            WithTerminator::Char(B),
+            WithTerminator::Char(A),
+            WithTerminator::Char(A),
+            WithTerminator::Char(B),
+            WithTerminator::Char(A),
+            WithTerminator::Special,
+        ]);
+
+        let bwt = build_bwt(Cow::Borrowed(s));
+
+        assert_eq!(bwt_reverse(&bwt.l), s);
     }
 
     // #[test]

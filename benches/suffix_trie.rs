@@ -8,7 +8,10 @@ use std::mem;
 
 use crate::bench_util::Char;
 use bioinformatics::string;
-use bioinformatics::string::{lcs, suffix_trie_compact, suffix_trie_mcc_rc, suffix_trie_mcc_arena, suffix_trie_ukn, suffix_trie_mcc_petgraph};
+use bioinformatics::string::{
+    lcs, suffix_trie_compact, suffix_trie_mcc_arena, suffix_trie_mcc_petgraph, suffix_trie_mcc_rc,
+    suffix_trie_ukn,
+};
 use bioinformatics::string_model::{AStr, arb_astring};
 use proptest::strategy::{Strategy, ValueTree};
 
@@ -40,10 +43,7 @@ fn bench_build_trie_mcc_arena(bencher: &mut Bencher<'_>, s: &AStr<Char>) {
 }
 
 fn bench_build_trie_mcc_petgraph(bencher: &mut Bencher<'_>, s: &AStr<Char>) {
-    bencher.iter_with_large_drop(|| {
-        suffix_trie_mcc_petgraph::build_trie(s)
-
-    });
+    bencher.iter_with_large_drop(|| suffix_trie_mcc_petgraph::build_trie(s));
 }
 
 fn bench_build_trie_ukn(bencher: &mut Bencher<'_>, s: &AStr<Char>) {

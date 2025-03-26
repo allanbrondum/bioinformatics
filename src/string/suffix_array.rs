@@ -112,7 +112,6 @@ fn print_array<'s, C: CharT>(array: &SuffixArray<'s, C>) {
 mod test {
     use super::*;
 
-    
     use crate::string_model::arb_astring;
     use crate::string_model::test_util::Char;
 

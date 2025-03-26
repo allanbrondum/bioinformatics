@@ -1,4 +1,5 @@
 use generic_array::ArrayLength;
+use std::cmp::Ordering;
 
 use generic_array::typenum::{Add1, B1, Unsigned};
 use std::fmt::{Debug, Display, Formatter, Write};
@@ -14,15 +15,15 @@ pub trait CharT: Display + Copy + Eq + PartialEq + 'static {
     fn to_char(self) -> char;
 }
 
-
-
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum WithSpecial<C, const SPECIAL_CHAR: char, const SPECIAL_FIRST: bool> {
     Char(C),
     Special,
 }
 
-impl<C: Display, const SPECIAL_CHAR: char, const SPECIAL_FIRST: bool> Display for WithSpecial<C, SPECIAL_CHAR, SPECIAL_FIRST> {
+impl<C: Display, const SPECIAL_CHAR: char, const SPECIAL_FIRST: bool> Display
+    for WithSpecial<C, SPECIAL_CHAR, SPECIAL_FIRST>
+{
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
             WithSpecial::Char(ch) => Display::fmt(&ch, f),
@@ -31,7 +32,28 @@ impl<C: Display, const SPECIAL_CHAR: char, const SPECIAL_FIRST: bool> Display fo
     }
 }
 
-impl<C: CharT, const SPECIAL_CHAR: char, const SPECIAL_FIRST: bool> CharT for WithSpecial<C, SPECIAL_CHAR , SPECIAL_FIRST>
+impl<C: CharT, const SPECIAL_CHAR: char, const SPECIAL_FIRST: bool> PartialOrd
+    for WithSpecial<C, SPECIAL_CHAR, SPECIAL_FIRST>
+where
+    WithSpecial<C, SPECIAL_CHAR, SPECIAL_FIRST>: CharT,
+{
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(Ord::cmp(self, other))
+    }
+}
+
+impl<C: CharT, const SPECIAL_CHAR: char, const SPECIAL_FIRST: bool> Ord
+    for WithSpecial<C, SPECIAL_CHAR, SPECIAL_FIRST>
+where
+    WithSpecial<C, SPECIAL_CHAR, SPECIAL_FIRST>: CharT,
+{
+    fn cmp(&self, other: &Self) -> Ordering {
+        CharT::index(*self).cmp(&CharT::index(*other))
+    }
+}
+
+impl<C: CharT, const SPECIAL_CHAR: char, const SPECIAL_FIRST: bool> CharT
+    for WithSpecial<C, SPECIAL_CHAR, SPECIAL_FIRST>
 where
     C::AlphabetSize: Unsigned + Add<B1>,
     Add1<C::AlphabetSize>: Debug + ArrayLength,

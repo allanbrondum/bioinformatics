@@ -126,13 +126,19 @@ impl<C: Copy> AString<C> {
     }
 }
 
+impl<C: Ord> AString<C> {
+    pub fn sort(&mut self) {
+        self.0.sort();
+    }
+}
+
 impl<C> AString<C> {
     pub fn as_str(&self) -> &AStr<C> {
         AStr::from_slice(self.0.as_slice())
     }
 
-    pub fn with_capacity(capacity:usize) -> Self {
-        Self (AStringVec::with_capacity(capacity))
+    pub fn with_capacity(capacity: usize) -> Self {
+        Self(AStringVec::with_capacity(capacity))
     }
 }
 

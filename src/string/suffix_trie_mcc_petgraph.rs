@@ -9,7 +9,7 @@ use hashbrown::HashSet;
 use petgraph::Direction;
 use petgraph::data::Build;
 use petgraph::graph::EdgeIndex;
-use petgraph::graph::{NodeIndex, DiGraph};
+use petgraph::graph::{DiGraph, NodeIndex};
 use petgraph::visit::EdgeRef;
 use std::cmp::Ordering;
 use std::fmt::Debug;
@@ -30,7 +30,6 @@ pub struct SuffixTrie<'s, C: CharT> {
 pub(crate) struct Node {
     pub(crate) terminal: Option<Terminal>,
 }
-
 
 #[derive(Debug)]
 pub(crate) struct Terminal {
