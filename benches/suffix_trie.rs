@@ -14,6 +14,7 @@ use bioinformatics::string::{
 };
 use bioinformatics::string_model::{AStr, arb_astring};
 use proptest::strategy::{Strategy, ValueTree};
+use bioinformatics::util::print_histogram;
 
 const STRING_LENGTHS: &[usize] = &[200, 5000, 1_000_000];
 
@@ -252,6 +253,7 @@ fn substr_benches(criterion: &mut Criterion) {
                 |bencher, (s, t)| bench_substr_bwt(bencher, &bwt, t),
             )
             .throughput(Throughput::Elements(string_length as u64));
+        print_histogram("bwt suffix offset", &bwt.suffix_offset_hist.borrow());
     }
     substr_benches.finish();
 }

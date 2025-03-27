@@ -10,6 +10,7 @@ use std::borrow::Borrow;
 use std::cell::RefCell;
 use std::collections::VecDeque;
 use std::iter;
+use hdrhistogram::Histogram;
 
 type Ranks<C: CharT2> = GenericArray<usize, C::AlphabetSizeP1>;
 
@@ -27,7 +28,8 @@ pub struct BWT<C: CharT2> {
 
     rank_sparse_factor: usize,
     suffix_array_sparse_factor: usize,
-    // s: Cow<'s, AStr<C>>,
+
+    pub suffix_offset_hist: RefCell<Histogram<u64>>,
 }
 
 type WithTerminal<C> = WithSpecial<C, '$', true>;
@@ -134,6 +136,7 @@ where
         suffix_array_sparse,
         rank_sparse_factor,
         suffix_array_sparse_factor,
+        suffix_offset_hist: RefCell::new(Histogram::new(2).unwrap()),
     }
 }
 
@@ -193,6 +196,8 @@ where
                     suffix_offset += 1;
                     idx = self.lf_map(idx);
                 }
+
+                self.suffix_offset_hist.borrow_mut().record(suffix_offset as u64).unwrap();
 
                 (self.suffix_array_sparse[idx / self.suffix_array_sparse_factor] + suffix_offset)
                     % self.l.len()
@@ -254,6 +259,7 @@ mod test {
     use proptest::prelude::ProptestConfig;
     use proptest::{prop_assert_eq, proptest};
     use std::mem;
+    use proptest::strategy::ValueTree;
 
     #[test]
     fn test_build_bwt() {
@@ -377,4 +383,21 @@ mod test {
             prop_assert_eq!(indexes, HashSet::from_iter(expected.into_iter()));
         }
     }
+
+    // #[test]
+    // fn test_lcs_single_trie_perf() {
+    //     let mut runner = proptest::test_runner::TestRunner::default();
+    //     let s = arb_astring::<Char>(10_000)
+    //         .new_tree(&mut runner)
+    //         .unwrap()
+    //         .current();
+    //     let t = arb_astring::<Char>(5)
+    //         .new_tree(&mut runner)
+    //         .unwrap()
+    //         .current();
+    //
+    //     let bwt = build_bwt(&s);
+    //
+    //     // bwt.
+    // }
 }
