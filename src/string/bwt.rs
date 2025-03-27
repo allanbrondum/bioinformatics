@@ -16,40 +16,48 @@ type Ranks<C: CharT2> = GenericArray<usize, C::AlphabetSizeP1>;
 #[derive(Debug)]
 pub struct BWT<C: CharT2> {
     /// BWT transform of s
-    l: AString<WithTerminator<C>>,
+    l: AString<WithTerminal<C>>,
     /// s sorted3
-    f: AString<WithTerminator<C>>,
-    lf_map: Vec<usize>,
+    f: AString<WithTerminal<C>>,
+    // lf_map: Vec<usize>,
     f_char_indexes: GenericArray<usize, C::AlphabetSizeP2>,
     // l_ranks: Vec<usize>,
     l_ranks_sparse: Vec<Ranks<C>>,
-    sparse_factor: usize,
+    suffix_array_sparse: Vec<usize>,
+
+    rank_sparse_factor: usize,
+    suffix_array_sparse_factor: usize,
     // s: Cow<'s, AStr<C>>,
 }
 
-type WithTerminator<C> = WithSpecial<C, '$', true>;
+type WithTerminal<C> = WithSpecial<C, '$', true>;
 
 pub fn build_bwt<'s, C: CharT2>(s: &'s AStr<C>) -> BWT<C>
 where
-    WithTerminator<C>: CharT,
+    WithTerminal<C>: CharT,
 {
-    build_bwt_with(s, 5)
+    build_bwt_with(s, 5, 10)
 }
 
-pub fn build_bwt_with<'s, C: CharT2>(s: &'s AStr<C>, sparse_factor: usize) -> BWT<C>
+pub fn build_bwt_with<'s, C: CharT2>(
+    s: &'s AStr<C>,
+    rank_sparse_factor: usize,
+    suffix_array_sparse_factor: usize,
+) -> BWT<C>
 where
-    WithTerminator<C>: CharT,
+    WithTerminal<C>: CharT,
 {
     let bump = Bump::new();
     let s_terminated: AString<_> = s
         .iter()
         .copied()
-        .map(WithTerminator::Char)
-        .chain(iter::once(WithTerminator::Special))
+        .map(WithTerminal::Char)
+        .chain(iter::once(WithTerminal::Special))
         .collect();
     let trie = suffix_trie_mcc_arena::build_trie_with_allocator(&s_terminated, &bump);
 
     let mut l = AString::with_capacity(s_terminated.len());
+    let mut suffix_array = Vec::with_capacity(s_terminated.len());
 
     let mut to_visit = VecDeque::new();
     to_visit.push_front(trie.root);
@@ -60,6 +68,7 @@ where
             l.push(
                 s_terminated[(terminal.suffix_index + s_terminated.len() - 1) % s_terminated.len()],
             );
+            suffix_array.push(terminal.suffix_index);
         }
 
         for child_edge in node_ref
@@ -79,7 +88,7 @@ where
         tmp
     };
 
-    let mut char_count = vec![0; <WithTerminator::<C> as CharT>::AlphabetSize::USIZE];
+    let mut char_count = vec![0; <WithTerminal::<C> as CharT>::AlphabetSize::USIZE];
     for char in l.iter().copied() {
         char_count[char.index()] += 1;
     }
@@ -109,36 +118,30 @@ where
             ranks[ch.index()] += 1;
             Some(tmp)
         })
-        .step_by(sparse_factor)
+        .step_by(rank_sparse_factor)
         .collect_vec();
 
-    let mut f_char_indexes_mut = f_char_indexes.clone();
-    let lf_map = l
-        .iter()
-        .copied()
-        .map(|ch| {
-            let f_idx = f_char_indexes_mut[ch.index()];
-            f_char_indexes_mut[ch.index()] += 1;
-            f_idx
-        })
+    let suffix_array_sparse = suffix_array
+        .into_iter()
+        .step_by(suffix_array_sparse_factor)
         .collect_vec();
 
     BWT {
         l,
         f,
-        lf_map,
         f_char_indexes,
-        // l_ranks,
         l_ranks_sparse,
-        sparse_factor,
+        suffix_array_sparse,
+        rank_sparse_factor,
+        suffix_array_sparse_factor,
     }
 }
 
-impl<'s, C: CharT2 + Ord> BWT<C>
+impl<'s, C: CharT2> BWT<C>
 where
-    WithTerminator<C>: CharT,
+    WithTerminal<C>: CharT,
 {
-    fn l_rank_delta(&self, ch: WithTerminator<C>, from_idx: usize, to_idx: usize) -> usize {
+    fn l_rank_delta(&self, ch: WithTerminal<C>, from_idx: usize, to_idx: usize) -> usize {
         self.l[from_idx..to_idx]
             .iter()
             .copied()
@@ -148,8 +151,9 @@ where
 
     fn l_rank(&self, idx: usize) -> usize {
         let ch = self.l[idx];
-        self.l_ranks_sparse[idx / self.sparse_factor][ch.index()]
-            + self.l_rank_delta(ch, idx / self.sparse_factor * self.sparse_factor, idx)
+        let sparse_idx = idx / self.rank_sparse_factor * self.rank_sparse_factor;
+        self.l_ranks_sparse[sparse_idx / self.rank_sparse_factor][ch.index()]
+            + self.l_rank_delta(ch, sparse_idx, idx)
     }
 
     fn lf_map(&self, idx: usize) -> usize {
@@ -166,8 +170,8 @@ where
             return Default::default();
         };
 
-        let mut f_idxes = (self.f_char_indexes[WithTerminator::Char(ch).index()]
-            ..self.f_char_indexes[WithTerminator::Char(ch).index() + 1])
+        let mut f_idxes = (self.f_char_indexes[WithTerminal::Char(ch).index()]
+            ..self.f_char_indexes[WithTerminal::Char(ch).index() + 1])
             .collect_vec();
 
         while let Some((&ch, t_rest_tmp)) = t_rest.split_last() {
@@ -179,15 +183,19 @@ where
         f_idxes
             .into_iter()
             .map(|mut idx| {
-                let mut tmp = 0;
-                loop {
+                // let sparse_idx =
+                //     idx / self.suffix_array_sparse_factor * self.suffix_array_sparse_factor;
+
+                // let suffix= self.suffix_array_sparse[sparse_idx / self.suffix_array_sparse_factor];
+
+                let mut suffix_offset = 0;
+                while idx % self.suffix_array_sparse_factor != 0 {
+                    suffix_offset += 1;
                     idx = self.lf_map(idx);
-                    if self.f[idx] == WithTerminator::Special {
-                        break tmp;
-                    } else {
-                        tmp += 1;
-                    }
                 }
+
+                (self.suffix_array_sparse[idx / self.suffix_array_sparse_factor] + suffix_offset)
+                    % self.l.len()
             })
             .collect()
     }
@@ -213,14 +221,17 @@ where
 //         .collect()
 // }
 
-fn bwt_reverse<C: CharT2>(bwt: &BWT<C>) -> AString<C> {
+fn bwt_reverse<C: CharT2>(bwt: &BWT<C>) -> AString<C>
+where
+    WithTerminal<C>: CharT,
+{
     iter::repeat(())
         .scan(0, |next_f_idx, _| {
             let tmp = *next_f_idx;
-            *next_f_idx = bwt.lf_map[*next_f_idx];
+            *next_f_idx = bwt.lf_map(*next_f_idx);
             match bwt.l[tmp] {
-                WithTerminator::Char(ch) => Some(ch),
-                WithTerminator::Special => None,
+                WithTerminal::Char(ch) => Some(ch),
+                WithTerminal::Special => None,
             }
         })
         .collect()
@@ -231,7 +242,6 @@ fn print_bwt<'s, C: CharT2>(bwt: &BWT<C>) {
     println!("{}", bwt.l);
     println!("{:?}", bwt.f_char_indexes);
     println!("{:?}", bwt.l_ranks_sparse);
-    println!("{:?}", bwt.lf_map);
 }
 
 #[cfg(test)]
@@ -256,13 +266,13 @@ mod test {
         assert_eq!(
             bwt.l,
             AStr::from_slice(&[
-                WithTerminator::Char(A),
-                WithTerminator::Char(B),
-                WithTerminator::Char(B),
-                WithTerminator::Char(A),
-                WithTerminator::Special,
-                WithTerminator::Char(A),
-                WithTerminator::Char(A),
+                WithTerminal::Char(A),
+                WithTerminal::Char(B),
+                WithTerminal::Char(B),
+                WithTerminal::Char(A),
+                WithTerminal::Special,
+                WithTerminal::Char(A),
+                WithTerminal::Char(A),
             ])
         );
     }
