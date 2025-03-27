@@ -12,8 +12,7 @@ use std::collections::VecDeque;
 use std::iter;
 
 #[derive(Debug)]
-pub struct BWT<C: CharT2>
-{
+pub struct BWT<C: CharT2> {
     /// BWT transform of s
     l: AString<WithTerminator<C>>,
     /// s sorted
@@ -27,7 +26,8 @@ pub struct BWT<C: CharT2>
 type WithTerminator<C> = WithSpecial<C, '$', true>;
 
 pub fn build_bwt<'s, C: CharT2>(s: &'s AStr<C>) -> BWT<C>
-where WithTerminator<C>: CharT
+where
+    WithTerminator<C>: CharT,
 {
     let bump = Bump::new();
     let s_terminated: AString<_> = s
@@ -111,16 +111,16 @@ where WithTerminator<C>: CharT
     }
 }
 
-impl<'s, C: CharT2 + Ord> BWT<C>
+impl<'s, C: CharT2 + Ord> BWT<C> where
+    WithTerminator<C>: CharT,{
+    fn lf_map(&self, idx:usize) ->usize{
+        // self.lf_map[idx]
 
-{
-    // fn ord_suffix(&self, i: usize) -> &AStr<C> {
-    //     &self.s[self.sorted_suffixes[i]..]
-    // }
+        self.f_char_indexes[self.l[idx].index()] + self.l_ranks[idx]
+    }
 
     pub fn indexes_substr(&self, t: &AStr<C>) -> HashSet<usize>
-    where
-        WithTerminator<C>: CharT,
+
     {
         let Some((&ch, mut t_rest)) = t.split_last() else {
             return Default::default();
@@ -132,7 +132,7 @@ impl<'s, C: CharT2 + Ord> BWT<C>
 
         while let Some((&ch, t_rest_tmp)) = t_rest.split_last() {
             t_rest = t_rest_tmp;
-            f_idxes.iter_mut().for_each(|idx| *idx = self.lf_map[*idx]);
+            f_idxes.iter_mut().for_each(|idx| *idx = self.lf_map(*idx));
             f_idxes.retain(|idx| self.f[*idx] == WithSpecial::Char(ch));
         }
 
@@ -141,7 +141,7 @@ impl<'s, C: CharT2 + Ord> BWT<C>
             .map(|mut idx| {
                 let mut tmp = 0;
                 loop {
-                    idx = self.lf_map[idx];
+                    idx = self.lf_map(idx);
                     if self.f[idx] == WithTerminator::Special {
                         break tmp;
                     } else {
@@ -173,9 +173,7 @@ impl<'s, C: CharT2 + Ord> BWT<C>
 //         .collect()
 // }
 
-fn bwt_reverse<C: CharT2>(bwt: &BWT<C>) -> AString<C>
-
-{
+fn bwt_reverse<C: CharT2>(bwt: &BWT<C>) -> AString<C> {
     iter::repeat(())
         .scan(0, |next_f_idx, _| {
             let tmp = *next_f_idx;
@@ -188,9 +186,7 @@ fn bwt_reverse<C: CharT2>(bwt: &BWT<C>) -> AString<C>
         .collect()
 }
 
-fn print_bwt<'s, C: CharT2>(bwt: &BWT<C>)
-
-{
+fn print_bwt<'s, C: CharT2>(bwt: &BWT<C>) {
     println!("{}", bwt.f);
     println!("{}", bwt.l);
     println!("{:?}", bwt.f_char_indexes);
