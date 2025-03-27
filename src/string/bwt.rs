@@ -1,8 +1,9 @@
-use crate::alphabet_model::{CharT, WithSpecial};
+use crate::alphabet_model::{CharT, CharT2, WithSpecial};
 use crate::string::suffix_trie_mcc_arena;
 use crate::string_model::{AStr, AString};
 use bumpalo::Bump;
-use generic_array::typenum::Unsigned;
+use generic_array::typenum::{Add1, Unsigned};
+use generic_array::{ArrayLength, GenericArray};
 use hashbrown::HashSet;
 use itertools::Itertools;
 use std::borrow::Borrow;
@@ -11,21 +12,22 @@ use std::collections::VecDeque;
 use std::iter;
 
 #[derive(Debug)]
-pub struct BWT<C> {
+pub struct BWT<C: CharT2>
+{
     /// BWT transform of s
     l: AString<WithTerminator<C>>,
     /// s sorted
     f: AString<WithTerminator<C>>,
     lf_map: Vec<usize>,
-    f_char_indexes: Vec<usize>,
+    f_char_indexes: GenericArray<usize, C::AlphabetSizeP2>,
+    l_ranks: Vec<usize>,
     // s: Cow<'s, AStr<C>>,
 }
 
 type WithTerminator<C> = WithSpecial<C, '$', true>;
 
-pub fn build_bwt<'s, C: CharT>(s: &'s AStr<C>) -> BWT<C>
-where
-    WithTerminator<C>: CharT,
+pub fn build_bwt<'s, C: CharT2>(s: &'s AStr<C>) -> BWT<C>
+where WithTerminator<C>: CharT
 {
     let bump = Bump::new();
     let s_terminated: AString<_> = s
@@ -71,11 +73,22 @@ where
         char_count[char.index()] += 1;
     }
 
-    let f_char_indexes = iter::once(0)
+    let f_char_indexes: GenericArray<_, _> = iter::once(0)
         .chain(char_count.iter().copied().scan(0, |cumulated, count| {
             *cumulated += count;
             Some(*cumulated)
         }))
+        .collect();
+
+    type Ranks<C> = GenericArray<usize, <WithTerminator<C> as CharT>::AlphabetSize>;
+    let l_ranks = l
+        .iter()
+        .copied()
+        .scan(Ranks::default(), |ranks, ch| {
+            let tmp = ranks[ch.index()];
+            ranks[ch.index()] += 1;
+            Some(tmp)
+        })
         .collect_vec();
 
     let mut f_char_indexes_mut = f_char_indexes.clone();
@@ -94,10 +107,13 @@ where
         f,
         lf_map,
         f_char_indexes,
+        l_ranks,
     }
 }
 
-impl<'s, C: CharT + Ord> BWT<C> {
+impl<'s, C: CharT2 + Ord> BWT<C>
+
+{
     // fn ord_suffix(&self, i: usize) -> &AStr<C> {
     //     &self.s[self.sorted_suffixes[i]..]
     // }
@@ -157,7 +173,9 @@ impl<'s, C: CharT + Ord> BWT<C> {
 //         .collect()
 // }
 
-fn bwt_reverse<C: CharT>(bwt: &BWT<C>) -> AString<C> {
+fn bwt_reverse<C: CharT2>(bwt: &BWT<C>) -> AString<C>
+
+{
     iter::repeat(())
         .scan(0, |next_f_idx, _| {
             let tmp = *next_f_idx;
@@ -170,9 +188,13 @@ fn bwt_reverse<C: CharT>(bwt: &BWT<C>) -> AString<C> {
         .collect()
 }
 
-fn print_bwt<'s, C: CharT>(bwt: &BWT<C>) {
+fn print_bwt<'s, C: CharT2>(bwt: &BWT<C>)
+
+{
     println!("{}", bwt.f);
     println!("{}", bwt.l);
+    println!("{:?}", bwt.f_char_indexes);
+    println!("{:?}", bwt.l_ranks);
     println!("{:?}", bwt.lf_map);
 }
 
@@ -258,6 +280,8 @@ mod test {
         let s = AStr::from_slice(&[A, B, A, A, B, A, B, A, A]);
 
         let bwt = build_bwt(&s);
+
+        print_bwt(&bwt);
 
         assert_eq!(bwt.indexes_substr(AStr::from_slice(&[])), HashSet::from([]));
         assert_eq!(

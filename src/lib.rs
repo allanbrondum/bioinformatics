@@ -1,4 +1,4 @@
-#![feature(string_into_chars, ascii_char, allocator_api)]
+#![feature(string_into_chars, ascii_char, allocator_api, generic_const_exprs)]
 extern crate alloc;
 extern crate core;
 
