@@ -16,13 +16,11 @@ type Ranks<C: CharT2> = GenericArray<usize, C::AlphabetSizeP1>;
 
 #[derive(Debug)]
 pub struct BWT<C: CharT2> {
-    /// BWT transform of s
+    /// BWT transform of input s
     l: AString<WithTerminal<C>>,
-    /// s sorted3
-    f: AString<WithTerminal<C>>,
-    // lf_map: Vec<usize>,
+    /// Index of first occurrence of char in f
     f_char_indexes: GenericArray<usize, C::AlphabetSizeP2>,
-    // l_ranks: Vec<usize>,
+    /// Cumulative count of chars in l
     l_ranks_sparse: Vec<Ranks<C>>,
     suffix_array_sparse: Vec<usize>,
 
@@ -84,12 +82,6 @@ where
         }
     }
 
-    let f = {
-        let mut tmp = s_terminated.to_owned();
-        tmp.sort();
-        tmp
-    };
-
     let mut char_count = vec![0; <WithTerminal::<C> as CharT>::AlphabetSize::USIZE];
     for char in l.iter().copied() {
         char_count[char.index()] += 1;
@@ -101,16 +93,6 @@ where
             Some(*cumulated)
         }))
         .collect();
-
-    // let l_ranks = l
-    //     .iter()
-    //     .copied()
-    //     .scan(Ranks::<C>::default(), |ranks, ch| {
-    //         let tmp = ranks[ch.index()];
-    //         ranks[ch.index()] += 1;
-    //         Some(tmp)
-    //     })
-    //     .collect_vec();
 
     let l_ranks_sparse = l
         .iter()
@@ -129,7 +111,6 @@ where
 
     BWT {
         l,
-        f,
         f_char_indexes,
         l_ranks_sparse,
         suffix_array_sparse,
@@ -219,7 +200,6 @@ where
 }
 
 fn print_bwt<'s, C: CharT2>(bwt: &BWT<C>) {
-    println!("{}", bwt.f);
     println!("{}", bwt.l);
     println!("{:?}", bwt.f_char_indexes);
     println!("{:?}", bwt.l_ranks_sparse);
