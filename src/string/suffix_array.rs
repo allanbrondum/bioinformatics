@@ -49,7 +49,7 @@ impl<'s, C: CharT + Ord> SuffixArray<'s, C> {
         &self.s[self.sorted_suffixes[i]..]
     }
 
-    pub fn index_substr_naive(&self, t: &'s AStr<C>) -> Option<usize> {
+    pub fn index_substr_naive(&self, t: &AStr<C>) -> Option<usize> {
         let mut low = 0;
         let mut high = self.sorted_suffixes.len();
 
@@ -67,7 +67,7 @@ impl<'s, C: CharT + Ord> SuffixArray<'s, C> {
         None
     }
 
-    pub fn index_substr_simple(&self, t: &'s AStr<C>) -> Option<usize> {
+    pub fn index_substr_simple(&self, t: &AStr<C>) -> Option<usize> {
         let mut low = 0;
         let mut high = self.sorted_suffixes.len();
         let mut p_low = self.ord_suffix(low).lcp(t).len();

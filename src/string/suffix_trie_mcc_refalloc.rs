@@ -176,7 +176,7 @@ fn fast_scan_rec<'s, C: CharT, A: ReferencingAllocator + Copy>(
 
 impl<'s, C: CharT, A: ReferencingAllocator + Copy> SuffixTrie<'s, C, A> {
     /// Finds indexes of given string in the string represented in the trie
-    pub fn indexes_substr(&self, t: &'s AStr<C>) -> HashSet<usize> {
+    pub fn indexes_substr(&self, t: & AStr<C>) -> HashSet<usize> {
         let mut result = HashSet::new();
 
         let scan_ret = scan_rec::<_, A>(&self.root, t);
@@ -195,7 +195,7 @@ impl<'s, C: CharT, A: ReferencingAllocator + Copy> SuffixTrie<'s, C, A> {
     }
 
     /// Finds indexes of maximal prefixes of given string
-    pub fn indexes_substr_maximal(&self, t: &'s AStr<C>) -> HashSet<MaximalSubstrMatch> {
+    pub fn indexes_substr_maximal(&self, t: & AStr<C>) -> HashSet<MaximalSubstrMatch> {
         let mut result = HashSet::new();
 
         match scan_rec::<_, A>(&self.root, t) {
@@ -226,7 +226,7 @@ impl<'s, C: CharT, A: ReferencingAllocator + Copy> SuffixTrie<'s, C, A> {
     }
 
     /// Finds index of maximal prefixes of given string
-    pub fn index_substr_maximal(&self, t: &'s AStr<C>) -> MaximalSubstrMatch {
+    pub fn index_substr_maximal(&self, t: &AStr<C>) -> MaximalSubstrMatch {
         match scan_rec::<_, A>(&self.root, t) {
             ScanReturn {
                 lower,

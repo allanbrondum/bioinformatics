@@ -7,7 +7,7 @@ use crate::string;
 
 use hashbrown::HashSet;
 use petgraph::Direction;
-use petgraph::data::Build;
+
 use petgraph::graph::EdgeIndex;
 use petgraph::graph::{DiGraph, NodeIndex};
 use petgraph::visit::EdgeRef;
@@ -47,16 +47,16 @@ pub(crate) struct TreeEdge<'s, C> {
     pub(crate) chars: &'s AStr<C>,
 }
 
-struct ScanReturn<'s, C> {
+struct ScanReturn<'t, C> {
     upper: NodeIndex,
     lower: NodeIndex,
-    t_rem_matched: &'s AStr<C>,
-    matched: ScanMatch<'s, C>,
+    t_rem_matched: &'t AStr<C>,
+    matched: ScanMatch<'t, C>,
 }
 
-enum ScanMatch<'s, C> {
+enum ScanMatch<'t, C> {
     FullMatch,
-    MaximalNonFullMatch { t_unmatched: &'s AStr<C> },
+    MaximalNonFullMatch { t_unmatched: &'t AStr<C> },
 }
 
 // fn parent(graph: &Graph<'s, C>) {
@@ -111,11 +111,11 @@ fn children<'s, C>(graph: &Graph<'s, C>, node_idx: NodeIndex) -> impl Iterator<I
         })
 }
 
-fn scan_rec<'s, C: CharT + Copy>(
+fn scan_rec<'s, 't, C: CharT + Copy>(
     graph: &Graph<'s, C>,
     node_idx: NodeIndex,
-    t: &'s AStr<C>,
-) -> ScanReturn<'s, C> {
+    t: &'t AStr<C>,
+) -> ScanReturn<'t, C> {
     if let Some(ch) = t.first() {
         if let Some((edge, edge_target, _)) = child(graph, node_idx, *ch) {
             let lcp_len = string::lcp(&t[1..], &edge.chars[1..]).len() + 1;
@@ -163,11 +163,11 @@ fn scan_rec<'s, C: CharT + Copy>(
     }
 }
 
-fn fast_scan_rec<'s, C: CharT + Copy>(
+fn fast_scan_rec<'s, 't, C: CharT + Copy>(
     graph: &Graph<'s, C>,
     node_idx: NodeIndex,
-    t: &'s AStr<C>,
-) -> ScanReturn<'s, C> {
+    t: &'t AStr<C>,
+) -> ScanReturn<'t, C> {
     if let Some(ch) = t.first() {
         if let Some((edge, edge_target, _)) = child(graph, node_idx, *ch) {
             if t.len() < edge.chars.len() {
@@ -200,7 +200,7 @@ fn fast_scan_rec<'s, C: CharT + Copy>(
 
 impl<'s, C: CharT + Copy> SuffixTrie<'s, C> {
     /// Finds indexes of given string in the string represented in the trie
-    pub fn indexes_substr(&self, t: &'s AStr<C>) -> HashSet<usize> {
+    pub fn indexes_substr(&self, t: &AStr<C>) -> HashSet<usize> {
         let mut result = HashSet::new();
 
         let scan_ret = scan_rec(&self.graph, self.root, t);
@@ -219,7 +219,7 @@ impl<'s, C: CharT + Copy> SuffixTrie<'s, C> {
     }
 
     /// Finds index of maximal prefixes of given string
-    pub fn index_substr_maximal(&self, t: &'s AStr<C>) -> MaximalSubstrMatch {
+    pub fn index_substr_maximal(&self, t: &AStr<C>) -> MaximalSubstrMatch {
         match scan_rec(&self.graph, self.root, t) {
             ScanReturn {
                 lower,

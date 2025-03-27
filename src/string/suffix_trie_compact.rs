@@ -47,7 +47,7 @@ struct Edge<'s, C: CharT> {
     target: Node<'s, C>,
 }
 
-enum ScanReturn<'a, 's, C: CharT> {
+enum ScanReturn<'a, 's, 't, C: CharT> {
     FullMatch {
         #[allow(unused)]
         upper: &'a Node<'s, C>,
@@ -57,11 +57,14 @@ enum ScanReturn<'a, 's, C: CharT> {
         #[allow(unused)]
         max: &'a Node<'s, C>,
         #[allow(unused)]
-        t_unmatched: &'s AStr<C>,
+        t_unmatched: &'t AStr<C>,
     },
 }
 
-fn scan_rec<'a, 's, C: CharT>(node: &'a Node<'s, C>, t: &'s AStr<C>) -> ScanReturn<'a, 's, C> {
+fn scan_rec<'a, 's, 't, C: CharT>(
+    node: &'a Node<'s, C>,
+    t: &'t AStr<C>,
+) -> ScanReturn<'a, 's, 't, C> {
     if let Some(ch) = t.first() {
         if let Some(edge) = &node.children[ch.index()] {
             let lcp_len = string::lcp(&t[1..], &edge.chars[1..]).len() + 1;
@@ -100,7 +103,7 @@ fn scan_rec<'a, 's, C: CharT>(node: &'a Node<'s, C>, t: &'s AStr<C>) -> ScanRetu
 }
 
 /// Finds indexes of given string in the string represented in the trie
-pub fn indexes_substr<'s, C: CharT>(trie: &SuffixTrie<'s, C>, t: &'s AStr<C>) -> HashSet<usize> {
+pub fn indexes_substr<'s, C: CharT>(trie: &SuffixTrie<'s, C>, t: &AStr<C>) -> HashSet<usize> {
     let mut result = HashSet::new();
 
     let scan_ret = scan_rec(&trie.root, t);

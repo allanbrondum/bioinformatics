@@ -75,22 +75,22 @@ struct Edge<'s, C, N: ArrayLength, A: Allocator> {
     target: NodeRef<'s, C, N, A>,
 }
 
-struct ScanReturn<'s, C, N: ArrayLength, A: Allocator> {
+struct ScanReturn<'s, 't, C, N: ArrayLength, A: Allocator> {
     upper: NodeRef<'s, C, N, A>,
     lower: NodeRef<'s, C, N, A>,
-    t_rem_matched: &'s AStr<C>,
-    matched: ScanMatch<'s, C>,
+    t_rem_matched: &'t AStr<C>,
+    matched: ScanMatch<'t, C>,
 }
 
-enum ScanMatch<'s, C> {
+enum ScanMatch<'t, C> {
     FullMatch,
-    MaximalNonFullMatch { t_unmatched: &'s AStr<C> },
+    MaximalNonFullMatch { t_unmatched: &'t AStr<C> },
 }
 
-fn scan_rec<'s, C: CharT, A: Allocator + Copy>(
+fn scan_rec<'s, 't, C: CharT, A: Allocator + Copy>(
     node: &NodeRef<'s, C, C::AlphabetSize, A>,
-    t: &'s AStr<C>,
-) -> ScanReturn<'s, C, C::AlphabetSize, A> {
+    t: &'t AStr<C>,
+) -> ScanReturn<'s, 't, C, C::AlphabetSize, A> {
     let node_ref = node.borrow();
     if let Some(ch) = t.first() {
         if let Some(edge) = &node_ref.children[ch.index()] {
@@ -140,10 +140,10 @@ fn scan_rec<'s, C: CharT, A: Allocator + Copy>(
     }
 }
 
-fn fast_scan_rec<'s, C: CharT, A: Allocator + Copy>(
+fn fast_scan_rec<'s, 't, C: CharT, A: Allocator + Copy>(
     node: &NodeRef<'s, C, C::AlphabetSize, A>,
-    t: &'s AStr<C>,
-) -> ScanReturn<'s, C, C::AlphabetSize, A> {
+    t: &'t AStr<C>,
+) -> ScanReturn<'s, 't, C, C::AlphabetSize, A> {
     let node_ref = node.borrow();
     if let Some(ch) = t.first() {
         if let Some(edge) = &node_ref.children[ch.index()] {
@@ -178,7 +178,7 @@ fn fast_scan_rec<'s, C: CharT, A: Allocator + Copy>(
 
 impl<'s, C: CharT, A: Allocator + Copy> SuffixTrie<'s, C, A> {
     /// Finds indexes of given string in the string represented in the trie
-    pub fn indexes_substr(&self, t: &'s AStr<C>) -> HashSet<usize> {
+    pub fn indexes_substr(&self, t: &AStr<C>) -> HashSet<usize> {
         let mut result = HashSet::new();
 
         let scan_ret = scan_rec(&self.root, t);
@@ -197,7 +197,7 @@ impl<'s, C: CharT, A: Allocator + Copy> SuffixTrie<'s, C, A> {
     }
 
     /// Finds indexes of maximal prefixes of given string
-    pub fn indexes_substr_maximal(&self, t: &'s AStr<C>) -> HashSet<MaximalSubstrMatch> {
+    pub fn indexes_substr_maximal(&self, t: &AStr<C>) -> HashSet<MaximalSubstrMatch> {
         let mut result = HashSet::new();
 
         match scan_rec(&self.root, t) {
@@ -228,7 +228,7 @@ impl<'s, C: CharT, A: Allocator + Copy> SuffixTrie<'s, C, A> {
     }
 
     /// Finds index of maximal prefixes of given string
-    pub fn index_substr_maximal(&self, t: &'s AStr<C>) -> MaximalSubstrMatch {
+    pub fn index_substr_maximal(&self, t: &AStr<C>) -> MaximalSubstrMatch {
         match scan_rec(&self.root, t) {
             ScanReturn {
                 lower,

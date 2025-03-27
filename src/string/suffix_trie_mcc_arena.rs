@@ -71,22 +71,22 @@ pub(crate) struct Edge<'arena, 's, C, N: ArrayLength> {
     pub(crate) target: &'arena RefCell<Node<'arena, 's, C, N>>,
 }
 
-struct ScanReturn<'arena, 's, C, N: ArrayLength> {
+struct ScanReturn<'arena, 's, 't, C, N: ArrayLength> {
     upper: &'arena RefCell<Node<'arena, 's, C, N>>,
     lower: &'arena RefCell<Node<'arena, 's, C, N>>,
-    t_rem_matched: &'s AStr<C>,
-    matched: ScanMatch<'s, C>,
+    t_rem_matched: &'t AStr<C>,
+    matched: ScanMatch<'t, C>,
 }
 
-enum ScanMatch<'s, C> {
+enum ScanMatch<'t, C> {
     FullMatch,
-    MaximalNonFullMatch { t_unmatched: &'s AStr<C> },
+    MaximalNonFullMatch { t_unmatched: &'t AStr<C> },
 }
 
-fn scan_rec<'arena, 's, C: CharT + Copy>(
+fn scan_rec<'arena, 's, 't, C: CharT + Copy>(
     node: &'arena RefCell<Node<'arena, 's, C, C::AlphabetSize>>,
-    t: &'s AStr<C>,
-) -> ScanReturn<'arena, 's, C, C::AlphabetSize> {
+    t: &'t AStr<C>,
+) -> ScanReturn<'arena, 's, 't, C, C::AlphabetSize> {
     let node_ref = node.borrow();
     if let Some(ch) = t.first() {
         if let Some(edge) = &node_ref.children[ch.index()] {
@@ -136,10 +136,10 @@ fn scan_rec<'arena, 's, C: CharT + Copy>(
     }
 }
 
-fn fast_scan_rec<'arena, 's, C: CharT + Copy>(
+fn fast_scan_rec<'arena, 's, 't, C: CharT + Copy>(
     node: &'arena RefCell<Node<'arena, 's, C, C::AlphabetSize>>,
-    t: &'s AStr<C>,
-) -> ScanReturn<'arena, 's, C, C::AlphabetSize> {
+    t: &'t AStr<C>,
+) -> ScanReturn<'arena, 's, 't, C, C::AlphabetSize> {
     let node_ref = node.borrow();
     if let Some(ch) = t.first() {
         if let Some(edge) = &node_ref.children[ch.index()] {
@@ -174,7 +174,7 @@ fn fast_scan_rec<'arena, 's, C: CharT + Copy>(
 
 impl<'arena, 's, C: CharT + Copy> SuffixTrie<'arena, 's, C> {
     /// Finds indexes of given string in the string represented in the trie
-    pub fn indexes_substr(&self, t: &'s AStr<C>) -> HashSet<usize> {
+    pub fn indexes_substr(&self, t: &AStr<C>) -> HashSet<usize> {
         let mut result = HashSet::new();
 
         let scan_ret = scan_rec(self.root, t);
@@ -193,7 +193,7 @@ impl<'arena, 's, C: CharT + Copy> SuffixTrie<'arena, 's, C> {
     }
 
     /// Finds index of maximal prefixes of given string
-    pub fn index_substr_maximal(&self, t: &'s AStr<C>) -> MaximalSubstrMatch {
+    pub fn index_substr_maximal(&self, t: &AStr<C>) -> MaximalSubstrMatch {
         match scan_rec(self.root, t) {
             ScanReturn {
                 lower,
