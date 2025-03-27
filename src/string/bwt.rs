@@ -11,21 +11,32 @@ use std::cell::RefCell;
 use std::collections::VecDeque;
 use std::iter;
 
+type Ranks<C: CharT2> = GenericArray<usize, C::AlphabetSizeP1>;
+
 #[derive(Debug)]
 pub struct BWT<C: CharT2> {
     /// BWT transform of s
     l: AString<WithTerminator<C>>,
-    /// s sorted
+    /// s sorted3
     f: AString<WithTerminator<C>>,
     lf_map: Vec<usize>,
     f_char_indexes: GenericArray<usize, C::AlphabetSizeP2>,
-    l_ranks: Vec<usize>,
+    // l_ranks: Vec<usize>,
+    l_ranks_sparse: Vec<Ranks<C>>,
+    sparse_factor: usize,
     // s: Cow<'s, AStr<C>>,
 }
 
 type WithTerminator<C> = WithSpecial<C, '$', true>;
 
 pub fn build_bwt<'s, C: CharT2>(s: &'s AStr<C>) -> BWT<C>
+where
+    WithTerminator<C>: CharT,
+{
+    build_bwt_with(s, 5)
+}
+
+pub fn build_bwt_with<'s, C: CharT2>(s: &'s AStr<C>, sparse_factor: usize) -> BWT<C>
 where
     WithTerminator<C>: CharT,
 {
@@ -80,15 +91,25 @@ where
         }))
         .collect();
 
-    type Ranks<C> = GenericArray<usize, <WithTerminator<C> as CharT>::AlphabetSize>;
-    let l_ranks = l
+    // let l_ranks = l
+    //     .iter()
+    //     .copied()
+    //     .scan(Ranks::<C>::default(), |ranks, ch| {
+    //         let tmp = ranks[ch.index()];
+    //         ranks[ch.index()] += 1;
+    //         Some(tmp)
+    //     })
+    //     .collect_vec();
+
+    let l_ranks_sparse = l
         .iter()
         .copied()
-        .scan(Ranks::default(), |ranks, ch| {
-            let tmp = ranks[ch.index()];
+        .scan(Ranks::<C>::default(), |ranks, ch| {
+            let tmp = ranks.clone();
             ranks[ch.index()] += 1;
             Some(tmp)
         })
+        .step_by(sparse_factor)
         .collect_vec();
 
     let mut f_char_indexes_mut = f_char_indexes.clone();
@@ -107,21 +128,40 @@ where
         f,
         lf_map,
         f_char_indexes,
-        l_ranks,
+        // l_ranks,
+        l_ranks_sparse,
+        sparse_factor,
     }
 }
 
-impl<'s, C: CharT2 + Ord> BWT<C> where
-    WithTerminator<C>: CharT,{
-    fn lf_map(&self, idx:usize) ->usize{
-        // self.lf_map[idx]
-
-        self.f_char_indexes[self.l[idx].index()] + self.l_ranks[idx]
+impl<'s, C: CharT2 + Ord> BWT<C>
+where
+    WithTerminator<C>: CharT,
+{
+    fn l_rank_delta(&self, ch: WithTerminator<C>, from_idx: usize, to_idx: usize) -> usize {
+        self.l[from_idx..to_idx]
+            .iter()
+            .copied()
+            .filter(|&lch| lch == ch)
+            .count()
     }
 
-    pub fn indexes_substr(&self, t: &AStr<C>) -> HashSet<usize>
+    fn l_rank(&self, idx: usize) -> usize {
+        let ch = self.l[idx];
+        self.l_ranks_sparse[idx / self.sparse_factor][ch.index()]
+            + self.l_rank_delta(ch, idx / self.sparse_factor * self.sparse_factor, idx)
+    }
 
-    {
+    fn lf_map(&self, idx: usize) -> usize {
+        // self.lf_map[idx]
+
+        // self.f_char_indexes[self.l[idx].index()] + self.l_ranks[idx]
+
+        let ch = self.l[idx];
+        self.f_char_indexes[ch.index()] + self.l_rank(idx)
+    }
+
+    pub fn indexes_substr(&self, t: &AStr<C>) -> HashSet<usize> {
         let Some((&ch, mut t_rest)) = t.split_last() else {
             return Default::default();
         };
@@ -190,7 +230,7 @@ fn print_bwt<'s, C: CharT2>(bwt: &BWT<C>) {
     println!("{}", bwt.f);
     println!("{}", bwt.l);
     println!("{:?}", bwt.f_char_indexes);
-    println!("{:?}", bwt.l_ranks);
+    println!("{:?}", bwt.l_ranks_sparse);
     println!("{:?}", bwt.lf_map);
 }
 

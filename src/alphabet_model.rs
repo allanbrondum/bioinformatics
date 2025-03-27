@@ -20,9 +20,11 @@ pub trait CharT2: CharT {
     type AlphabetSizeP2: ArrayLength;
 }
 
-impl<C:CharT> CharT2 for C where C::AlphabetSize: Add<B1> ,
-                                 Add1<C::AlphabetSize>: Add<B1> + ArrayLength,
-                                 Add1<Add1<C::AlphabetSize>>: ArrayLength,
+impl<C: CharT> CharT2 for C
+where
+    C::AlphabetSize: Add<B1>,
+    Add1<C::AlphabetSize>: Add<B1> + ArrayLength,
+    Add1<Add1<C::AlphabetSize>>: ArrayLength,
 {
     type AlphabetSizeP1 = Add1<C::AlphabetSize>;
     type AlphabetSizeP2 = Add1<Add1<C::AlphabetSize>>;
