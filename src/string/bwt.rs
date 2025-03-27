@@ -5,12 +5,12 @@ use bumpalo::Bump;
 use generic_array::typenum::{Add1, Unsigned};
 use generic_array::{ArrayLength, GenericArray};
 use hashbrown::HashSet;
+use hdrhistogram::Histogram;
 use itertools::Itertools;
 use std::borrow::Borrow;
 use std::cell::RefCell;
 use std::collections::VecDeque;
 use std::iter;
-use hdrhistogram::Histogram;
 
 type Ranks<C: CharT2> = GenericArray<usize, C::AlphabetSizeP1>;
 
@@ -116,9 +116,8 @@ where
         .iter()
         .copied()
         .scan(Ranks::<C>::default(), |ranks, ch| {
-            let tmp = ranks.clone();
             ranks[ch.index()] += 1;
-            Some(tmp)
+            Some(ranks.clone())
         })
         .step_by(rank_sparse_factor)
         .collect_vec();
@@ -145,59 +144,56 @@ where
     WithTerminal<C>: CharT,
 {
     fn l_rank_delta(&self, ch: WithTerminal<C>, from_idx: usize, to_idx: usize) -> usize {
-        self.l[from_idx..to_idx]
+        self.l[from_idx + 1..=to_idx]
             .iter()
             .copied()
             .filter(|&lch| lch == ch)
             .count()
     }
 
-    fn l_rank(&self, idx: usize) -> usize {
-        let ch = self.l[idx];
+    fn l_rank(&self, idx: usize, ch: WithTerminal<C>) -> usize {
         let sparse_idx = idx / self.rank_sparse_factor * self.rank_sparse_factor;
         self.l_ranks_sparse[sparse_idx / self.rank_sparse_factor][ch.index()]
             + self.l_rank_delta(ch, sparse_idx, idx)
     }
 
     fn lf_map(&self, idx: usize) -> usize {
-        // self.lf_map[idx]
-
-        // self.f_char_indexes[self.l[idx].index()] + self.l_ranks[idx]
-
         let ch = self.l[idx];
-        self.f_char_indexes[ch.index()] + self.l_rank(idx)
+        self.f_char_indexes[ch.index()] + self.l_rank(idx, ch) - 1
     }
 
     pub fn indexes_substr(&self, t: &AStr<C>) -> HashSet<usize> {
-        let Some((&ch, mut t_rest)) = t.split_last() else {
-            return Default::default();
-        };
+        let mut low = 0;
+        let mut high = self.l.len() - 1;
 
-        let mut f_idxes = (self.f_char_indexes[WithTerminal::Char(ch).index()]
-            ..self.f_char_indexes[WithTerminal::Char(ch).index() + 1])
-            .collect_vec();
+        for ch in t.iter().copied().rev() {
+            let ch_w = WithTerminal::Char(ch);
+            low = self.f_char_indexes[ch_w.index()]
+                + if low == 0 {
+                    0
+                } else {
+                    self.l_rank(low - 1, ch_w)
+                };
+            high = self.f_char_indexes[ch_w.index()] + self.l_rank(high, ch_w) - 1;
 
-        while let Some((&ch, t_rest_tmp)) = t_rest.split_last() {
-            t_rest = t_rest_tmp;
-            f_idxes.iter_mut().for_each(|idx| *idx = self.lf_map(*idx));
-            f_idxes.retain(|idx| self.f[*idx] == WithSpecial::Char(ch));
+            if high < low {
+                return Default::default();
+            }
         }
 
-        f_idxes
+        (low..=high)
             .into_iter()
             .map(|mut idx| {
-                // let sparse_idx =
-                //     idx / self.suffix_array_sparse_factor * self.suffix_array_sparse_factor;
-
-                // let suffix= self.suffix_array_sparse[sparse_idx / self.suffix_array_sparse_factor];
-
                 let mut suffix_offset = 0;
                 while idx % self.suffix_array_sparse_factor != 0 {
                     suffix_offset += 1;
                     idx = self.lf_map(idx);
                 }
 
-                self.suffix_offset_hist.borrow_mut().record(suffix_offset as u64).unwrap();
+                self.suffix_offset_hist
+                    .borrow_mut()
+                    .record(suffix_offset as u64)
+                    .unwrap();
 
                 (self.suffix_array_sparse[idx / self.suffix_array_sparse_factor] + suffix_offset)
                     % self.l.len()
@@ -205,26 +201,6 @@ where
             .collect()
     }
 }
-
-// fn bwt_reverse<C: CharT>(bwt: &BWT<C>) -> AString<C>
-// {
-//     let s_rev: AString<_> = iter::repeat_n((), bwt.l.len())
-//         .scan(0, |next_f_idx, _| {
-//             let tmp = *next_f_idx;
-//             *next_f_idx = bwt.lf_map[*next_f_idx];
-//             Some(bwt.f[tmp])
-//         })
-//         .collect();
-//
-//     s_rev
-//         .into_iter()
-//         .rev()
-//         .filter_map(|ch| match ch {
-//             WithTerminator::Char(ch) => Some(ch),
-//             WithTerminator::Special => None,
-//         })
-//         .collect()
-// }
 
 fn bwt_reverse<C: CharT2>(bwt: &BWT<C>) -> AString<C>
 where
@@ -257,9 +233,9 @@ mod test {
     use crate::string_model::test_util::Char;
     use hashbrown::HashSet;
     use proptest::prelude::ProptestConfig;
+    use proptest::strategy::ValueTree;
     use proptest::{prop_assert_eq, proptest};
     use std::mem;
-    use proptest::strategy::ValueTree;
 
     #[test]
     fn test_build_bwt() {
@@ -300,7 +276,10 @@ mod test {
 
         let bwt = build_bwt(&s);
 
-        assert_eq!(bwt.indexes_substr(AStr::from_slice(&[])), HashSet::from([]));
+        assert_eq!(
+            bwt.indexes_substr(AStr::from_slice(&[])),
+            HashSet::from([0])
+        );
     }
 
     #[test]
@@ -335,18 +314,25 @@ mod test {
 
         print_bwt(&bwt);
 
-        assert_eq!(bwt.indexes_substr(AStr::from_slice(&[])), HashSet::from([]));
+        assert_eq!(
+            bwt.indexes_substr(AStr::from_slice(&[A])),
+            HashSet::from([0, 2, 3, 5, 7, 8])
+        );
+        assert_eq!(
+            bwt.indexes_substr(AStr::from_slice(&[B])),
+            HashSet::from([1, 4, 6])
+        );
         assert_eq!(
             bwt.indexes_substr(AStr::from_slice(&[A, A, A])),
             HashSet::from([])
         );
         assert_eq!(
-            bwt.indexes_substr(AStr::from_slice(&[A, B, A])),
-            HashSet::from([0, 3, 5])
-        );
-        assert_eq!(
             bwt.indexes_substr(AStr::from_slice(&[B, A, A])),
             HashSet::from([1, 6])
+        );
+        assert_eq!(
+            bwt.indexes_substr(AStr::from_slice(&[A, B, A])),
+            HashSet::from([0, 3, 5])
         );
     }
 
