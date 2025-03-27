@@ -71,14 +71,11 @@ where
         char_count[char.index()] += 1;
     }
 
-    let f_char_indexes = char_count
-        .iter()
-        .copied()
-        .scan(0, |cumulated, count| {
-            let tmp = *cumulated;
+    let f_char_indexes = iter::once(0)
+        .chain(char_count.iter().copied().scan(0, |cumulated, count| {
             *cumulated += count;
-            Some(tmp)
-        })
+            Some(*cumulated)
+        }))
         .collect_vec();
 
     let mut f_char_indexes_mut = f_char_indexes.clone();
@@ -105,19 +102,38 @@ impl<'s, C: CharT + Ord> BWT<C> {
     //     &self.s[self.sorted_suffixes[i]..]
     // }
 
-    pub fn indexes_substr(&self, t: &AStr<C>) -> HashSet<usize> {
-        todo!()
+    pub fn indexes_substr(&self, t: &AStr<C>) -> HashSet<usize>
+    where
+        WithTerminator<C>: CharT,
+    {
+        let Some((&ch, mut t_rest)) = t.split_last() else {
+            return Default::default();
+        };
 
-        // iter::repeat(())
-        //     .scan(0, |next_f_idx, _| {
-        //         let tmp = *next_f_idx;
-        //         *next_f_idx = bwt.lf_map[*next_f_idx];
-        //         match bwt.l[tmp] {
-        //             WithTerminator::Char(ch) => Some(ch),
-        //             WithTerminator::Special => None,
-        //         }
-        //     })
-        //     .collect()
+        let mut f_idxes = (self.f_char_indexes[WithTerminator::Char(ch).index()]
+            ..self.f_char_indexes[WithTerminator::Char(ch).index() + 1])
+            .collect_vec();
+
+        while let Some((&ch, t_rest_tmp)) = t_rest.split_last() {
+            t_rest = t_rest_tmp;
+            f_idxes.iter_mut().for_each(|idx| *idx = self.lf_map[*idx]);
+            f_idxes.retain(|idx| self.f[*idx] == WithSpecial::Char(ch));
+        }
+
+        f_idxes
+            .into_iter()
+            .map(|mut idx| {
+                let mut tmp = 0;
+                loop {
+                    idx = self.lf_map[idx];
+                    if self.f[idx] == WithTerminator::Special {
+                        break tmp;
+                    } else {
+                        tmp += 1;
+                    }
+                }
+            })
+            .collect()
     }
 }
 
@@ -210,10 +226,7 @@ mod test {
 
         let bwt = build_bwt(&s);
 
-        assert_eq!(
-            bwt.indexes_substr(AStr::from_slice(&[])),
-            HashSet::from([0])
-        );
+        assert_eq!(bwt.indexes_substr(AStr::from_slice(&[])), HashSet::from([]));
     }
 
     #[test]
@@ -246,10 +259,7 @@ mod test {
 
         let bwt = build_bwt(&s);
 
-        assert_eq!(
-            bwt.indexes_substr(AStr::from_slice(&[])),
-            HashSet::from([0, 1, 2, 3, 4, 5, 6, 7, 8])
-        );
+        assert_eq!(bwt.indexes_substr(AStr::from_slice(&[])), HashSet::from([]));
         assert_eq!(
             bwt.indexes_substr(AStr::from_slice(&[A, A, A])),
             HashSet::from([])
