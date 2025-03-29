@@ -1,7 +1,10 @@
 use crate::enum_char;
 use crate::string_model::AString;
 use itertools::Itertools;
+use ordered_float::NotNan;
+use std::collections::{BTreeMap, Bound};
 use std::fmt::Formatter;
+use std::sync::LazyLock;
 
 enum_char!(DnaNt; A, C, G, T);
 
@@ -139,6 +142,34 @@ pub fn protein_aa_mass(aa: ProteinAa) -> f64 {
         V => 99.06841,
         W => 186.07931,
         Y => 163.06333,
+    }
+}
+
+pub fn protein_aa_with_mass_closest(aa_mass: NotNan<f64>) -> (NotNan<f64>, ProteinAa) {
+    static mass_to_aa_map: LazyLock<BTreeMap<NotNan<f64>, ProteinAa>> = LazyLock::new(|| {
+        ProteinAa::all()
+            .iter()
+            .copied()
+            .map(|aa| (NotNan::new(protein_aa_mass(aa)).unwrap(), aa))
+            .collect()
+    });
+
+    // let aa_mass = NotNan::new(aa_mass).unwrap();
+
+    let lower = mass_to_aa_map.upper_bound(Bound::Included(&aa_mass)).prev();
+    let upper = mass_to_aa_map.upper_bound(Bound::Included(&aa_mass)).next();
+
+    match (lower, upper) {
+        (Some(lower), None) => (*lower.0, *lower.1),
+        (None, Some(upper)) => (*upper.0, *upper.1),
+        (Some(lower), Some(upper)) => {
+            if (aa_mass - lower.0).abs() < (aa_mass - upper.0).abs() {
+                (*lower.0, *lower.1)
+            } else {
+                (*upper.0, *upper.1)
+            }
+        }
+        (None, None) => panic!(),
     }
 }
 
