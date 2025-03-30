@@ -145,6 +145,12 @@ pub fn protein_aa_mass(aa: ProteinAa) -> f64 {
     }
 }
 
+pub fn protein_aa_with_mass(mass: NotNan<f64>) -> Option<ProteinAa> {
+    const TOLERANCE: f64 = 0.01;
+    let (aa_mass, aa) = protein_aa_with_mass_closest(mass);
+    ((aa_mass - mass).abs() <= TOLERANCE).then_some(aa)
+}
+
 pub fn protein_aa_with_mass_closest(aa_mass: NotNan<f64>) -> (NotNan<f64>, ProteinAa) {
     static mass_to_aa_map: LazyLock<BTreeMap<NotNan<f64>, ProteinAa>> = LazyLock::new(|| {
         ProteinAa::all()
