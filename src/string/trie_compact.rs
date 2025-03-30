@@ -2,7 +2,8 @@
 
 use crate::alphabet_model::CharT;
 use crate::string_model::AStr;
-use generic_array::GenericArray;
+use core::fmt::Debug;
+use generic_array::{ArrayLength, GenericArray};
 
 use crate::string;
 use std::cmp::Ordering;
@@ -18,16 +19,16 @@ const GRAPH_DEBUG: bool = false;
 
 #[derive(Debug)]
 pub struct SuffixTrie<'s, C: CharT> {
-    pub root: Node<'s, C>,
+    pub root: Node<'s, C, C::AlphabetSize>,
 }
 
 #[derive(Debug)]
-pub struct Node<'s, C: CharT> {
-    pub children: GenericArray<Option<Box<Edge<'s, C>>>, C::AlphabetSize>,
-    pub terminal: Option<Terminal>,
+pub struct Node<'s, C, N: ArrayLength> {
+    pub children: GenericArray<Option<Box<Edge<'s, C, N>>>, N>,
+    terminal: Option<Terminal>,
 }
 
-impl<'s, C: CharT> Node<'s, C> {
+impl<'s, C, N: ArrayLength> Node<'s, C, N> {
     fn new() -> Self {
         Self {
             children: Default::default(),
@@ -38,33 +39,34 @@ impl<'s, C: CharT> Node<'s, C> {
 
 #[derive(Debug)]
 struct Terminal {
-    suffix_index: usize,
+    str_index: usize,
 }
 
 #[derive(Debug)]
-pub struct Edge<'s, C: CharT> {
+pub struct Edge<'s, C, N: ArrayLength> {
     pub chars: &'s AStr<C>,
-    pub target: Node<'s, C>,
+    pub target: Node<'s, C, N>,
 }
 
-enum ScanReturn<'a, 's, 't, C: CharT> {
-    FullMatch {
-        #[allow(unused)]
-        upper: &'a Node<'s, C>,
-        lower: &'a Node<'s, C>,
-    },
-    MaximalNonFullMatch {
-        #[allow(unused)]
-        max: &'a Node<'s, C>,
-        #[allow(unused)]
-        t_unmatched: &'t AStr<C>,
-    },
+#[derive(Debug)]
+struct ScanReturn<'a, 's, 't, C, N: ArrayLength> {
+    #[allow(unused)]
+    upper: &'a Node<'s, C, N>,
+    lower: &'a Node<'s, C, N>,
+    t_rem_matched: &'t AStr<C>,
+    matched: ScanMatch<'t, C>,
+}
+
+#[derive(Debug)]
+enum ScanMatch<'t, C> {
+    FullMatch,
+    MaximalNonFullMatch { t_unmatched: &'t AStr<C> },
 }
 
 fn scan_rec<'a, 's, 't, C: CharT>(
-    node: &'a Node<'s, C>,
+    node: &'a Node<'s, C, C::AlphabetSize>,
     t: &'t AStr<C>,
-) -> ScanReturn<'a, 's, 't, C> {
+) -> ScanReturn<'a, 's, 't, C, C::AlphabetSize> {
     if let Some(ch) = t.first() {
         if let Some(edge) = &node.children[ch.index()] {
             let lcp_len = string::lcp(&t[1..], &edge.chars[1..]).len() + 1;
@@ -72,13 +74,19 @@ fn scan_rec<'a, 's, 't, C: CharT>(
             match lcp_len.cmp(&edge.chars.len()) {
                 Ordering::Equal => scan_rec(&edge.target, &t[edge.chars.len()..]),
                 Ordering::Less => match lcp_len.cmp(&t.len()) {
-                    Ordering::Equal => ScanReturn::FullMatch {
+                    Ordering::Equal => ScanReturn {
                         upper: node,
                         lower: &edge.target,
+                        t_rem_matched: t,
+                        matched: ScanMatch::FullMatch,
                     },
-                    Ordering::Less => ScanReturn::MaximalNonFullMatch {
-                        max: node,
-                        t_unmatched: &t[lcp_len..],
+                    Ordering::Less => ScanReturn {
+                        upper: node,
+                        lower: &edge.target,
+                        t_rem_matched: &t[..lcp_len],
+                        matched: ScanMatch::MaximalNonFullMatch {
+                            t_unmatched: &t[lcp_len..],
+                        },
                     },
                     Ordering::Greater => {
                         unreachable!()
@@ -89,38 +97,42 @@ fn scan_rec<'a, 's, 't, C: CharT>(
                 }
             }
         } else {
-            ScanReturn::MaximalNonFullMatch {
-                max: node,
-                t_unmatched: t,
+            ScanReturn {
+                upper: node,
+                lower: node,
+                t_rem_matched: AStr::empty(),
+                matched: ScanMatch::MaximalNonFullMatch { t_unmatched: t },
             }
         }
     } else {
-        ScanReturn::FullMatch {
+        ScanReturn {
             upper: node,
+            t_rem_matched: AStr::empty(),
             lower: node,
+            matched: ScanMatch::FullMatch,
         }
     }
 }
 
-impl <'s, C: CharT> SuffixTrie<'s, C> {
+impl<'s, C: CharT + Debug> SuffixTrie<'s, C> {
     /// Finds indexes of given string in the string represented in the trie
-    pub fn indexes_substr(&self, t: &AStr<C>) -> HashSet<usize> {
-        let mut result = HashSet::new();
-
+    pub fn find(&self, t: &AStr<C>) -> Option<usize> {
         let scan_ret = scan_rec(&self.root, t);
-        if let ScanReturn::FullMatch { lower, .. } = scan_ret {
-            terminals_rec(lower, &mut result);
+        if let ScanMatch::FullMatch = scan_ret.matched {
+            if scan_ret.t_rem_matched.is_empty() {
+                scan_ret.lower.terminal.as_ref().map(|term| term.str_index)
+            } else {
+                None
+            }
+        } else {
+            None
         }
-
-        result
     }
-
 }
 
-
-fn terminals_rec<'s, C: CharT>(node: &Node<'s, C>, result: &mut HashSet<usize>) {
+fn terminals_rec<'s, C, N: ArrayLength>(node: &Node<'s, C, N>, result: &mut HashSet<usize>) {
     if let Some(terminal) = &node.terminal {
-        result.insert(terminal.suffix_index);
+        result.insert(terminal.str_index);
     }
     for edge in node.children.iter().filter_map(|edge| edge.as_ref()) {
         terminals_rec(&edge.target, result);
@@ -128,11 +140,11 @@ fn terminals_rec<'s, C: CharT>(node: &Node<'s, C>, result: &mut HashSet<usize>) 
 }
 
 /// Builds suffix trie
-pub fn build_trie<'s, C: CharT>(s: &'s AStr<C>) -> SuffixTrie<'s, C> {
+pub fn build_trie<'s, C: CharT>(strs: impl IntoIterator<Item = &'s AStr<C>>) -> SuffixTrie<'s, C> {
     let mut trie = SuffixTrie { root: Node::new() };
 
-    for i in 0..s.len() {
-        insert_rec(i, &s[i..], &mut trie.root);
+    for (i, str) in strs.into_iter().enumerate() {
+        insert_rec(i, str, &mut trie.root);
     }
 
     if GRAPH_DEBUG {
@@ -142,15 +154,17 @@ pub fn build_trie<'s, C: CharT>(s: &'s AStr<C>) -> SuffixTrie<'s, C> {
     trie
 }
 
-fn insert_rec<'s, C: CharT>(suffix_index: usize, s: &'s AStr<C>, node: &mut Node<'s, C>) {
+fn insert_rec<'s, C: CharT>(
+    str_index: usize,
+    s: &'s AStr<C>,
+    node: &mut Node<'s, C, C::AlphabetSize>,
+) {
     if let Some(ch) = s.first() {
         if let Some(edge) = &mut node.children[ch.index()] {
             let lcp_len = string::lcp(&s[1..], &edge.chars[1..]).len() + 1;
 
             match lcp_len.cmp(&edge.chars.len()) {
-                Ordering::Equal => {
-                    insert_rec(suffix_index, &s[edge.chars.len()..], &mut edge.target)
-                }
+                Ordering::Equal => insert_rec(str_index, &s[edge.chars.len()..], &mut edge.target),
                 Ordering::Less => {
                     let new_node = Node::new();
                     let new_edge = Edge {
@@ -162,7 +176,7 @@ fn insert_rec<'s, C: CharT>(suffix_index: usize, s: &'s AStr<C>, node: &mut Node
                     let rem_ch = edge_remainder.chars[0];
                     edge.target.children[rem_ch.index()] = Some(edge_remainder);
 
-                    insert_rec(suffix_index, &s[lcp_len..], &mut edge.target);
+                    insert_rec(str_index, &s[lcp_len..], &mut edge.target);
                 }
                 Ordering::Greater => {
                     unreachable!()
@@ -170,14 +184,16 @@ fn insert_rec<'s, C: CharT>(suffix_index: usize, s: &'s AStr<C>, node: &mut Node
             }
         } else {
             let mut new_node = Node::new();
-            new_node.terminal = Some(Terminal { suffix_index });
+            new_node.terminal = Some(Terminal { str_index });
             node.children[ch.index()] = Some(Box::new(Edge {
                 chars: s,
                 target: new_node,
             }));
         }
     } else {
-        node.terminal = Some(Terminal { suffix_index });
+        node.terminal = Some(Terminal {
+            str_index: str_index,
+        });
     }
 }
 
@@ -190,18 +206,18 @@ fn to_dot<'s, C: CharT>(filepath: impl AsRef<Path>, trie: &SuffixTrie<'s, C>) {
     writeln!(file, "}}").unwrap();
 }
 
-fn node_id<'s, C: CharT>(node: &Node<'s, C>) -> impl Display {
+fn node_id<'s, C, N: ArrayLength>(node: &Node<'s, C, N>) -> impl Display {
     ptr::from_ref(node) as usize
 }
 
-fn to_dot_rec<'s, C: CharT>(write: &mut impl Write, node: &Node<'s, C>) {
+fn to_dot_rec<'s, C: CharT>(write: &mut impl Write, node: &Node<'s, C, C::AlphabetSize>) {
     writeln!(write, "    {} [label=\"\" shape=point];", node_id(node)).unwrap();
     if let Some(terminal) = &node.terminal {
         writeln!(
             write,
             "    {} [label=\"{}\"];",
             ptr::from_ref(terminal) as usize,
-            terminal.suffix_index
+            terminal.str_index
         )
         .unwrap();
         writeln!(
@@ -228,61 +244,41 @@ fn to_dot_rec<'s, C: CharT>(write: &mut impl Write, node: &Node<'s, C>) {
 #[cfg(test)]
 mod test {
     use super::*;
-
-    use crate::string;
     use crate::string_model::arb_astring;
     use crate::string_model::test_util::Char;
-
+    use proptest::collection::vec;
     use proptest::prelude::ProptestConfig;
-    use proptest::{prop_assert_eq, proptest};
-
-    #[test]
-    fn test_build_trie_and_find_substr_empty() {
-        let s: &AStr<Char> = AStr::from_slice(&[]);
-
-        let trie = build_trie(s);
-
-        assert_eq!(
-            trie.indexes_substr(AStr::from_slice(&[])),
-            HashSet::from([])
-        );
-    }
+    use proptest::{prop_assert, proptest};
 
     #[test]
     fn test_build_trie_and_find_substr() {
         use crate::string_model::test_util::Char::*;
 
-        let s = AStr::from_slice(&[A, B, A, A, B, A, B, A, A]);
+        let s = [
+            AStr::from_slice(&[A, B, A, A]),
+            AStr::from_slice(&[B, A, B, B, A]),
+        ];
 
         let trie = build_trie(s);
 
-        assert_eq!(
-            trie.indexes_substr( AStr::from_slice(&[])),
-            HashSet::from([0, 1, 2, 3, 4, 5, 6, 7, 8])
-        );
-        assert_eq!(
-            trie.indexes_substr( AStr::from_slice(&[A, A, A])),
-            HashSet::from([])
-        );
-        assert_eq!(
-            trie.indexes_substr( AStr::from_slice(&[A, B, A])),
-            HashSet::from([0, 3, 5])
-        );
-        assert_eq!(
-            trie.indexes_substr( AStr::from_slice(&[B, A, A])),
-            HashSet::from([1, 6])
-        );
+        assert_eq!(trie.find(AStr::from_slice(&[A, B, A])), None);
+        assert_eq!(trie.find(AStr::from_slice(&[A, B, A, A])), Some(0));
+        assert_eq!(trie.find(AStr::from_slice(&[A, B, A, A, A])), None);
+
+        assert_eq!(trie.find(AStr::from_slice(&[B, A, B, B])), None);
+        assert_eq!(trie.find(AStr::from_slice(&[B, A, B, B, A])), Some(1));
+        assert_eq!(trie.find(AStr::from_slice(&[B, A, B, B, A, A])), None);
     }
 
     proptest! {
         #![proptest_config(ProptestConfig::with_cases(2000))]
 
         #[test]
-        fn prop_test_trie(s in arb_astring::<Char>(0..20), t in arb_astring::<Char>(3)) {
-            let trie = build_trie(&s);
-            let expected = string::indexes(&s, &t);
-            let indexes = trie.indexes_substr( &t);
-            prop_assert_eq!(indexes, HashSet::from_iter(expected.into_iter()));
+        fn prop_test_trie(strs in vec(arb_astring::<Char>(0..20), 2..10)) {
+            let trie = build_trie(strs.iter().map(|str|str.as_str()));
+            for str in &strs {
+                prop_assert!(trie.find(&str).is_some());
+            }
         }
     }
 }
