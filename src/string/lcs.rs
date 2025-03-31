@@ -1,5 +1,5 @@
 use crate::alphabet_model::{CharT, WithSpecial};
-use crate::string::suffix_trie_mcc_arena::{Node, NodeId, node_id_ptr, terminals};
+use crate::string::suffix_trie_mcc_arena::{Node, NodeId1, node_id_ptr, terminals};
 use crate::string_model::{AStr, AString};
 
 use generic_array::ArrayLength;
@@ -63,7 +63,7 @@ struct PathDepth<'arena, 's, C, N: ArrayLength> {
 fn lcs_trie_with_separator_rec<'arena, 's, C, N: ArrayLength>(
     node: &'arena RefCell<Node<'arena, 's, WithSeparator<C>, N>>,
     node_depth: usize,
-    node_marks: &HashMap<NodeId, Marks>,
+    node_marks: &HashMap<NodeId1, Marks>,
     deepest_path: &mut PathDepth<'arena, 's, WithSeparator<C>, N>,
 ) where
     WithSeparator<C>: CharT,
@@ -100,7 +100,7 @@ fn lcs_trie_with_separator_rec<'arena, 's, C, N: ArrayLength>(
 
 fn lcs_trie_with_separator_queue<'arena, 's, C, N: ArrayLength>(
     root: &'arena RefCell<Node<'arena, 's, WithSeparator<C>, N>>,
-    node_marks: &HashMap<NodeId, Marks>,
+    node_marks: &HashMap<NodeId1, Marks>,
 ) -> PathDepth<'arena, 's, WithSeparator<C>, N>
 where
     WithSeparator<C>: CharT,
@@ -169,7 +169,7 @@ impl Marks {
 fn mark_nodes_rec<'arena, 's, C: PartialEq, N: ArrayLength>(
     node: &'arena RefCell<Node<'arena, 's, WithSeparator<C>, N>>,
     separator_index: usize,
-    node_marks: &mut HashMap<NodeId, Marks>,
+    node_marks: &mut HashMap<NodeId1, Marks>,
 ) {
     for child_edge in node
         .borrow()
@@ -203,7 +203,7 @@ fn mark_nodes_rec<'arena, 's, C: PartialEq, N: ArrayLength>(
 
 fn mark_ancestors<'arena, 's, C, N: ArrayLength>(
     node: &'arena RefCell<Node<'arena, 's, C, N>>,
-    mark_node: &mut impl FnMut(NodeId) -> bool,
+    mark_node: &mut impl FnMut(NodeId1) -> bool,
 ) {
     if mark_node(node_id_ptr(node.as_ptr())) {
         if let Some(parent) = node.borrow().parent.as_ref() {

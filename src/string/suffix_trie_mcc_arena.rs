@@ -15,7 +15,7 @@ use std::cmp::Ordering;
 use std::collections::VecDeque;
 use std::fmt::{Debug, Display, Formatter};
 use std::fs::File;
-use std::hash::Hash;
+use std::hash::{Hash, Hasher};
 use std::io::Write;
 use std::ops::DerefMut;
 use std::path::Path;
@@ -27,6 +27,12 @@ const GRAPH_DEBUG: bool = false;
 pub struct SuffixTrie<'arena, 's, C: CharT> {
     pub root: &'arena RefCell<Node<'arena, 's, C, C::AlphabetSize>>,
     s: &'s AStr<C>,
+}
+
+impl<'arena, 's, C:CharT> SuffixTrie<'arena, 's, C> {
+    pub fn root(&self) -> NodeId<'arena,'s, C, C::AlphabetSize> {
+        NodeId(self.root)
+    }
 }
 
 #[derive(Debug)]
@@ -456,21 +462,56 @@ fn insert_intermediate<'arena, 's, C: CharT + Copy>(
     edge_mut.target
 }
 
-#[derive(Debug, Eq, PartialEq, Hash)]
-pub(crate) struct NodeId(usize);
+#[derive(Copy)]
+pub struct NodeId<'arena, 's, C, N: ArrayLength>(&'arena RefCell<Node<'arena, 's, C, N>>);
 
-impl Display for NodeId {
+impl<C, N: ArrayLength> Clone for NodeId<'_, '_, C, N> {
+    fn clone(&self) -> Self {
+        Self(self.0)
+    }
+}
+
+impl<C, N: ArrayLength> PartialEq for NodeId<'_, '_, C, N> {
+    fn eq(&self, other: &Self) -> bool {
+        ptr::from_ref(&self.0) == ptr::from_ref(&other.0)
+    }
+}
+
+impl<C, N: ArrayLength> Eq for NodeId<'_, '_, C, N> {}
+
+impl<C, N: ArrayLength> Hash for NodeId<'_, '_, C, N> {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        ptr::from_ref(&self.0).hash(state)
+    }
+}
+
+impl<C, N: ArrayLength> Debug for NodeId<'_, '_, C, N> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
+        write!(f, "{}", ptr::from_ref(self.0) as usize)
+    }
+}
+
+impl<'arena, 's, C, N: ArrayLength> Display for NodeId<'arena, 's, C, N> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        Display::fmt(&(ptr::from_ref(self.0) as usize), f)
+    }
+}
+
+#[derive(Debug, Eq, PartialEq, Hash)]
+pub struct NodeId1(usize);
+
+impl Display for NodeId1 {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         Display::fmt(&self.0, f)
     }
 }
 
-pub(crate) fn node_id<C, N: ArrayLength>(node: &Node<C, N>) -> NodeId {
-    NodeId(ptr::from_ref(node) as usize)
+pub(crate) fn node_id<C, N: ArrayLength>(node: &Node<C, N>) -> NodeId1 {
+    NodeId1(ptr::from_ref(node) as usize)
 }
 
-pub(crate) fn node_id_ptr<C, N: ArrayLength>(node: *const Node<C, N>) -> NodeId {
-    NodeId(node as usize)
+pub(crate) fn node_id_ptr<C, N: ArrayLength>(node: *const Node<C, N>) -> NodeId1 {
+    NodeId1(node as usize)
 }
 
 pub(crate) fn to_dot<'arena, 's, C: CharT>(
@@ -584,6 +625,102 @@ pub fn trie_stats<'arena, 's, C: CharT>(trie: &SuffixTrie<'arena, 's, C>) {
     );
     print_histogram("edge length", &edge_len_hist);
     print_histogram("node branch depth", &node_branch_depth_hist);
+}
+
+#[derive(Debug)]
+pub struct AncestorVisit<'arena, 's, C, N: ArrayLength> {
+    pub node: NodeId<'arena, 's, C, N>,
+    pub child: NodeId<'arena, 's, C, N>,
+    pub chars: &'s AStr<C>,
+}
+
+pub trait AncestorVisitor<'arena, 's, Ctx, C:CharT> {
+    fn visit(&mut self, context: Ctx, visit: AncestorVisit<'arena, 's, C, C::AlphabetSize>) -> Ctx;
+}
+
+pub fn traverse_ancestors<'arena, 's, Ctx, C:CharT>(
+    node: NodeId<'arena, 's, C, C::AlphabetSize>,
+    mut context: Ctx,
+     visitor: &mut impl AncestorVisitor<'arena, 's, Ctx, C>,
+) {
+    let mut node = node.0;
+
+    while let Some(parent_edge) = node.borrow().parent {
+        let parent_edge_ref = parent_edge.borrow();
+
+        let visit = AncestorVisit {
+            node: NodeId(parent_edge_ref.source),
+            child: NodeId(parent_edge_ref.target),
+            chars: parent_edge_ref.chars,
+        };
+        context = visitor.visit(context, visit);
+
+        node = parent_edge_ref.source;
+    }
+}
+
+#[derive(Debug)]
+pub struct DescendantVisit<'arena, 's, C:CharT> {
+    pub node: NodeId<'arena, 's, C, C::AlphabetSize>,
+    pub parent: NodeId<'arena, 's, C, C::AlphabetSize>,
+    pub terminal: Option<usize>,
+    pub chars: &'s AStr<C>,
+}
+
+pub trait DescendantVisitor<'arena, 's, Ctx, C:CharT> {
+    fn visit(&mut self, context: Ctx, visit: DescendantVisit<'arena, 's, C>) -> Ctx;
+}
+
+pub fn traverse_descendants<'arena, 's, Ctx: Clone, C:CharT>(
+    node: NodeId<'arena, 's, C, C::AlphabetSize>,
+    context: Ctx,
+    visitor: &mut impl DescendantVisitor<'arena, 's, Ctx, C>,
+) {
+    struct ToVisit<'arena, 's, Ctx, C, N: ArrayLength> {
+        parent: Option<&'arena RefCell<Edge<'arena, 's, C, N>>>,
+        node: &'arena RefCell<Node<'arena, 's, C, N>>,
+        context: Ctx,
+    }
+
+    let mut to_visit = VecDeque::new();
+    to_visit.push_front(ToVisit {
+        parent: None,
+        node: node.0,
+        context,
+    });
+
+    while let Some(node) = to_visit.pop_front() {
+        let node_ref = node
+            .node
+            .borrow();
+
+        let context = if let Some(parent) = node.parent {
+            let parent_edge_ref = parent.borrow();
+            let visit = DescendantVisit {
+                node: NodeId(parent_edge_ref.target),
+                parent: NodeId(parent_edge_ref.source),
+                terminal: node_ref.terminal.as_ref().map(|term|term.suffix_index),
+                chars: parent_edge_ref.chars,
+            };
+
+            visitor.visit(node.context, visit)
+        } else {
+            node.context
+        };
+
+        for child_edge in node_ref
+            .children
+            .iter()
+            .flat_map(|child| child.iter())
+        {
+            let child_edge_ref = child_edge.borrow();
+            to_visit.push_back(ToVisit {
+                node: child_edge_ref.target,
+                parent: Some(child_edge),
+                context: context.clone(),
+            });
+        }
+    }
 }
 
 #[cfg(test)]
