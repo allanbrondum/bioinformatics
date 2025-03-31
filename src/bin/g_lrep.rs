@@ -115,25 +115,81 @@ fn main() {
         println!("{} ", dna);
     } else {
         #[derive(Default)]
-        struct CountVisitor<'arena, 's>(HashMap::<NodeId<'arena, 's, DnaNt, DnaNt::AlphabetSize>, usize>);
-        let mut count_visitor = CountVisitor::default();
+        struct CountVisitor<'arena, 's>(HashMap::<NodeId<'arena, 's, DnaNt, <DnaNt as CharT> ::AlphabetSize>, usize>);
+        let count_visitor = CountVisitor::default();
         impl<'arena, 's> AncestorVisitor<'arena, 's, (), DnaNt> for CountVisitor<'arena, 's> {
-            fn visit(&mut self, context: (), visit: AncestorVisit<'arena, 's, DnaNt, DnaNt::AlphabetSize>) -> () {
+            fn visit(&mut self, _context: (), visit: AncestorVisit<'arena, 's, DnaNt, <DnaNt as CharT>::AlphabetSize>) -> Option<()> {
+                // println!("anc {}", visit.node);
                 *self.0
                     .entry(visit.node)
                     .or_default() += 1;
+                Some(())
             }
         }
 
-        struct CountDescVisitor;
-        impl DescendantVisitor<'_, '_, (), DnaNt> for CountDescVisitor {
-            fn visit(&mut self, _context: (), visit: DescendantVisit<'_, '_, DnaNt>) {
+        struct CountDescVisitor<'arena, 's>(CountVisitor<'arena, 's>);
+        impl<'arena, 's> DescendantVisitor<'arena, 's, (), DnaNt> for CountDescVisitor<'arena, 's> {
+            fn visit(&mut self, _context: (), visit: DescendantVisit<'arena, 's, DnaNt>)-> Option<()> {
                 if visit.terminal.is_some() {
-                    traverse_ancestors(visit.node, (), &mut count_visitor);
+                    // println!("leaf {} term {}", visit.node, visit.terminal.unwrap());
+                    *self.0.0
+                        .entry(visit.node)
+                        .or_default() += 1;
+                    traverse_ancestors(visit.node, (), &mut self.0);
                 }
+                Some(())
             }
         }
 
-        traverse_descendants(trie.root(), CountDescVisitor);
+        let mut count_desc_visitor = CountDescVisitor(count_visitor);
+        traverse_descendants(trie.root(), (), &mut count_desc_visitor);
+
+
+
+        // println!("{:?}", count_desc_visitor.0.0);
+
+        struct CommonSubstrVisitor<'arena, 's> {
+            node: NodeId<'arena, 's, DnaNt, <DnaNt as CharT> ::AlphabetSize>,
+            depth:usize,
+            k: usize,
+            count_desc_visitor: CountDescVisitor<'arena, 's>,
+        };
+        impl<'arena, 's> DescendantVisitor<'arena, 's, usize, DnaNt> for CommonSubstrVisitor<'arena, 's> {
+            fn visit(&mut self, parent_depth: usize, visit: DescendantVisit<'arena, 's, DnaNt>) -> Option<usize>{
+                if self.count_desc_visitor.0.0.get(&visit.node).copied().unwrap_or_default() < self.k {
+                    None
+                } else {
+                    let depth = parent_depth + visit.chars.len();
+                    if depth > self.depth {
+                        self.depth = depth;
+                        self.node = visit.node;
+                    }
+                    Some(depth)
+                }
+
+            }
+        }
+
+        let mut common_substr_visitor = CommonSubstrVisitor{
+            node: trie.root(),
+            depth: 0,
+            k,
+            count_desc_visitor,
+        };
+        traverse_descendants(trie.root(), 0, &mut common_substr_visitor);
+
+        #[derive(Default)]
+        struct BuildStringVisitor(AString<DnaNt>);
+        let mut build_string_visitor = BuildStringVisitor::default();
+        impl<'arena, 's> AncestorVisitor<'arena, 's, (), DnaNt> for BuildStringVisitor {
+            fn visit(&mut self, _context: (), visit: AncestorVisit<'arena, 's, DnaNt, <DnaNt as CharT>::AlphabetSize>) -> Option<()> {
+                self.0 = visit.chars.to_owned() + self.0.as_str();
+                Some(())
+            }
+        }
+
+        traverse_ancestors(common_substr_visitor.node, (), &mut build_string_visitor);
+
+        println!("{}", build_string_visitor.0);
     }
 }

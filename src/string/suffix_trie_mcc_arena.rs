@@ -17,7 +17,7 @@ use std::fmt::{Debug, Display, Formatter};
 use std::fs::File;
 use std::hash::{Hash, Hasher};
 use std::io::Write;
-use std::ops::DerefMut;
+use std::ops::{Deref, DerefMut};
 use std::path::Path;
 use std::{mem, ptr};
 
@@ -29,8 +29,8 @@ pub struct SuffixTrie<'arena, 's, C: CharT> {
     s: &'s AStr<C>,
 }
 
-impl<'arena, 's, C:CharT> SuffixTrie<'arena, 's, C> {
-    pub fn root(&self) -> NodeId<'arena,'s, C, C::AlphabetSize> {
+impl<'arena, 's, C: CharT> SuffixTrie<'arena, 's, C> {
+    pub fn root(&self) -> NodeId<'arena, 's, C, C::AlphabetSize> {
         NodeId(self.root)
     }
 }
@@ -473,7 +473,7 @@ impl<C, N: ArrayLength> Clone for NodeId<'_, '_, C, N> {
 
 impl<C, N: ArrayLength> PartialEq for NodeId<'_, '_, C, N> {
     fn eq(&self, other: &Self) -> bool {
-        ptr::from_ref(&self.0) == ptr::from_ref(&other.0)
+        ptr::from_ref(self.0.borrow().deref()).eq(&ptr::from_ref(other.0.borrow().deref()))
     }
 }
 
@@ -481,7 +481,7 @@ impl<C, N: ArrayLength> Eq for NodeId<'_, '_, C, N> {}
 
 impl<C, N: ArrayLength> Hash for NodeId<'_, '_, C, N> {
     fn hash<H: Hasher>(&self, state: &mut H) {
-        ptr::from_ref(&self.0).hash(state)
+        ptr::from_ref(self.0.borrow().deref()).hash(state)
     }
 }
 
@@ -634,14 +634,18 @@ pub struct AncestorVisit<'arena, 's, C, N: ArrayLength> {
     pub chars: &'s AStr<C>,
 }
 
-pub trait AncestorVisitor<'arena, 's, Ctx, C:CharT> {
-    fn visit(&mut self, context: Ctx, visit: AncestorVisit<'arena, 's, C, C::AlphabetSize>) -> Ctx;
+pub trait AncestorVisitor<'arena, 's, Ctx, C: CharT> {
+    fn visit(
+        &mut self,
+        context: Ctx,
+        visit: AncestorVisit<'arena, 's, C, C::AlphabetSize>,
+    ) -> Option<Ctx>;
 }
 
-pub fn traverse_ancestors<'arena, 's, Ctx, C:CharT>(
+pub fn traverse_ancestors<'arena, 's, Ctx, C: CharT>(
     node: NodeId<'arena, 's, C, C::AlphabetSize>,
     mut context: Ctx,
-     visitor: &mut impl AncestorVisitor<'arena, 's, Ctx, C>,
+    visitor: &mut impl AncestorVisitor<'arena, 's, Ctx, C>,
 ) {
     let mut node = node.0;
 
@@ -653,25 +657,29 @@ pub fn traverse_ancestors<'arena, 's, Ctx, C:CharT>(
             child: NodeId(parent_edge_ref.target),
             chars: parent_edge_ref.chars,
         };
-        context = visitor.visit(context, visit);
+        context = if let Some(context) = visitor.visit(context, visit) {
+            context
+        } else {
+            break;
+        };
 
         node = parent_edge_ref.source;
     }
 }
 
 #[derive(Debug)]
-pub struct DescendantVisit<'arena, 's, C:CharT> {
+pub struct DescendantVisit<'arena, 's, C: CharT> {
     pub node: NodeId<'arena, 's, C, C::AlphabetSize>,
     pub parent: NodeId<'arena, 's, C, C::AlphabetSize>,
     pub terminal: Option<usize>,
     pub chars: &'s AStr<C>,
 }
 
-pub trait DescendantVisitor<'arena, 's, Ctx, C:CharT> {
-    fn visit(&mut self, context: Ctx, visit: DescendantVisit<'arena, 's, C>) -> Ctx;
+pub trait DescendantVisitor<'arena, 's, Ctx, C: CharT> {
+    fn visit(&mut self, context: Ctx, visit: DescendantVisit<'arena, 's, C>) -> Option<Ctx>;
 }
 
-pub fn traverse_descendants<'arena, 's, Ctx: Clone, C:CharT>(
+pub fn traverse_descendants<'arena, 's, Ctx: Clone, C: CharT>(
     node: NodeId<'arena, 's, C, C::AlphabetSize>,
     context: Ctx,
     visitor: &mut impl DescendantVisitor<'arena, 's, Ctx, C>,
@@ -690,29 +698,27 @@ pub fn traverse_descendants<'arena, 's, Ctx: Clone, C:CharT>(
     });
 
     while let Some(node) = to_visit.pop_front() {
-        let node_ref = node
-            .node
-            .borrow();
+        let node_ref = node.node.borrow();
 
         let context = if let Some(parent) = node.parent {
             let parent_edge_ref = parent.borrow();
             let visit = DescendantVisit {
                 node: NodeId(parent_edge_ref.target),
                 parent: NodeId(parent_edge_ref.source),
-                terminal: node_ref.terminal.as_ref().map(|term|term.suffix_index),
+                terminal: node_ref.terminal.as_ref().map(|term| term.suffix_index),
                 chars: parent_edge_ref.chars,
             };
 
-            visitor.visit(node.context, visit)
+            if let Some(context) = visitor.visit(node.context, visit) {
+                context
+            } else {
+                continue;
+            }
         } else {
             node.context
         };
 
-        for child_edge in node_ref
-            .children
-            .iter()
-            .flat_map(|child| child.iter())
-        {
+        for child_edge in node_ref.children.iter().flat_map(|child| child.iter()) {
             let child_edge_ref = child_edge.borrow();
             to_visit.push_back(ToVisit {
                 node: child_edge_ref.target,
