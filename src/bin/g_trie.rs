@@ -10,7 +10,8 @@ use std::str::FromStr;
 
 fn main() {
     let polymers = lines_file("src/bin/g_trie_data.txt")
-        .map(|line| AString::<DnaNt>::from_str(&line).unwrap()).collect_vec();
+        .map(|line| AString::<DnaNt>::from_str(&line).unwrap())
+        .collect_vec();
 
     let trie = trie_compact::build_trie(polymers.iter().map(|dna| dna.as_str()));
 

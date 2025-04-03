@@ -1,9 +1,9 @@
 use bioinformatics::util::{lines_file, words};
 use hashbrown::{HashMap, HashSet};
 use itertools::Itertools;
-use std::collections::VecDeque;
 use petgraph::Graph;
 use petgraph::graph::NodeIndex;
+use std::collections::VecDeque;
 
 fn main() {
     let mut lines = lines_file("src/bin/g_tree_data.txt");
@@ -49,7 +49,6 @@ fn main() {
 
         println!("{}", component_count - 1);
     } else {
-
         let mut graph = Graph::<usize, ()>::new();
         for i in 0..node_count {
             graph.add_node(i + 1);
@@ -68,6 +67,6 @@ fn main() {
 
         println!("{}", component_count - 1);
 
-         // fs::write("target/g_tree.dot", format!("{:?}", Dot::with_config(&graph, &[Config::EdgeNoLabel])).as_bytes()).unwrap();
+        // fs::write("target/g_tree.dot", format!("{:?}", Dot::with_config(&graph, &[Config::EdgeNoLabel])).as_bytes()).unwrap();
     }
 }

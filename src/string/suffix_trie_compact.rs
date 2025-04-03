@@ -102,7 +102,7 @@ fn scan_rec<'a, 's, 't, C: CharT>(
     }
 }
 
-impl <'s, C: CharT> SuffixTrie<'s, C> {
+impl<'s, C: CharT> SuffixTrie<'s, C> {
     /// Finds indexes of given string in the string represented in the trie
     pub fn indexes_substr(&self, t: &AStr<C>) -> HashSet<usize> {
         let mut result = HashSet::new();
@@ -114,9 +114,7 @@ impl <'s, C: CharT> SuffixTrie<'s, C> {
 
         result
     }
-
 }
-
 
 fn terminals_rec<'s, C: CharT>(node: &Node<'s, C>, result: &mut HashSet<usize>) {
     if let Some(terminal) = &node.terminal {
@@ -257,19 +255,19 @@ mod test {
         let trie = build_trie(s);
 
         assert_eq!(
-            trie.indexes_substr( AStr::from_slice(&[])),
+            trie.indexes_substr(AStr::from_slice(&[])),
             HashSet::from([0, 1, 2, 3, 4, 5, 6, 7, 8])
         );
         assert_eq!(
-            trie.indexes_substr( AStr::from_slice(&[A, A, A])),
+            trie.indexes_substr(AStr::from_slice(&[A, A, A])),
             HashSet::from([])
         );
         assert_eq!(
-            trie.indexes_substr( AStr::from_slice(&[A, B, A])),
+            trie.indexes_substr(AStr::from_slice(&[A, B, A])),
             HashSet::from([0, 3, 5])
         );
         assert_eq!(
-            trie.indexes_substr( AStr::from_slice(&[B, A, A])),
+            trie.indexes_substr(AStr::from_slice(&[B, A, A])),
             HashSet::from([1, 6])
         );
     }

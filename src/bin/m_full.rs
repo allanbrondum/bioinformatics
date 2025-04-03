@@ -39,7 +39,7 @@ fn main() {
             m,
             aa_m,
             aa,
-            (aa_m- potential_aa_m).abs()
+            (aa_m - potential_aa_m).abs()
         );
 
         if (aa_m - potential_aa_m).abs() <= TOLERANCE {

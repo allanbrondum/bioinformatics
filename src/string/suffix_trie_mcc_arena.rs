@@ -30,8 +30,8 @@ pub struct SuffixTrie<'arena, 's, C: CharT> {
 }
 
 impl<'arena, 's, C: CharT> SuffixTrie<'arena, 's, C> {
-    pub fn root(&self) -> NodeId<'arena, 's, C, C::AlphabetSize> {
-        NodeId(self.root)
+    pub fn root(&self) -> NodeReference<'arena, 's, C> {
+        NodeReference(self.root)
     }
 }
 
@@ -463,55 +463,43 @@ fn insert_intermediate<'arena, 's, C: CharT + Copy>(
 }
 
 #[derive(Copy)]
-pub struct NodeId<'arena, 's, C, N: ArrayLength>(&'arena RefCell<Node<'arena, 's, C, N>>);
+pub struct NodeReference<'arena, 's, C: CharT>(
+    &'arena RefCell<Node<'arena, 's, C, C::AlphabetSize>>,
+);
 
-impl<C, N: ArrayLength> Clone for NodeId<'_, '_, C, N> {
+impl<C: CharT> Clone for NodeReference<'_, '_, C> {
     fn clone(&self) -> Self {
         Self(self.0)
     }
 }
 
-impl<C, N: ArrayLength> PartialEq for NodeId<'_, '_, C, N> {
-    fn eq(&self, other: &Self) -> bool {
-        ptr::from_ref(self.0.borrow().deref()).eq(&ptr::from_ref(other.0.borrow().deref()))
-    }
-}
-
-impl<C, N: ArrayLength> Eq for NodeId<'_, '_, C, N> {}
-
-impl<C, N: ArrayLength> Hash for NodeId<'_, '_, C, N> {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        ptr::from_ref(self.0.borrow().deref()).hash(state)
-    }
-}
-
-impl<C, N: ArrayLength> Debug for NodeId<'_, '_, C, N> {
+impl<C: CharT> Debug for NodeReference<'_, '_, C> {
     fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
         write!(f, "{}", ptr::from_ref(self.0) as usize)
     }
 }
 
-impl<'arena, 's, C, N: ArrayLength> Display for NodeId<'arena, 's, C, N> {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        Display::fmt(&(ptr::from_ref(self.0) as usize), f)
+impl<'arena, 's, C: CharT> NodeReference<'arena, 's, C> {
+    pub fn node_id(self) -> NodeId {
+        NodeId(ptr::from_ref(self.0) as usize)
     }
 }
 
 #[derive(Debug, Eq, PartialEq, Hash)]
-pub struct NodeId1(usize);
+pub struct NodeId(usize);
 
-impl Display for NodeId1 {
+impl Display for NodeId {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         Display::fmt(&self.0, f)
     }
 }
 
-pub(crate) fn node_id<C, N: ArrayLength>(node: &Node<C, N>) -> NodeId1 {
-    NodeId1(ptr::from_ref(node) as usize)
+pub(crate) fn node_id<C, N: ArrayLength>(node: &Node<C, N>) -> NodeId {
+    NodeId(ptr::from_ref(node) as usize)
 }
 
-pub(crate) fn node_id_ptr<C, N: ArrayLength>(node: *const Node<C, N>) -> NodeId1 {
-    NodeId1(node as usize)
+pub(crate) fn node_id_ptr<C, N: ArrayLength>(node: *const Node<C, N>) -> NodeId {
+    NodeId(node as usize)
 }
 
 pub(crate) fn to_dot<'arena, 's, C: CharT>(
@@ -628,22 +616,26 @@ pub fn trie_stats<'arena, 's, C: CharT>(trie: &SuffixTrie<'arena, 's, C>) {
 }
 
 #[derive(Debug)]
-pub struct AncestorVisit<'arena, 's, C, N: ArrayLength> {
-    pub node: NodeId<'arena, 's, C, N>,
-    pub child: NodeId<'arena, 's, C, N>,
+pub struct AncestorVisit<'arena, 's, C: CharT> {
+    pub node: NodeReference<'arena, 's, C>,
+    pub child: NodeReference<'arena, 's, C>,
     pub chars: &'s AStr<C>,
 }
 
 pub trait AncestorVisitor<'arena, 's, Ctx, C: CharT> {
-    fn visit(
-        &mut self,
-        context: Ctx,
-        visit: AncestorVisit<'arena, 's, C, C::AlphabetSize>,
-    ) -> Option<Ctx>;
+    fn visit(&mut self, context: Ctx, visit: AncestorVisit<'arena, 's, C>) -> Option<Ctx>;
+}
+
+impl<'arena, 's: 'arena, Ctx, C: CharT, F: FnMut(Ctx, AncestorVisit<'arena, 's, C>) -> Option<Ctx>>
+    AncestorVisitor<'arena, 's, Ctx, C> for F
+{
+    fn visit(&mut self, context: Ctx, visit: AncestorVisit<'arena, 's, C>) -> Option<Ctx> {
+        self(context, visit)
+    }
 }
 
 pub fn traverse_ancestors<'arena, 's, Ctx, C: CharT>(
-    node: NodeId<'arena, 's, C, C::AlphabetSize>,
+    node: NodeReference<'arena, 's, C>,
     mut context: Ctx,
     visitor: &mut impl AncestorVisitor<'arena, 's, Ctx, C>,
 ) {
@@ -653,8 +645,8 @@ pub fn traverse_ancestors<'arena, 's, Ctx, C: CharT>(
         let parent_edge_ref = parent_edge.borrow();
 
         let visit = AncestorVisit {
-            node: NodeId(parent_edge_ref.source),
-            child: NodeId(parent_edge_ref.target),
+            node: NodeReference(parent_edge_ref.source),
+            child: NodeReference(parent_edge_ref.target),
             chars: parent_edge_ref.chars,
         };
         context = if let Some(context) = visitor.visit(context, visit) {
@@ -669,8 +661,8 @@ pub fn traverse_ancestors<'arena, 's, Ctx, C: CharT>(
 
 #[derive(Debug)]
 pub struct DescendantVisit<'arena, 's, C: CharT> {
-    pub node: NodeId<'arena, 's, C, C::AlphabetSize>,
-    pub parent: NodeId<'arena, 's, C, C::AlphabetSize>,
+    pub node: NodeReference<'arena, 's, C>,
+    pub parent: NodeReference<'arena, 's, C>,
     pub terminal: Option<usize>,
     pub chars: &'s AStr<C>,
 }
@@ -679,8 +671,21 @@ pub trait DescendantVisitor<'arena, 's, Ctx, C: CharT> {
     fn visit(&mut self, context: Ctx, visit: DescendantVisit<'arena, 's, C>) -> Option<Ctx>;
 }
 
+impl<
+    'arena,
+    's: 'arena,
+    Ctx,
+    C: CharT,
+    F: FnMut(Ctx, DescendantVisit<'arena, 's, C>) -> Option<Ctx>,
+> DescendantVisitor<'arena, 's, Ctx, C> for F
+{
+    fn visit(&mut self, context: Ctx, visit: DescendantVisit<'arena, 's, C>) -> Option<Ctx> {
+        self(context, visit)
+    }
+}
+
 pub fn traverse_descendants<'arena, 's, Ctx: Clone, C: CharT>(
-    node: NodeId<'arena, 's, C, C::AlphabetSize>,
+    node: NodeReference<'arena, 's, C>,
     context: Ctx,
     visitor: &mut impl DescendantVisitor<'arena, 's, Ctx, C>,
 ) {
@@ -703,8 +708,8 @@ pub fn traverse_descendants<'arena, 's, Ctx: Clone, C: CharT>(
         let context = if let Some(parent) = node.parent {
             let parent_edge_ref = parent.borrow();
             let visit = DescendantVisit {
-                node: NodeId(parent_edge_ref.target),
-                parent: NodeId(parent_edge_ref.source),
+                node: NodeReference(parent_edge_ref.target),
+                parent: NodeReference(parent_edge_ref.source),
                 terminal: node_ref.terminal.as_ref().map(|term| term.suffix_index),
                 chars: parent_edge_ref.chars,
             };

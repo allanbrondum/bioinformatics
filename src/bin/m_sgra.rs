@@ -1,4 +1,5 @@
 use bioinformatics::polymers::{ProteinAa, protein_aa_with_mass, protein_aa_with_mass_closest};
+use bioinformatics::string_model::AString;
 use bioinformatics::util::lines_file;
 use hashbrown::HashMap;
 use itertools::Itertools;
@@ -7,7 +8,6 @@ use petgraph::dot::Dot;
 use petgraph::visit::EdgeRef;
 use petgraph::{EdgeDirection, Graph, algo};
 use std::{fs, mem};
-use bioinformatics::string_model::AString;
 
 fn main() {
     let masses = lines_file("src/bin/m_sgra_data.txt")
@@ -46,19 +46,26 @@ fn main() {
 
     let mut longest_path_inc: HashMap<_, AString<_>> = HashMap::new();
     for node in topo {
-        let  inc_path = graph
+        let inc_path = graph
             .edges_directed(node, EdgeDirection::Incoming)
             .map(|edge| {
-                let mut path = longest_path_inc.get(&edge.source()).cloned().unwrap_or_default();
+                let mut path = longest_path_inc
+                    .get(&edge.source())
+                    .cloned()
+                    .unwrap_or_default();
                 path.push(*edge.weight());
                 path
             })
-            .max_by_key(|inc_path| inc_path.len()).unwrap_or_default();
+            .max_by_key(|inc_path| inc_path.len())
+            .unwrap_or_default();
 
         longest_path_inc.insert(node, inc_path);
     }
 
-    let longest_path = longest_path_inc.values().max_by_key(|path|path.len()).unwrap();
+    let longest_path = longest_path_inc
+        .values()
+        .max_by_key(|path| path.len())
+        .unwrap();
 
     println!("{}", longest_path);
 }

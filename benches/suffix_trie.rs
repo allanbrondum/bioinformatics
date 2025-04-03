@@ -13,8 +13,8 @@ use bioinformatics::string::{
     suffix_trie_mcc_rc, suffix_trie_ukn,
 };
 use bioinformatics::string_model::{AStr, arb_astring};
-use proptest::strategy::{Strategy, ValueTree};
 use bioinformatics::util::print_histogram;
+use proptest::strategy::{Strategy, ValueTree};
 
 const STRING_LENGTHS: &[usize] = &[200, 5000, 1_000_000];
 

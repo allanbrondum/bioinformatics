@@ -140,6 +140,10 @@ impl<C> AString<C> {
     pub fn with_capacity(capacity: usize) -> Self {
         Self(AStringVec::with_capacity(capacity))
     }
+
+    pub fn clear(&mut self) {
+        self.0.clear()
+    }
 }
 
 impl<C: CharT> FromStr for AString<C> {
