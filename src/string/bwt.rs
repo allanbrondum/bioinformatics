@@ -316,27 +316,7 @@ mod test {
         );
     }
 
-    // #[test]
-    // fn test_find_maximal_substr() {
-    //     use crate::string_model::test_util::Char::*;
-    //
-    //     let s = AStr::from_slice(&[A, B, A, A, B, A, B, A, A]);
-    //
-    //     let bwt = build_bwt(&s);
-    //
-    //     assert_eq!(
-    //         bwt.indexes_substr_maximal(AStr::from_slice(&[A, B, A])),
-    //         MaximalSubstrMatch::full(5, 3),
-    //     );
-    //     assert_eq!(
-    //         bwt.index_substr_maximal(AStr::from_slice(&[B, A, A])),
-    //         MaximalSubstrMatch::full(6, 3),
-    //     );
-    //     assert_eq!(
-    //         bwt.index_substr_maximal(AStr::from_slice(&[A, A, A])),
-    //         MaximalSubstrMatch::partial(7, 2),
-    //     );
-    // }
+
 
     proptest! {
         #![proptest_config(ProptestConfig::with_cases(2000))]
@@ -350,20 +330,5 @@ mod test {
         }
     }
 
-    // #[test]
-    // fn test_lcs_single_trie_perf() {
-    //     let mut runner = proptest::test_runner::TestRunner::default();
-    //     let s = arb_astring::<Char>(10_000)
-    //         .new_tree(&mut runner)
-    //         .unwrap()
-    //         .current();
-    //     let t = arb_astring::<Char>(5)
-    //         .new_tree(&mut runner)
-    //         .unwrap()
-    //         .current();
-    //
-    //     let bwt = build_bwt(&s);
-    //
-    //     // bwt.
-    // }
+
 }

@@ -7,9 +7,11 @@ pub mod suffix_trie_mcc_petgraph;
 pub mod suffix_trie_mcc_rc;
 pub mod suffix_trie_ukn;
 pub mod trie_compact;
+pub mod border_array;
 
 mod superstring_petgraph;
 mod superstring_rcrefcell;
+
 
 use crate::alphabet_model::CharT;
 use crate::string_model::{AStr, AString};
