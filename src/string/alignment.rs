@@ -1,5 +1,4 @@
 use crate::alphabet_model::CharT;
-use crate::enum_char;
 use crate::string_model::{AStr, AString};
 use core::fmt::{Display, Formatter, Write};
 use generic_array::typenum::U4;
@@ -12,12 +11,12 @@ pub struct AlignmentProperties {
 
 impl AlignmentProperties {
     pub fn gap_penalty(mut self, gap_penalty: usize) -> Self {
-        self.gap_penalty = self.gap_penalty;
+        self.gap_penalty = gap_penalty;
         self
     }
 
     pub fn mismatch_penalty(mut self, mismatch_penalty: usize) -> Self {
-        self.mismatch_penalty = self.mismatch_penalty;
+        self.mismatch_penalty = mismatch_penalty;
         self
     }
 }
@@ -78,6 +77,8 @@ pub struct GlobalAlignment {
     pub edits: AString<Edit>,
 }
 
+
+/// Wagner-Fischer
 pub fn global_alignment_simple<C: CharT>(
     x: &AStr<C>,
     y: &AStr<C>,
@@ -165,6 +166,7 @@ impl<C: PartialEq> Penalties<'_, C> {
     }
 }
 
+/// Hirschberg
 pub fn global_alignment<C: CharT>(
     x: &AStr<C>,
     y: &AStr<C>,
