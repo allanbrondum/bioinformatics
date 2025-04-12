@@ -316,8 +316,6 @@ mod test {
         );
     }
 
-
-
     proptest! {
         #![proptest_config(ProptestConfig::with_cases(2000))]
 
@@ -329,6 +327,4 @@ mod test {
             prop_assert_eq!(indexes, HashSet::from_iter(expected.into_iter()));
         }
     }
-
-
 }

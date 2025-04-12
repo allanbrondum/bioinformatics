@@ -19,4 +19,3 @@ fn main() {
             .format_with(" ", |item, f| f(&item))
     );
 }
-

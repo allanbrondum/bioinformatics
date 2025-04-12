@@ -8,7 +8,10 @@ use std::mem;
 
 use crate::bench_util::Char;
 use bioinformatics::string;
-use bioinformatics::string::{border_array, bwt, lcs, suffix_trie_compact, suffix_trie_mcc_arena, suffix_trie_mcc_petgraph, suffix_trie_mcc_rc, suffix_trie_ukn};
+use bioinformatics::string::{
+    border_array, bwt, lcs, suffix_trie_compact, suffix_trie_mcc_arena, suffix_trie_mcc_petgraph,
+    suffix_trie_mcc_rc, suffix_trie_ukn,
+};
 use bioinformatics::string_model::{AStr, arb_astring};
 use bioinformatics::util::print_histogram;
 use proptest::strategy::{Strategy, ValueTree};
@@ -106,7 +109,6 @@ fn bench_border_array(bencher: &mut Bencher<'_>, s: &AStr<Char>) {
         border_array::border_array(s);
     });
 }
-
 
 fn build_trie_benches(criterion: &mut Criterion) {
     let mut build_trie_benches = criterion.benchmark_group("build_trie");

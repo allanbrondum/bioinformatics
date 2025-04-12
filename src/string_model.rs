@@ -12,7 +12,9 @@ use smallvec::{SmallVec, ToSmallVec};
 use std::borrow::Borrow;
 use std::fmt::{Display, Formatter};
 use std::mem;
-use std::ops::{Add, Deref, Index, Range, RangeFrom, RangeInclusive, RangeTo, RangeToInclusive};
+use std::ops::{
+    Add, Deref, DerefMut, Index, Range, RangeFrom, RangeInclusive, RangeTo, RangeToInclusive,
+};
 use std::str::FromStr;
 
 #[derive(Debug, Eq, PartialEq, Hash, Ord, PartialOrd)]
@@ -38,6 +40,10 @@ impl<C> AStr<C> {
         unsafe { mem::transmute(slice) }
     }
 
+    pub fn from_mut_slice(slice: &mut [C]) -> &mut Self {
+        unsafe { mem::transmute(slice) }
+    }
+
     pub fn as_slice(&self) -> &[C] {
         &self.0
     }
@@ -56,6 +62,12 @@ impl<C> Deref for AStr<C> {
 
     fn deref(&self) -> &Self::Target {
         &self.0
+    }
+}
+
+impl<C> DerefMut for AStr<C> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
     }
 }
 
@@ -199,6 +211,12 @@ impl<C> Deref for AString<C> {
 
     fn deref(&self) -> &Self::Target {
         AStr::from_slice(self.0.as_slice())
+    }
+}
+
+impl<C> DerefMut for AString<C> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        AStr::from_mut_slice(self.0.as_mut_slice())
     }
 }
 

@@ -1,3 +1,5 @@
+pub mod alignment;
+pub mod border_array;
 pub mod bwt;
 pub mod lcs;
 pub mod suffix_array;
@@ -6,12 +8,9 @@ pub mod suffix_trie_mcc_arena;
 pub mod suffix_trie_mcc_petgraph;
 pub mod suffix_trie_mcc_rc;
 pub mod suffix_trie_ukn;
-pub mod trie_compact;
-pub mod border_array;
-pub mod alignment;
 mod superstring_petgraph;
 mod superstring_rcrefcell;
-
+pub mod trie_compact;
 
 use crate::alphabet_model::CharT;
 use crate::string_model::{AStr, AString};

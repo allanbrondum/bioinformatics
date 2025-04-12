@@ -1,5 +1,8 @@
 use crate::alphabet_model::CharT;
-use crate::string_model::AStr;
+use crate::enum_char;
+use crate::string_model::{AStr, AString};
+use core::fmt::{Display, Formatter, Write};
+use generic_array::typenum::U4;
 
 #[derive(Copy, Clone)]
 pub struct AlignmentProperties {
@@ -28,9 +31,51 @@ impl Default for AlignmentProperties {
     }
 }
 
+#[derive(Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Debug)]
+pub enum Edit {
+    Match,
+    Mismatch,
+    Insert,
+    Delete,
+}
+
+impl Display for Edit {
+    fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
+        f.write_char(self.to_char())
+    }
+}
+
+impl CharT for Edit {
+    type AlphabetSize = U4;
+
+    fn index(self) -> usize {
+        self as usize
+    }
+
+    fn from_char(ch: char) -> Option<Self> {
+        match ch {
+            '=' => Some(Edit::Match),
+            'X' => Some(Edit::Mismatch),
+            'I' => Some(Edit::Insert),
+            'D' => Some(Edit::Delete),
+            _ => None,
+        }
+    }
+
+    fn to_char(self) -> char {
+        match self {
+            Edit::Match => '=',
+            Edit::Mismatch => 'X',
+            Edit::Insert => 'I',
+            Edit::Delete => 'D',
+        }
+    }
+}
+
 #[derive(Clone)]
 pub struct GlobalAlignment {
     pub penalty: usize,
+    pub edits: AString<Edit>,
 }
 
 pub fn global_alignment_simple<C: CharT>(
@@ -39,6 +84,8 @@ pub fn global_alignment_simple<C: CharT>(
     props: AlignmentProperties,
 ) -> GlobalAlignment {
     let mut c = vec![vec![0; y.len() + 1]; x.len() + 1];
+
+    let pen = Penalties { x, y, props };
 
     for i in 0..=x.len() {
         c[i][0] = i * props.gap_penalty;
@@ -50,28 +97,84 @@ pub fn global_alignment_simple<C: CharT>(
 
     for i in 1..=x.len() {
         for j in 1..=y.len() {
-            let c0 = c[i - 1][j - 1]
-                + if x[i - 1] == y[j - 1] {
-                    0
-                } else {
-                    props.mismatch_penalty
-                };
-            let c1 = c[i - 1][j] + props.gap_penalty;
-            let c2 = c[i][j - 1] + props.gap_penalty;
-            c[i][j] = c0.min(c1.min(c2));
+            c[i][j] = pen
+                .diag(&c, i, j)
+                .min(pen.up(&c, i, j).min(pen.left(&c, i, j)));
         }
     }
 
+    let mut edits = AString::with_capacity(x.len());
+    let mut i = x.len();
+    let mut j = y.len();
+    while i != 0 || j != 0 {
+        if i == 0 {
+            edits.push(Edit::Insert);
+            j -= 1;
+        } else if j == 0 {
+            edits.push(Edit::Delete);
+            i -= 1;
+        } else if pen.diag(&c, i, j) == c[i][j] {
+            if x[i - 1] == y[j - 1] {
+                edits.push(Edit::Match);
+            } else {
+                edits.push(Edit::Mismatch);
+            }
+            i -= 1;
+            j -= 1;
+        } else if pen.up(&c, i, j) == c[i][j] {
+            edits.push(Edit::Delete);
+            i -= 1;
+        } else if pen.left(&c, i, j) == c[i][j] {
+            edits.push(Edit::Insert);
+            j -= 1;
+        } else {
+            unreachable!()
+        }
+    }
+
+    edits.reverse();
+
     GlobalAlignment {
         penalty: c[x.len()][y.len()],
+        edits,
+    }
+}
+
+struct Penalties<'s, C> {
+    x: &'s AStr<C>,
+    y: &'s AStr<C>,
+    props: AlignmentProperties,
+}
+
+impl<C: PartialEq> Penalties<'_, C> {
+    fn up(&self, c: &Vec<Vec<usize>>, i: usize, j: usize) -> usize {
+        c[i - 1][j] + self.props.gap_penalty
+    }
+
+    fn left(&self, c: &Vec<Vec<usize>>, i: usize, j: usize) -> usize {
+        c[i][j - 1] + self.props.gap_penalty
+    }
+
+    fn diag(&self, c: &Vec<Vec<usize>>, i: usize, j: usize) -> usize {
+        c[i - 1][j - 1]
+            + if self.x[i - 1] == self.y[j - 1] {
+                0
+            } else {
+                self.props.mismatch_penalty
+            }
     }
 }
 
 #[cfg(test)]
 mod test {
-
+    use super::Edit::*;
     use super::*;
     use crate::ascii::ascii;
+    use core::str::FromStr;
+
+    fn edit(edits: &str) -> AString<Edit> {
+        AString::from_str(edits).unwrap()
+    }
 
     #[test]
     fn test_global_alignment_simple() {
@@ -81,6 +184,7 @@ mod test {
             AlignmentProperties::default(),
         );
         assert_eq!(align.penalty, 2);
+        assert_eq!(align.edits, edit("===X=X=="));
 
         let align = global_alignment_simple(
             ascii("abcdbc"),
@@ -88,6 +192,7 @@ mod test {
             AlignmentProperties::default(),
         );
         assert_eq!(align.penalty, 3);
+        assert_eq!(align.edits, edit("=D==I==I"));
 
         let align = global_alignment_simple(
             ascii("bcdabcd"),
@@ -95,5 +200,6 @@ mod test {
             AlignmentProperties::default(),
         );
         assert_eq!(align.penalty, 2);
+        assert_eq!(align.edits, edit("I===X==="));
     }
 }

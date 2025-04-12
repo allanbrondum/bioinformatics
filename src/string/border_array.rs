@@ -14,7 +14,7 @@ pub fn border_array<C: CharT>(s: &AStr<C>) -> Vec<usize> {
     for i in 0..s.len() - 1 {
         let mut b = arr[i];
         loop {
-            if s[i+1] == s[b] {
+            if s[i + 1] == s[b] {
                 arr[i + 1] = b + 1;
                 break;
             } else if b == 0 {
@@ -27,7 +27,6 @@ pub fn border_array<C: CharT>(s: &AStr<C>) -> Vec<usize> {
     }
 
     arr
-
 }
 
 pub fn border_array_simple<C: CharT>(s: &AStr<C>) -> Vec<usize> {
@@ -46,12 +45,12 @@ pub fn border_array_simple<C: CharT>(s: &AStr<C>) -> Vec<usize> {
 
 #[cfg(test)]
 mod test {
-    use proptest::{prop_assert_eq, proptest};
-    use proptest::prelude::ProptestConfig;
     use super::*;
     use crate::ascii::ascii;
     use crate::string_model::arb_astring;
     use crate::string_model::test_util::Char;
+    use proptest::prelude::ProptestConfig;
+    use proptest::{prop_assert_eq, proptest};
 
     #[test]
     fn test_border_array_simple() {
