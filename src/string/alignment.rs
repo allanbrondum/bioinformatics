@@ -72,7 +72,7 @@ impl CharT for Edit {
     }
 }
 
-#[derive(Clone)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub struct GlobalAlignment {
     pub penalty: usize,
     pub edits: AString<Edit>,
@@ -165,12 +165,77 @@ impl<C: PartialEq> Penalties<'_, C> {
     }
 }
 
+pub fn global_alignment<C: CharT>(
+    x: &AStr<C>,
+    y: &AStr<C>,
+    props: AlignmentProperties,
+) -> GlobalAlignment {
+    let mut c = vec![vec![0; y.len() + 1]; x.len() + 1];
+
+    let pen = Penalties { x, y, props };
+
+    for i in 0..=x.len() {
+        c[i][0] = i * props.gap_penalty;
+    }
+
+    for j in 0..=y.len() {
+        c[0][j] = j * props.gap_penalty;
+    }
+
+    for i in 1..=x.len() {
+        for j in 1..=y.len() {
+            c[i][j] = pen
+                .diag(&c, i, j)
+                .min(pen.up(&c, i, j).min(pen.left(&c, i, j)));
+        }
+    }
+
+    let mut edits = AString::with_capacity(x.len());
+    let mut i = x.len();
+    let mut j = y.len();
+    while i != 0 || j != 0 {
+        if i == 0 {
+            edits.push(Edit::Insert);
+            j -= 1;
+        } else if j == 0 {
+            edits.push(Edit::Delete);
+            i -= 1;
+        } else if pen.diag(&c, i, j) == c[i][j] {
+            if x[i - 1] == y[j - 1] {
+                edits.push(Edit::Match);
+            } else {
+                edits.push(Edit::Mismatch);
+            }
+            i -= 1;
+            j -= 1;
+        } else if pen.up(&c, i, j) == c[i][j] {
+            edits.push(Edit::Delete);
+            i -= 1;
+        } else if pen.left(&c, i, j) == c[i][j] {
+            edits.push(Edit::Insert);
+            j -= 1;
+        } else {
+            unreachable!()
+        }
+    }
+
+    edits.reverse();
+
+    GlobalAlignment {
+        penalty: c[x.len()][y.len()],
+        edits,
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::Edit::*;
     use super::*;
-    use crate::ascii::ascii;
+    use crate::ascii::{arb_ascii_astring, ascii};
+    use crate::string_model::arb_astring;
     use core::str::FromStr;
+    use proptest::prelude::ProptestConfig;
+    use proptest::{prop_assert_eq, proptest};
 
     fn edit(edits: &str) -> AString<Edit> {
         AString::from_str(edits).unwrap()
@@ -201,5 +266,22 @@ mod test {
         );
         assert_eq!(align.penalty, 2);
         assert_eq!(align.edits, edit("I===X==="));
+    }
+
+    proptest! {
+        #![proptest_config(ProptestConfig::with_cases(2000))]
+
+        #[test]
+        fn prop_test_global_alignment(
+            x in arb_ascii_astring(0..20),
+            y in arb_ascii_astring(0..20),
+            gap_penalty in 1..10usize,
+            mismatch_penalty in 1..10usize)
+        {
+            let props = AlignmentProperties::default().gap_penalty(gap_penalty).mismatch_penalty(mismatch_penalty);
+            let expected = global_alignment_simple(&x, &y, props);
+            let alignment = global_alignment(&x, &y, props);
+            prop_assert_eq!(alignment, expected);
+        }
     }
 }
