@@ -8,7 +8,7 @@ pub mod suffix_trie_mcc_rc;
 pub mod suffix_trie_ukn;
 pub mod trie_compact;
 pub mod border_array;
-
+pub mod alignment;
 mod superstring_petgraph;
 mod superstring_rcrefcell;
 

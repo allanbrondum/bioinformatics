@@ -30,7 +30,7 @@ pub fn border_array<C: CharT>(s: &AStr<C>) -> Vec<usize> {
 
 }
 
-fn border_array_simple<C: CharT>(s: &AStr<C>) -> Vec<usize> {
+pub fn border_array_simple<C: CharT>(s: &AStr<C>) -> Vec<usize> {
     (1..=s.len())
         .scan(0, |prev_overlap, l| {
             let max_possible_overlap = *prev_overlap + 1;

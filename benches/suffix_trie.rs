@@ -8,10 +8,7 @@ use std::mem;
 
 use crate::bench_util::Char;
 use bioinformatics::string;
-use bioinformatics::string::{
-    bwt, lcs, suffix_trie_compact, suffix_trie_mcc_arena, suffix_trie_mcc_petgraph,
-    suffix_trie_mcc_rc, suffix_trie_ukn,
-};
+use bioinformatics::string::{border_array, bwt, lcs, suffix_trie_compact, suffix_trie_mcc_arena, suffix_trie_mcc_petgraph, suffix_trie_mcc_rc, suffix_trie_ukn};
 use bioinformatics::string_model::{AStr, arb_astring};
 use bioinformatics::util::print_histogram;
 use proptest::strategy::{Strategy, ValueTree};
@@ -97,6 +94,19 @@ fn bench_substr_suffix_trie(
 fn bench_substr_bwt(bencher: &mut Bencher<'_>, bwt: &bwt::BWT<Char>, t: &AStr<Char>) {
     bencher.iter(|| bwt.indexes_substr(t));
 }
+
+fn bench_border_array_simple(bencher: &mut Bencher<'_>, s: &AStr<Char>) {
+    bencher.iter(|| {
+        border_array::border_array_simple(s);
+    });
+}
+
+fn bench_border_array(bencher: &mut Bencher<'_>, s: &AStr<Char>) {
+    bencher.iter(|| {
+        border_array::border_array(s);
+    });
+}
+
 
 fn build_trie_benches(criterion: &mut Criterion) {
     let mut build_trie_benches = criterion.benchmark_group("build_trie");
@@ -258,7 +268,40 @@ fn substr_benches(criterion: &mut Criterion) {
     substr_benches.finish();
 }
 
+fn border_array_benches(criterion: &mut Criterion) {
+    let mut substr_benches = criterion.benchmark_group("substr");
+    for &string_length in STRING_LENGTHS {
+        let mut runner = proptest::test_runner::TestRunner::default();
+        let s = arb_astring::<Char>(string_length)
+            .new_tree(&mut runner)
+            .unwrap()
+            .current();
+
+        substr_benches
+            .bench_with_input(
+                BenchmarkId::new("border_array_simple", string_length),
+                s.as_str(),
+                |bencher, s| bench_border_array_simple(bencher, s),
+            )
+            .throughput(Throughput::Elements(string_length as u64));
+        substr_benches
+            .bench_with_input(
+                BenchmarkId::new("border_array", string_length),
+                s.as_str(),
+                |bencher, s| bench_border_array(bencher, s),
+            )
+            .throughput(Throughput::Elements(string_length as u64));
+    }
+    substr_benches.finish();
+}
+
 criterion_group!(trie_benches_group, build_trie_benches);
 criterion_group!(lcs_benches_group, lcs_benches);
 criterion_group!(substr_benches_group, substr_benches);
-criterion_main!(trie_benches_group, lcs_benches_group, substr_benches_group);
+criterion_group!(border_array_benches_group, border_array_benches);
+criterion_main!(
+    trie_benches_group,
+    lcs_benches_group,
+    substr_benches_group,
+    border_array_benches_group
+);
