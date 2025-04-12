@@ -1,13 +1,19 @@
 use crate::alphabet_model::CharT;
-use crate::string::alignment::{AlignmentProperties, GlobalAlignment};
+use crate::string::alignment::{AlignmentProperties, Edit, GlobalAlignment};
 use crate::string_model::{AStr, AString};
 use core::fmt::{Display, Write};
+use std::ops::Deref;
+use std::{iter, mem};
 
-fn global_alignment_penalty<C: CharT>(
-    x: &AStr<C>,
-    y: &AStr<C>,
+fn global_alignment_penalty<'a, C: CharT>(
+    mut x: &'a AStr<C>,
+    mut y: &'a AStr<C>,
     props: AlignmentProperties,
 ) -> usize {
+    if x.len() > y.len() {
+        mem::swap(&mut x, &mut y);
+    }
+
     let mut c = vec![vec![0; 2]; x.len() + 1];
 
     let pen = Penalties { x, y, props };
@@ -58,9 +64,66 @@ pub fn global_alignment<C: CharT>(
     y: &AStr<C>,
     props: AlignmentProperties,
 ) -> GlobalAlignment {
+    if x.is_empty() {
+        return GlobalAlignment {
+            penalty: y.len() * props.gap_penalty,
+            edits: iter::repeat_n(Edit::Insert, y.len()).collect(),
+        };
+    } else if y.is_empty() {
+        return GlobalAlignment {
+            penalty: x.len() * props.gap_penalty,
+            edits: iter::repeat_n(Edit::Delete, x.len()).collect(),
+        };
+    } else if x.len() == 1 {
+        return if let Some(match_idx) = y.iter().copied().position(|ch| ch == x[0]) {
+            GlobalAlignment {
+                penalty: (y.len() - 1) * props.gap_penalty,
+                edits: (0..y.len())
+                    .map(|idx| {
+                        if idx == match_idx {
+                            Edit::Match
+                        } else {
+                            Edit::Insert
+                        }
+                    })
+                    .collect(),
+            }
+        } else {
+            GlobalAlignment {
+                penalty: (y.len() + 1) * props.gap_penalty,
+                edits: iter::repeat_n(Edit::Insert, y.len())
+                    .chain(iter::once(Edit::Delete))
+                    .collect(),
+            }
+        };
+    } else if y.len() == 1 {
+        return if let Some(match_idx) = x.iter().copied().position(|ch| ch == y[0]) {
+            GlobalAlignment {
+                penalty: (x.len() - 1) * props.gap_penalty,
+                edits: (0..x.len())
+                    .map(|idx| {
+                        if idx == match_idx {
+                            Edit::Match
+                        } else {
+                            Edit::Delete
+                        }
+                    })
+                    .collect(),
+            }
+        } else {
+            GlobalAlignment {
+                penalty: (x.len() + 1) * props.gap_penalty,
+                edits: iter::repeat_n(Edit::Delete, x.len())
+                    .chain(iter::once(Edit::Insert))
+                    .collect(),
+            }
+        };
+    };
+
     let mut edits = AString::with_capacity(x.len());
 
     let mut penalty = usize::MAX;
+    let mut split_at = usize::MAX;
     let y_mid = y.len() / 2;
     let y_1 = &y[..y_mid];
     let y_2 = &y[y_mid..];
@@ -70,8 +133,16 @@ pub fn global_alignment<C: CharT>(
 
         let cur_penalty =
             global_alignment_penalty(x_1, y_1, props) + global_alignment_penalty(x_2, y_2, props);
-        penalty = penalty.min(cur_penalty);
+        if cur_penalty < penalty {
+            penalty = cur_penalty;
+            split_at = i;
+        }
     }
+
+    let align_1 = global_alignment(&x[..split_at], y_1, props);
+    let align_2 = global_alignment(&x[split_at..], y_2, props);
+
+    debug_assert_eq!(align_1.penalty + align_2.penalty, penalty);
 
     GlobalAlignment { penalty, edits }
 }
