@@ -3,7 +3,7 @@ use crate::string_model::{AStr, AString};
 use core::fmt::{Display, Formatter, Write};
 use generic_array::typenum::U4;
 
-mod global_alignment_simple;
+mod global_alignment_wagner_fischer;
 mod global_alignment_hirschberg;
 
 #[derive(Copy, Clone)]

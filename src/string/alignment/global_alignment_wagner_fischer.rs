@@ -3,8 +3,7 @@ use crate::string::alignment::{AlignmentProperties, Edit, GlobalAlignment};
 use crate::string_model::{AStr, AString};
 use core::fmt::{Display, Write};
 
-/// Wagner-Fischer
-pub fn global_alignment_simple<C: CharT>(
+pub fn global_alignment<C: CharT>(
     x: &AStr<C>,
     y: &AStr<C>,
     props: AlignmentProperties,
@@ -105,8 +104,8 @@ mod test {
     }
 
     #[test]
-    fn test_global_alignment_simple() {
-        let align = global_alignment_simple(
+    fn test_global_alignment() {
+        let align = global_alignment(
             ascii("abcdabcd"),
             ascii("abcaadcd"),
             AlignmentProperties::default(),
@@ -114,7 +113,7 @@ mod test {
         assert_eq!(align.penalty, 2);
         assert_eq!(align.edits, edit("===X=X=="));
 
-        let align = global_alignment_simple(
+        let align = global_alignment(
             ascii("abcdbc"),
             ascii("acdabcd"),
             AlignmentProperties::default(),
@@ -122,7 +121,7 @@ mod test {
         assert_eq!(align.penalty, 3);
         assert_eq!(align.edits, edit("=D==I==I"));
 
-        let align = global_alignment_simple(
+        let align = global_alignment(
             ascii("bcdabcd"),
             ascii("abcdbbcd"),
             AlignmentProperties::default(),
