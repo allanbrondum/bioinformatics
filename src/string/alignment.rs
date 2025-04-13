@@ -6,7 +6,7 @@ use generic_array::typenum::U4;
 mod global_alignment_wagner_fischer;
 mod global_alignment_hirschberg;
 
-#[derive(Copy, Clone)]
+#[derive(Debug, Copy, Clone)]
 pub struct AlignmentProperties {
     pub gap_penalty: usize,
     pub mismatch_penalty: usize,

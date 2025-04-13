@@ -64,6 +64,8 @@ pub fn global_alignment<C: CharT>(
     y: &AStr<C>,
     props: AlignmentProperties,
 ) -> GlobalAlignment {
+    assert!(props.mismatch_penalty <= 2 * props.gap_penalty);
+
     if x.is_empty() {
         return GlobalAlignment {
             penalty: y.len() * props.gap_penalty,
@@ -90,9 +92,9 @@ pub fn global_alignment<C: CharT>(
             }
         } else {
             GlobalAlignment {
-                penalty: (y.len() + 1) * props.gap_penalty,
-                edits: iter::repeat_n(Edit::Insert, y.len())
-                    .chain(iter::once(Edit::Delete))
+                penalty: (y.len() - 1) * props.gap_penalty + props.mismatch_penalty,
+                edits: iter::repeat_n(Edit::Insert, y.len() - 1)
+                    .chain(iter::once(Edit::Mismatch))
                     .collect(),
             }
         };
@@ -112,15 +114,13 @@ pub fn global_alignment<C: CharT>(
             }
         } else {
             GlobalAlignment {
-                penalty: (x.len() + 1) * props.gap_penalty,
-                edits: iter::repeat_n(Edit::Delete, x.len())
-                    .chain(iter::once(Edit::Insert))
+                penalty: (x.len() - 1) * props.gap_penalty + props.mismatch_penalty,
+                edits: iter::repeat_n(Edit::Delete, x.len() - 1)
+                    .chain(iter::once(Edit::Mismatch))
                     .collect(),
             }
         };
     };
-
-    let mut edits = AString::with_capacity(x.len());
 
     let mut penalty = usize::MAX;
     let mut split_at = usize::MAX;
@@ -139,12 +139,59 @@ pub fn global_alignment<C: CharT>(
         }
     }
 
-    let align_1 = global_alignment(&x[..split_at], y_1, props);
-    let align_2 = global_alignment(&x[split_at..], y_2, props);
+    let x_1 = &x[..split_at];
+    let x_2 = &x[split_at..];
+    let align_1 = global_alignment(x_1, y_1, props);
+    let align_2 = global_alignment(x_2, y_2, props);
 
-    debug_assert_eq!(align_1.penalty + align_2.penalty, penalty);
+    debug_assert_eq!(
+        align_1.penalty + align_2.penalty,
+        penalty,
+        "x_1: {}, y_1: {}, penalty_1: {}, x_2: {}, y_2: {}, penalty_2: {}, props: {:?}",
+        x_1,
+        y_1,
+        align_1.penalty,
+        x_2,
+        y_2,
+        align_2.penalty,
+        props,
+    );
+
+    let edits = align_1.edits + align_2.edits.as_str();
 
     GlobalAlignment { penalty, edits }
+}
+
+fn is_edit<C:PartialEq>(x: &AStr<C>, y: &AStr<C>, edits: &AStr<Edit>) -> bool {
+    let mut i = 0;
+    let mut j = 0;
+
+    for edit in edits.iter().copied() {
+        match edit {
+            Edit::Match => {
+                if x.get(i) != y.get(j) {
+                    return false;
+                }
+                i += 1;
+                j += 1;
+            }
+            Edit::Mismatch => {
+                if x.get(i) == y.get(j) {
+                    return false;
+                }
+                i += 1;
+                j += 1;
+            }
+            Edit::Insert => {
+                j += 1;
+            }
+            Edit::Delete => {
+                i += 1;
+            }
+        }
+    }
+
+    i == x.len() && j == y.len()
 }
 
 #[cfg(test)]
@@ -154,9 +201,10 @@ mod test {
     use crate::ascii::{arb_ascii_astring, ascii};
     use crate::string::alignment::{Edit, global_alignment_wagner_fischer};
     use crate::string_model::arb_astring;
+    use crate::string_model::test_util::Char;
     use core::str::FromStr;
     use proptest::prelude::ProptestConfig;
-    use proptest::{prop_assert_eq, proptest};
+    use proptest::{prop_assert, prop_assert_eq, prop_assume, proptest};
 
     fn edit(edits: &str) -> AString<Edit> {
         AString::from_str(edits).unwrap()
@@ -188,29 +236,26 @@ mod test {
 
     #[test]
     fn test_global_alignment() {
-        let align = global_alignment(
-            ascii("abcdabcd"),
-            ascii("abcaadcd"),
-            AlignmentProperties::default(),
-        );
+        let x = ascii("abcdabcd");
+        let y = ascii("abcaadcd");
+        let align = global_alignment(x, y, AlignmentProperties::default());
         assert_eq!(align.penalty, 2);
-        // assert_eq!(align.edits, edit("===X=X=="));
+        assert_eq!(align.edits, edit("===X=X=="));
+        assert!(is_edit(x, y, &align.edits));
 
-        let align = global_alignment(
-            ascii("abcdbc"),
-            ascii("acdabcd"),
-            AlignmentProperties::default(),
-        );
+        let x = ascii("abcdbc");
+        let y = ascii("acdabcd");
+        let align = global_alignment(x, y, AlignmentProperties::default());
         assert_eq!(align.penalty, 3);
-        // assert_eq!(align.edits, edit("=D==I==I"));
+        assert_eq!(align.edits, edit("=D==I==I"));
+        assert!(is_edit(x, y, &align.edits));
 
-        let align = global_alignment(
-            ascii("bcdabcd"),
-            ascii("abcdbbcd"),
-            AlignmentProperties::default(),
-        );
+        let x = ascii("bcdabcd");
+        let y = ascii("abcdbbcd");
+        let align = global_alignment(x, y, AlignmentProperties::default());
         assert_eq!(align.penalty, 2);
-        // assert_eq!(align.edits, edit("I===X==="));
+        assert_eq!(align.edits, edit("I===X==="));
+        assert!(is_edit(x, y, &align.edits));
     }
 
     proptest! {
@@ -218,15 +263,17 @@ mod test {
 
         #[test]
         fn prop_test_global_alignment(
-            x in arb_ascii_astring(0..20),
-            y in arb_ascii_astring(0..20),
+            x in arb_astring::<Char>(0..20),
+            y in arb_astring::<Char>(0..20),
             gap_penalty in 1..10usize,
             mismatch_penalty in 1..10usize)
         {
             let props = AlignmentProperties::default().gap_penalty(gap_penalty).mismatch_penalty(mismatch_penalty);
+            prop_assume!(props.mismatch_penalty <= 2 * props.gap_penalty);
             let expected = global_alignment_wagner_fischer::global_alignment(&x, &y, props);
             let alignment = global_alignment(&x, &y, props);
-            prop_assert_eq!(alignment, expected);
+            prop_assert_eq!(alignment.penalty, expected.penalty);
+            prop_assert!(is_edit(&x, &y, &alignment.edits));
         }
     }
 }

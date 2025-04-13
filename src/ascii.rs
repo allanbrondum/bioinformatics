@@ -30,7 +30,9 @@ pub fn arb_ascii_astring(
     size: impl Into<SizeRange>,
 ) -> impl Strategy<Value = AString<ascii::Char>> {
     collection::vec(
-        arbitrary::any::<char>().prop_filter_map("ascii", |ch| ch.as_ascii()),
+        arbitrary::any::<char>()
+            .prop_filter_map("ascii", |ch| ch.as_ascii())
+            .prop_filter("alphanum", |ch| ch.to_char().is_alphanumeric()),
         size,
     )
     .prop_map(AString::from)

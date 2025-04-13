@@ -90,7 +90,6 @@ impl<C: PartialEq> Penalties<'_, C> {
     }
 }
 
-
 #[cfg(test)]
 mod test {
     use super::super::Edit::*;
@@ -129,5 +128,4 @@ mod test {
         assert_eq!(align.penalty, 2);
         assert_eq!(align.edits, edit("I===X==="));
     }
-
 }
