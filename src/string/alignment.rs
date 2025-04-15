@@ -2,14 +2,17 @@ use crate::alphabet_model::CharT;
 use crate::string_model::{AStr, AString};
 use core::fmt::{Display, Formatter, Write};
 use generic_array::typenum::U4;
+use std::ops::Range;
 
-mod global_alignment_wagner_fischer;
 mod global_alignment_hirschberg;
+mod global_alignment_wagner_fischer;
+mod local_alignment_wagner_fischer;
 
 #[derive(Debug, Copy, Clone)]
 pub struct AlignmentProperties {
     pub gap_penalty: usize,
     pub mismatch_penalty: usize,
+    pub match_score: usize,
 }
 
 impl AlignmentProperties {
@@ -22,6 +25,11 @@ impl AlignmentProperties {
         self.mismatch_penalty = mismatch_penalty;
         self
     }
+
+    pub fn match_score(mut self, match_score: usize) -> Self {
+        self.match_score = match_score;
+        self
+    }
 }
 
 impl Default for AlignmentProperties {
@@ -29,6 +37,7 @@ impl Default for AlignmentProperties {
         Self {
             gap_penalty: 1,
             mismatch_penalty: 1,
+            match_score: 1,
         }
     }
 }
@@ -80,4 +89,9 @@ pub struct GlobalAlignment {
     pub edits: AString<Edit>,
 }
 
-
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub struct LocalAlignment {
+    pub penalty: isize,
+    pub range: Range<usize>,
+    pub edits: AString<Edit>,
+}

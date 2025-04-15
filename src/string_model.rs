@@ -156,8 +156,6 @@ impl<C> AString<C> {
     pub fn clear(&mut self) {
         self.0.clear()
     }
-
-
 }
 
 impl<C: CharT> FromStr for AString<C> {

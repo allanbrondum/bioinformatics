@@ -162,7 +162,7 @@ pub fn global_alignment<C: CharT>(
     GlobalAlignment { penalty, edits }
 }
 
-fn is_edit<C:PartialEq>(x: &AStr<C>, y: &AStr<C>, edits: &AStr<Edit>) -> bool {
+fn is_edit<C: PartialEq>(x: &AStr<C>, y: &AStr<C>, edits: &AStr<Edit>) -> bool {
     let mut i = 0;
     let mut j = 0;
 
