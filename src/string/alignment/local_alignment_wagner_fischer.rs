@@ -25,8 +25,6 @@ pub fn local_alignment<C: CharT>(
         }
     }
 
-    // println!("{:?}", c);
-
     let mut i_end = 0;
     for i in 0..=x.len() {
         if c[i][y.len()] < c[i_end][y.len()] {
