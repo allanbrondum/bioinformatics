@@ -104,7 +104,7 @@ mod test {
     use super::super::Edit::*;
     use super::*;
     use crate::ascii::ascii;
-    use crate::string::alignment::Edit;
+    use crate::string::alignment::{Edit, is_edit};
     use core::str::FromStr;
 
     fn edit(edits: &str) -> AString<Edit> {
@@ -113,43 +113,44 @@ mod test {
 
     #[test]
     fn test_local_alignment() {
-        let align = local_alignment(
-            ascii("abcdabcd"),
-            ascii("cdab"),
-            AlignmentProperties::default(),
-        );
+        let x = ascii("abcdabcd");
+        let y = ascii("cdab");
+        let align = local_alignment(x, y, AlignmentProperties::default());
         assert_eq!(align.penalty, -4);
         assert_eq!(align.range, 2..6);
         assert_eq!(align.edits, edit("===="));
+        assert!(is_edit(&x[align.range], y, &align.edits));
 
-        let align = local_alignment(ascii("abcd"), ascii("abcd"), AlignmentProperties::default());
+        let x = ascii("abcd");
+        let y = ascii("abcd");
+        let align = local_alignment(x, y, AlignmentProperties::default());
         assert_eq!(align.penalty, -4);
         assert_eq!(align.range, 0..4);
         assert_eq!(align.edits, edit("===="));
+        assert!(is_edit(&x[align.range], y, &align.edits));
 
-        let align = local_alignment(
-            ascii("abcdabcd"),
-            ascii("cdcbc"),
-            AlignmentProperties::default(),
-        );
+        let x = ascii("abcdabcd");
+        let y = ascii("cdcbc");
+        let align = local_alignment(x, y, AlignmentProperties::default());
         assert_eq!(align.penalty, -3);
         assert_eq!(align.range, 2..7);
         assert_eq!(align.edits, edit("==X=="));
+        assert!(is_edit(&x[align.range], y, &align.edits));
 
-        // let align = global_alignment(
-        //     ascii("abcdbc"),
-        //     ascii("acdabcd"),
-        //     AlignmentProperties::default(),
-        // );
-        // assert_eq!(align.penalty, 3);
-        // assert_eq!(align.edits, edit("=D==I==I"));
-        //
-        // let align = global_alignment(
-        //     ascii("bcdabcd"),
-        //     ascii("abcdbbcd"),
-        //     AlignmentProperties::default(),
-        // );
-        // assert_eq!(align.penalty, 2);
-        // assert_eq!(align.edits, edit("I===X==="));
+        let x = ascii("abcdabcd");
+        let y = ascii("dcdaba");
+        let align = local_alignment(x, y, AlignmentProperties::default().mismatch_penalty(2));
+        assert_eq!(align.penalty, -2);
+        assert_eq!(align.range, 2..6);
+        assert_eq!(align.edits, edit("I====I"));
+        assert!(is_edit(&x[align.range], y, &align.edits));
+
+        let x = ascii("abcdabcd");
+        let y = ascii("cdbc");
+        let align = local_alignment(x, y, AlignmentProperties::default().mismatch_penalty(2));
+        assert_eq!(align.penalty, -3);
+        assert_eq!(align.range, 2..7);
+        assert_eq!(align.edits, edit("==D=="));
+        assert!(is_edit(&x[align.range], y, &align.edits));
     }
 }

@@ -95,7 +95,7 @@ mod test {
     use super::super::Edit::*;
     use super::*;
     use crate::ascii::ascii;
-    use crate::string::alignment::Edit;
+    use crate::string::alignment::{Edit, is_edit};
     use core::str::FromStr;
 
     fn edit(edits: &str) -> AString<Edit> {
@@ -104,28 +104,25 @@ mod test {
 
     #[test]
     fn test_global_alignment() {
-        let align = global_alignment(
-            ascii("abcdabcd"),
-            ascii("abcaadcd"),
-            AlignmentProperties::default(),
-        );
+        let x = ascii("abcdabcd");
+        let y = ascii("abcaadcd");
+        let align = global_alignment(x, y, AlignmentProperties::default());
         assert_eq!(align.penalty, 2);
         assert_eq!(align.edits, edit("===X=X=="));
+        assert!(is_edit(x, y, &align.edits));
 
-        let align = global_alignment(
-            ascii("abcdbc"),
-            ascii("acdabcd"),
-            AlignmentProperties::default(),
-        );
+        let x = ascii("abcdbc");
+        let y = ascii("acdabcd");
+        let align = global_alignment(x, y, AlignmentProperties::default());
         assert_eq!(align.penalty, 3);
         assert_eq!(align.edits, edit("=D==I==I"));
+        assert!(is_edit(x, y, &align.edits));
 
-        let align = global_alignment(
-            ascii("bcdabcd"),
-            ascii("abcdbbcd"),
-            AlignmentProperties::default(),
-        );
+        let x = ascii("bcdabcd");
+        let y = ascii("abcdbbcd");
+        let align = global_alignment(x, y, AlignmentProperties::default());
         assert_eq!(align.penalty, 2);
         assert_eq!(align.edits, edit("I===X==="));
+        assert!(is_edit(x, y, &align.edits));
     }
 }

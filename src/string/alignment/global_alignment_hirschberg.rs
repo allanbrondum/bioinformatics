@@ -162,44 +162,12 @@ pub fn global_alignment<C: CharT>(
     GlobalAlignment { penalty, edits }
 }
 
-fn is_edit<C: PartialEq>(x: &AStr<C>, y: &AStr<C>, edits: &AStr<Edit>) -> bool {
-    let mut i = 0;
-    let mut j = 0;
-
-    for edit in edits.iter().copied() {
-        match edit {
-            Edit::Match => {
-                if x.get(i) != y.get(j) {
-                    return false;
-                }
-                i += 1;
-                j += 1;
-            }
-            Edit::Mismatch => {
-                if x.get(i) == y.get(j) {
-                    return false;
-                }
-                i += 1;
-                j += 1;
-            }
-            Edit::Insert => {
-                j += 1;
-            }
-            Edit::Delete => {
-                i += 1;
-            }
-        }
-    }
-
-    i == x.len() && j == y.len()
-}
-
 #[cfg(test)]
 mod test {
     use super::super::Edit::*;
     use super::*;
     use crate::ascii::{arb_ascii_astring, ascii};
-    use crate::string::alignment::{Edit, global_alignment_wagner_fischer};
+    use crate::string::alignment::{Edit, global_alignment_wagner_fischer, is_edit};
     use crate::string_model::arb_astring;
     use crate::string_model::test_util::Char;
     use core::str::FromStr;

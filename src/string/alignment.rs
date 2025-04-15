@@ -95,3 +95,35 @@ pub struct LocalAlignment {
     pub range: Range<usize>,
     pub edits: AString<Edit>,
 }
+
+fn is_edit<C: PartialEq>(x: &AStr<C>, y: &AStr<C>, edits: &AStr<Edit>) -> bool {
+    let mut i = 0;
+    let mut j = 0;
+
+    for edit in edits.iter().copied() {
+        match edit {
+            Edit::Match => {
+                if x.get(i) != y.get(j) {
+                    return false;
+                }
+                i += 1;
+                j += 1;
+            }
+            Edit::Mismatch => {
+                if x.get(i) == y.get(j) {
+                    return false;
+                }
+                i += 1;
+                j += 1;
+            }
+            Edit::Insert => {
+                j += 1;
+            }
+            Edit::Delete => {
+                i += 1;
+            }
+        }
+    }
+
+    i == x.len() && j == y.len()
+}
