@@ -5,7 +5,7 @@ use core::fmt::{Display, Write};
 use std::ops::Deref;
 use std::{iter, mem};
 
-fn global_alignment_penalty<'a, C: CharT>(
+fn alignment_penalty<'a, C: CharT>(
     mut x: &'a AStr<C>,
     mut y: &'a AStr<C>,
     props: AlignmentProperties,
@@ -131,8 +131,7 @@ pub fn global_alignment<C: CharT>(
         let x_1 = &x[..i];
         let x_2 = &x[i..];
 
-        let cur_penalty =
-            global_alignment_penalty(x_1, y_1, props) + global_alignment_penalty(x_2, y_2, props);
+        let cur_penalty = alignment_penalty(x_1, y_1, props) + alignment_penalty(x_2, y_2, props);
         if cur_penalty < penalty {
             penalty = cur_penalty;
             split_at = i;
@@ -179,22 +178,22 @@ mod test {
     }
 
     #[test]
-    fn test_global_alignment_penalty() {
-        let align = global_alignment_penalty(
+    fn test_alignment_penalty() {
+        let align = alignment_penalty(
             ascii("abcdabcd"),
             ascii("abcaadcd"),
             AlignmentProperties::default(),
         );
         assert_eq!(align, 2);
 
-        let align = global_alignment_penalty(
+        let align = alignment_penalty(
             ascii("abcdbc"),
             ascii("acdabcd"),
             AlignmentProperties::default(),
         );
         assert_eq!(align, 3);
 
-        let align = global_alignment_penalty(
+        let align = alignment_penalty(
             ascii("bcdabcd"),
             ascii("abcdbbcd"),
             AlignmentProperties::default(),
