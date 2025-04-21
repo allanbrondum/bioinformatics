@@ -6,7 +6,7 @@ use std::ops::Range;
 
 mod global_alignment_hirschberg;
 mod global_alignment_wagner_fischer;
-mod local_alignment_hirschberg;
+// mod local_alignment_hirschberg;
 mod local_alignment_wagner_fischer;
 
 #[derive(Debug, Copy, Clone)]

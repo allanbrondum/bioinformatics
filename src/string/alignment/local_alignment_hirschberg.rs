@@ -81,110 +81,111 @@ impl<C: PartialEq> Penalties<'_, C> {
     }
 }
 
-// /// Local alignment of y inside x (deletes in x at start and end are "free")
-// pub fn local_alignment<C: CharT>(
-//     x: &AStr<C>,
-//     y: &AStr<C>,
-//     props: AlignmentProperties,
-// ) -> LocalAlignment {
-//     assert!(props.mismatch_penalty <= 2 * props.gap_penalty);
-//
-//     if x.is_empty() {
-//         return LocalAlignment {
-//             penalty: y.len() * props.gap_penalty,
-//             range: Default::default(),
-//             edits: iter::repeat_n(Edit::Insert, y.len()).collect(),
-//         };
-//     } else if y.is_empty() {
-//         return LocalAlignment {
-//             penalty: x.len() * props.gap_penalty,
-//             edits: iter::repeat_n(Edit::Delete, x.len()).collect(),
-//         };
-//     } else if x.len() == 1 {
-//         return if let Some(match_idx) = y.iter().copied().position(|ch| ch == x[0]) {
-//             LocalAlignment {
-//                 penalty: (y.len() - 1) * props.gap_penalty,
-//                 edits: (0..y.len())
-//                     .map(|idx| {
-//                         if idx == match_idx {
-//                             Edit::Match
-//                         } else {
-//                             Edit::Insert
-//                         }
-//                     })
-//                     .collect(),
-//             }
-//         } else {
-//             LocalAlignment {
-//                 penalty: (y.len() - 1) * props.gap_penalty + props.mismatch_penalty,
-//                 edits: iter::repeat_n(Edit::Insert, y.len() - 1)
-//                     .chain(iter::once(Edit::Mismatch))
-//                     .collect(),
-//             }
-//         };
-//     } else if y.len() == 1 {
-//         return if let Some(match_idx) = x.iter().copied().position(|ch| ch == y[0]) {
-//             LocalAlignment {
-//                 penalty: (x.len() - 1) * props.gap_penalty,
-//                 edits: (0..x.len())
-//                     .map(|idx| {
-//                         if idx == match_idx {
-//                             Edit::Match
-//                         } else {
-//                             Edit::Delete
-//                         }
-//                     })
-//                     .collect(),
-//             }
-//         } else {
-//             LocalAlignment {
-//                 penalty: (x.len() - 1) * props.gap_penalty + props.mismatch_penalty,
-//                 edits: iter::repeat_n(Edit::Delete, x.len() - 1)
-//                     .chain(iter::once(Edit::Mismatch))
-//                     .collect(),
-//             }
-//         };
-//     };
-//
-//     let mut penalty = isize::MAX;
-//     let mut split_at = usize::MAX;
-//     let y_mid = y.len() / 2;
-//     let y_1 = &y[..y_mid];
-//     let y_2 = &y[y_mid..];
-//     for i in 0..=x.len() {
-//         let x_1 = &x[..i];
-//         let x_2 = &x[i..];
-//
-//         let cur_penalty =
-//             alignment_penalty_start_free(x_1, y_1, props) + alignment_penalty_end_free(x_2, y_2, props);
-//         if cur_penalty < penalty {
-//             penalty = cur_penalty;
-//             split_at = i;
-//         }
-//     }
-//
-//     let x_1 = &x[..split_at];
-//     let x_2 = &x[split_at..];
-//     let align_1 = local_alignment(x_1, y_1, props);
-//     let align_2 = local_alignment(x_2, y_2, props);
-//
-//     debug_assert_eq!(
-//         align_1.penalty + align_2.penalty,
-//         penalty,
-//         "x_1: {}, y_1: {}, penalty_1: {}, x_2: {}, y_2: {}, penalty_2: {}, props: {:?}",
-//         x_1,
-//         y_1,
-//         align_1.penalty,
-//         x_2,
-//         y_2,
-//         align_2.penalty,
-//         props,
-//     );
-//
-//     let edits = align_1.edits + align_2.edits.as_str();
-//
-//     LocalAlignment { penalty, edits }
-// }
+/// Local alignment of y inside x (deletes in x at start and end are "free")
+pub fn local_alignment<C: CharT>(
+    x: &AStr<C>,
+    y: &AStr<C>,
+    props: AlignmentProperties,
+) -> LocalAlignment {
+    assert!(props.mismatch_penalty <= 2 * props.gap_penalty);
+
+    // if x.is_empty() {
+    //     return LocalAlignment {
+    //         penalty: y.len() * props.gap_penalty,
+    //         range: Default::default(),
+    //         edits: iter::repeat_n(Edit::Insert, y.len()).collect(),
+    //     };
+    // } else if y.is_empty() {
+    //     return LocalAlignment {
+    //         penalty: x.len() * props.gap_penalty,
+    //         edits: iter::repeat_n(Edit::Delete, x.len()).collect(),
+    //     };
+    // } else if x.len() == 1 {
+    //     return if let Some(match_idx) = y.iter().copied().position(|ch| ch == x[0]) {
+    //         LocalAlignment {
+    //             penalty: (y.len() - 1) * props.gap_penalty,
+    //             edits: (0..y.len())
+    //                 .map(|idx| {
+    //                     if idx == match_idx {
+    //                         Edit::Match
+    //                     } else {
+    //                         Edit::Insert
+    //                     }
+    //                 })
+    //                 .collect(),
+    //         }
+    //     } else {
+    //         LocalAlignment {
+    //             penalty: (y.len() - 1) * props.gap_penalty + props.mismatch_penalty,
+    //             edits: iter::repeat_n(Edit::Insert, y.len() - 1)
+    //                 .chain(iter::once(Edit::Mismatch))
+    //                 .collect(),
+    //         }
+    //     };
+    // } else if y.len() == 1 {
+    //     return if let Some(match_idx) = x.iter().copied().position(|ch| ch == y[0]) {
+    //         LocalAlignment {
+    //             penalty: (x.len() - 1) * props.gap_penalty,
+    //             edits: (0..x.len())
+    //                 .map(|idx| {
+    //                     if idx == match_idx {
+    //                         Edit::Match
+    //                     } else {
+    //                         Edit::Delete
+    //                     }
+    //                 })
+    //                 .collect(),
+    //         }
+    //     } else {
+    //         LocalAlignment {
+    //             penalty: (x.len() - 1) * props.gap_penalty + props.mismatch_penalty,
+    //             edits: iter::repeat_n(Edit::Delete, x.len() - 1)
+    //                 .chain(iter::once(Edit::Mismatch))
+    //                 .collect(),
+    //         }
+    //     };
+    // };
+
+    let mut penalty = isize::MAX;
+    let mut split_at = usize::MAX;
+    let y_mid = y.len() / 2;
+    let y_1 = &y[..y_mid];
+    let y_2 = &y[y_mid..];
+    for i in 0..=x.len() {
+        let x_1 = &x[..i];
+        let x_2 = &x[i..];
+
+        let cur_penalty =
+            alignment_penalty(x_1, y_1, props, FreeMode::Start) + alignment_penalty(x_2, y_2, props, FreeMode::End);
+        if cur_penalty < penalty {
+            penalty = cur_penalty;
+            split_at = i;
+        }
+    }
+
+    let x_1 = &x[..split_at];
+    let x_2 = &x[split_at..];
+    let align_1 = local_alignment(x_1, y_1, props);
+    let align_2 = local_alignment(x_2, y_2, props);
+
+    debug_assert_eq!(
+        align_1.penalty + align_2.penalty,
+        penalty,
+        "x_1: {}, y_1: {}, penalty_1: {}, x_2: {}, y_2: {}, penalty_2: {}, props: {:?}",
+        x_1,
+        y_1,
+        align_1.penalty,
+        x_2,
+        y_2,
+        align_2.penalty,
+        props,
+    );
+
+    let edits = align_1.edits + align_2.edits.as_str();
+    let range = align_1.range.start..align_2.range.end;
+
+    LocalAlignment { penalty, range, edits }
+}
 
 #[cfg(test)]
 mod test {
@@ -265,48 +266,48 @@ mod test {
         assert_eq!(align, -6);
     }
 
-    // #[test]
-    // fn test_local_alignment() {
-    //     let x = ascii("abcdabcd");
-    //     let y = ascii("cdab");
-    //     let align = local_alignment(x, y, AlignmentProperties::default());
-    //     assert_eq!(align.penalty, -4);
-    //     assert_eq!(align.range, 2..6);
-    //     assert_eq!(align.edits, edit("===="));
-    //     assert!(is_edit(&x[align.range], y, &align.edits));
-    //
-    //     let x = ascii("abcd");
-    //     let y = ascii("abcd");
-    //     let align = local_alignment(x, y, AlignmentProperties::default());
-    //     assert_eq!(align.penalty, -4);
-    //     assert_eq!(align.range, 0..4);
-    //     assert_eq!(align.edits, edit("===="));
-    //     assert!(is_edit(&x[align.range], y, &align.edits));
-    //
-    //     let x = ascii("abcdabcd");
-    //     let y = ascii("cdcbc");
-    //     let align = local_alignment(x, y, AlignmentProperties::default());
-    //     assert_eq!(align.penalty, -3);
-    //     assert_eq!(align.range, 2..7);
-    //     assert_eq!(align.edits, edit("==X=="));
-    //     assert!(is_edit(&x[align.range], y, &align.edits));
-    //
-    //     let x = ascii("abcdabcd");
-    //     let y = ascii("dcdaba");
-    //     let align = local_alignment(x, y, AlignmentProperties::default().mismatch_penalty(2));
-    //     assert_eq!(align.penalty, -2);
-    //     assert_eq!(align.range, 2..6);
-    //     assert_eq!(align.edits, edit("I====I"));
-    //     assert!(is_edit(&x[align.range], y, &align.edits));
-    //
-    //     let x = ascii("abcdabcd");
-    //     let y = ascii("cdbc");
-    //     let align = local_alignment(x, y, AlignmentProperties::default().mismatch_penalty(2));
-    //     assert_eq!(align.penalty, -3);
-    //     assert_eq!(align.range, 2..7);
-    //     assert_eq!(align.edits, edit("==D=="));
-    //     assert!(is_edit(&x[align.range], y, &align.edits));
-    // }
+    #[test]
+    fn test_local_alignment() {
+        let x = ascii("abcdabcd");
+        let y = ascii("cdab");
+        let align = local_alignment(x, y, AlignmentProperties::default());
+        assert_eq!(align.penalty, -4);
+        assert_eq!(align.range, 2..6);
+        assert_eq!(align.edits, edit("===="));
+        assert!(is_edit(&x[align.range], y, &align.edits));
+
+        let x = ascii("abcd");
+        let y = ascii("abcd");
+        let align = local_alignment(x, y, AlignmentProperties::default());
+        assert_eq!(align.penalty, -4);
+        assert_eq!(align.range, 0..4);
+        assert_eq!(align.edits, edit("===="));
+        assert!(is_edit(&x[align.range], y, &align.edits));
+
+        let x = ascii("abcdabcd");
+        let y = ascii("cdcbc");
+        let align = local_alignment(x, y, AlignmentProperties::default());
+        assert_eq!(align.penalty, -3);
+        assert_eq!(align.range, 2..7);
+        assert_eq!(align.edits, edit("==X=="));
+        assert!(is_edit(&x[align.range], y, &align.edits));
+
+        let x = ascii("abcdabcd");
+        let y = ascii("dcdaba");
+        let align = local_alignment(x, y, AlignmentProperties::default().mismatch_penalty(2));
+        assert_eq!(align.penalty, -2);
+        assert_eq!(align.range, 2..6);
+        assert_eq!(align.edits, edit("I====I"));
+        assert!(is_edit(&x[align.range], y, &align.edits));
+
+        let x = ascii("abcdabcd");
+        let y = ascii("cdbc");
+        let align = local_alignment(x, y, AlignmentProperties::default().mismatch_penalty(2));
+        assert_eq!(align.penalty, -3);
+        assert_eq!(align.range, 2..7);
+        assert_eq!(align.edits, edit("==D=="));
+        assert!(is_edit(&x[align.range], y, &align.edits));
+    }
 
     // proptest! {
     //     #![proptest_config(ProptestConfig::with_cases(2000))]
